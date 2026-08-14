@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NZ Solar Installations</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, Arial, sans-serif; }
+  #map { height: 100%; width: 100%; background: #0b1622; }
+  .panel {
+    position: absolute; z-index: 5; background: rgba(255,255,255,.94);
+    border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.35); font-size: 13px;
+  }
+  #status { top: 12px; left: 12px; padding: 11px 15px; max-width: 300px; line-height: 1.5; }
+  #legend { bottom: 28px; left: 12px; padding: 10px 14px; line-height: 1.7; display: none; }
+  #legend .dot { display: inline-block; border-radius: 50%; margin-right: 7px; vertical-align: middle; }
+  .maplibregl-popup-content { font-size: 13px; line-height: 1.5; }
+  small.muted { color: #666; }
+  .err { color: #b42318; font-weight: 600; }
+  .terrain-btn {
+    display: block; width: 29px; height: 29px; border: none; cursor: pointer;
+    background: #fff; font-size: 12px; font-weight: 700; color: #333;
+  }
+  .terrain-btn.on { background: #f97316; color: #fff; }
+  .up { color: #16a34a; font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="status" class="panel">Loading…</div>
+<div id="legend" class="panel"></div>
+
+<script>
+/* ================= CONFIG ================= */
+
+// Built weekly by process.py and served from this same folder, so the
+// map does no processing at all — it downloads one file and draws it.
+const DATA_URL = "streets.geojson";
+const META_URL = "meta.json";
+
+// Satellite imagery. Esri needs no key.
+// Sharper NZ imagery: free key from https://basemaps.linz.govt.nz
+const LINZ_API_KEY = "";
+const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const LINZ_TILES = k => `https://basemaps.linz.govt.nz/v1/tiles/aerial/WebMercatorQuad/{z}/{x}/{y}.webp?api=${k}`;
+const AWS_DEM = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+const TERRAIN_EXAGGERATION = 1.4;
+
+/* ================= MAP ================= */
+
+const usingLinz = LINZ_API_KEY.trim().length > 0;
+
+const map = new maplibregl.Map({
+  container: "map",
+  center: [172.8, -41.0],
+  zoom: 4.7,
+  maxPitch: 80,
+  style: {
+    version: 8,
+    glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
+    sources: {
+      sat: {
+        type: "raster",
+        tiles: [usingLinz ? LINZ_TILES(LINZ_API_KEY.trim()) : ESRI_TILES],
+        tileSize: 256, maxzoom: 19,
+        attribution: (usingLinz ? "Basemap © LINZ CC BY 4.0" : "Imagery © Esri")
+          + " · Solar data: EMI (Electricity Authority)"
+          + " · Street locations: © OpenStreetMap contributors · Areas: Stats NZ"
+      }
+    },
+    layers: [{ id: "sat", type: "raster", source: "sat" }]
+  }
+});
+
+map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), "bottom-right");
+
+const mapReady = new Promise(r => map.loaded() ? r() : map.once("load", r));
+
+// Terrain is added after load — declaring it in the style can stop the
+// load event firing, which strands everything downstream of it.
+mapReady.then(() => {
+  try {
+    map.addSource("dem", {
+      type: "raster-dem", tiles: [AWS_DEM], tileSize: 256,
+      maxzoom: 13, encoding: "terrarium"
+    });
+    map.setTerrain({ source: "dem", exaggeration: TERRAIN_EXAGGERATION });
+    map.addLayer({
+      id: "sky", type: "sky",
+      paint: {
+        "sky-color": "#8fbcdc", "sky-horizon-blend": 0.5,
+        "horizon-color": "#e6eef5", "horizon-fog-blend": 0.6,
+        "fog-color": "#cfd9e2", "fog-ground-blend": 0.15
+      }
+    });
+    map.addControl(new maplibregl.TerrainControl({
+      source: "dem", exaggeration: TERRAIN_EXAGGERATION
+    }), "top-right");
+  } catch (err) { console.warn("Terrain unavailable:", err); }
+
+  class TiltControl {
+    onAdd(m) {
+      this._c = document.createElement("div");
+      this._c.className = "maplibregl-ctrl maplibregl-ctrl-group";
+      const b = document.createElement("button");
+      b.className = "terrain-btn"; b.title = "Toggle 3D view"; b.textContent = "3D";
+      b.onclick = () => {
+        const flat = m.getPitch() < 5;
+        m.easeTo({ pitch: flat ? 62 : 0, bearing: flat ? -18 : 0, duration: 900 });
+        b.classList.toggle("on", flat);
+      };
+      this._c.appendChild(b);
+      return this._c;
+    }
+    onRemove() { this._c.remove(); }
+  }
+  map.addControl(new TiltControl(), "top-right");
+});
+
+const statusEl = document.getElementById("status");
+const setStatus = html => statusEl.innerHTML = html;
+
+const COLOUR_RAMP = [
+  "interpolate", ["linear"], ["get", "busShare"],
+  0, "#ffb703",   0.5, "#f97316",   1, "#22d3ee"
+];
+
+/* ================= SPIDERFY ================= */
+/* Streets close enough to overlap fan into a labelled ring on click,
+   with leader lines back to their true positions. */
+
+let spiderActive = false;
+
+function spiderfy(features, anchor) {
+  const centre = map.project(anchor);
+  const legs = [], nodes = [];
+  features.forEach((f, i) => {
+    const ring = Math.floor(i / 12);
+    const inRing = Math.min(12, features.length - ring * 12);
+    const radius = 36 + ring * 30;
+    const ang = (2 * Math.PI * (i % 12)) / inRing - Math.PI / 2;
+    const t = map.unproject([centre.x + radius * Math.cos(ang),
+                             centre.y + radius * Math.sin(ang)]);
+    legs.push({ type: "Feature", properties: {},
+      geometry: { type: "LineString", coordinates: [f.geometry.coordinates, [t.lng, t.lat]] } });
+    nodes.push({ type: "Feature", properties: f.properties,
+      geometry: { type: "Point", coordinates: [t.lng, t.lat] } });
+  });
+  map.getSource("spider-legs").setData({ type: "FeatureCollection", features: legs });
+  map.getSource("spider-nodes").setData({ type: "FeatureCollection", features: nodes });
+  spiderActive = true;
+}
+
+function unspiderfy() {
+  if (!spiderActive) return;
+  spiderActive = false;
+  const empty = { type: "FeatureCollection", features: [] };
+  map.getSource("spider-legs").setData(empty);
+  map.getSource("spider-nodes").setData(empty);
+}
+
+function showPopup(f) {
+  const p = f.properties;
+  const a = p.est == 1 ? "≈" : "";
+  const change = p.change > 0
+    ? `<br><span class="up">+${p.change} since last update</span>` : "";
+  new maplibregl.Popup()
+    .setLngLat(f.geometry.coordinates)
+    .setHTML(
+      `<strong>${p.street}</strong><br><small class="muted">${p.area}</small><br>` +
+      `Solar connections: <strong>${a}${p.icps}</strong>${change}<br>` +
+      `Residential ${a}${p.res} · Business ${a}${p.bus}<br>` +
+      (p.kW > 0
+        ? `Capacity: ${p.kW} kW` + (p.kWper ? ` <small class="muted">(${p.kWper} kW each)</small>` : "")
+        : `<small class="muted">Capacity suppressed (small count)</small>`)
+    ).addTo(map);
+}
+
+/* ================= LAYERS ================= */
+/* Every street, every zoom, no clustering. MapLibre draws these on the
+   GPU, so the whole country renders in one pass. */
+
+function addLayers(data) {
+  map.addSource("streets", { type: "geojson", data });
+  map.addSource("spider-legs", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addSource("spider-nodes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+
+  map.addLayer({
+    id: "street-points", type: "circle", source: "streets",
+    paint: {
+      "circle-radius": [
+        "interpolate", ["linear"], ["zoom"],
+        4,  ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 1.3, 5, 2.2, 15, 3.6],
+        9,  ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 2.6, 5, 5,   15, 8],
+        14, ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 4.5, 5, 8,   15, 15]
+      ],
+      "circle-color": COLOUR_RAMP,
+      "circle-opacity": ["interpolate", ["linear"], ["zoom"], 4, 0.7, 10, 0.9],
+      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 7, 0, 11, 1.1],
+      "circle-stroke-color": "rgba(255,255,255,.9)",
+      "circle-pitch-alignment": "map"
+    }
+  });
+
+  map.addLayer({
+    id: "street-labels", type: "symbol", source: "streets",
+    minzoom: 13.5,
+    layout: {
+      "text-field": ["get", "street"], "text-font": ["Noto Sans Regular"],
+      "text-size": 10, "text-offset": [0, 1.1], "text-anchor": "top", "text-optional": true
+    },
+    paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,.7)", "text-halo-width": 1.2 }
+  });
+
+  map.addLayer({
+    id: "spider-legs", type: "line", source: "spider-legs",
+    paint: { "line-color": "rgba(255,255,255,.75)", "line-width": 1 }
+  });
+  map.addLayer({
+    id: "spider-nodes", type: "circle", source: "spider-nodes",
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 5, 5, 8, 15, 15],
+      "circle-color": COLOUR_RAMP, "circle-opacity": .95,
+      "circle-stroke-width": 1.8, "circle-stroke-color": "#fff"
+    }
+  });
+  map.addLayer({
+    id: "spider-labels", type: "symbol", source: "spider-nodes",
+    layout: {
+      "text-field": ["get", "street"], "text-font": ["Noto Sans Regular"],
+      "text-size": 10, "text-offset": [0, 1.2], "text-anchor": "top", "text-allow-overlap": true
+    },
+    paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,.75)", "text-halo-width": 1.3 }
+  });
+
+  map.on("click", e => {
+    const nodes = map.queryRenderedFeatures(e.point, { layers: ["spider-nodes"] });
+    if (nodes.length) { showPopup(nodes[0]); return; }
+
+    const R = 14;
+    const hits = map.queryRenderedFeatures(
+      [[e.point.x - R, e.point.y - R], [e.point.x + R, e.point.y + R]],
+      { layers: ["street-points"] });
+
+    if (hits.length > 1) { unspiderfy(); spiderfy(hits, hits[0].geometry.coordinates); return; }
+    if (hits.length === 1) { showPopup(hits[0]); return; }
+    unspiderfy();
+  });
+
+  map.on("moveend", unspiderfy);
+  ["street-points", "spider-nodes"].forEach(l => {
+    map.on("mouseenter", l, () => map.getCanvas().style.cursor = "pointer");
+    map.on("mouseleave", l, () => map.getCanvas().style.cursor = "");
+  });
+}
+
+function showLegend() {
+  const lg = document.getElementById("legend");
+  lg.style.display = "block";
+  lg.innerHTML = `<strong>Solar installations by street</strong><br>
+    <span class="dot" style="width:8px;height:8px;background:#f97316"></span>few
+    &nbsp;<span class="dot" style="width:16px;height:16px;background:#f97316"></span>many
+    <small class="muted">(size = connections)</small><br>
+    <span class="dot" style="width:11px;height:11px;background:#ffb703"></span>Mostly residential<br>
+    <span class="dot" style="width:11px;height:11px;background:#22d3ee"></span>Mostly business<br>
+    <small class="muted">Click a dot for detail · <strong>3D</strong> tilts the view</small>`;
+}
+
+/* ================= LOAD ================= */
+
+(async function start() {
+  try {
+    const [data, meta] = await Promise.all([
+      fetch(DATA_URL).then(r => {
+        if (!r.ok) throw new Error(`streets.geojson: HTTP ${r.status}`);
+        return r.json();
+      }),
+      fetch(META_URL).then(r => r.ok ? r.json() : null).catch(() => null)
+    ]);
+
+    await mapReady;
+    addLayers(data);
+    showLegend();
+
+    const n = data.features.length.toLocaleString();
+    const nat = meta && meta.national && meta.national.icps;
+    setStatus(
+      `<strong>NZ solar installations</strong><br>` +
+      `${n} streets mapped` +
+      (nat ? `<br>${nat.toLocaleString()} connections nationwide` : "") +
+      (meta && meta.updated ? `<br><small class="muted">Updated ${meta.updated}</small>` : ""));
+  } catch (err) {
+    setStatus(`<span class="err">Couldn't load the data</span><br>` +
+      `<small class="muted">${err.message}</small><br>` +
+      `<small class="muted">Run the Update solar data workflow to build it.</small>`);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+name: Update solar data
+
+on:
+  schedule:
+    # Mondays, 6am NZ time (18:00 UTC Sunday). EMI publishes monthly,
+    # so weekly is comfortably often enough to never be stale.
+    - cron: "0 18 * * 0"
+  workflow_dispatch:        # lets you run it by hand from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # The first run geocodes ~2,100 areas and can take an hour.
+    # Later runs only look up streets that are genuinely new.
+    timeout-minutes: 350
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - name: Build streets.geojson
+        run: python process.py
+
+      - name: Commit if anything changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add docs/streets.geojson docs/meta.json \
+                  road_cache.json sa2_areas.json previous_counts.json
+          if git diff --staged --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Update solar data $(date -u +%Y-%m-%d)"
+            git push
+          fi
