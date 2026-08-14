@@ -59,9 +59,8 @@
       max-height: 62vh;
     }
     #dash.collapsed .dash-sub,
-    #dash.collapsed .toggle-row,
-    #dash.collapsed .board,
-    #dash.collapsed .dash-foot { display: none; }
+    #dash.collapsed .list-caption,
+    #dash.collapsed .board { display: none; }
     #dash.collapsed .dash-head { border-bottom: none; }
     #dashToggle { display: none; }
   }
@@ -71,8 +70,18 @@
     cursor: default; flex: none;
   }
   .dash-title { font-size: 14px; font-weight: 700; letter-spacing: .2px; display: flex; align-items: center; justify-content: space-between; }
-  .dash-sub { font-size: 12px; color: var(--dim); margin-top: 4px; line-height: 1.5; }
+  .dash-title-collapsed { display: none; color: var(--cyan); }
+  #dash.collapsed .dash-title-normal { display: none; }
+  #dash.collapsed .dash-title-collapsed { display: inline; }
+  .dash-sub {
+    font-size: 12px; color: var(--dim); margin-top: 4px; line-height: 1.5;
+    white-space: nowrap; overflow-x: auto; overflow-y: hidden;
+  }
   .dash-sub strong { color: var(--text); }
+  .list-caption {
+    padding: 8px 16px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
+    text-transform: uppercase; color: var(--dim); flex: none;
+  }
 
   .grabber {
     display: none;
@@ -92,17 +101,6 @@
   }
   .iconbtn:hover { background: rgba(255,255,255,.14); }
 
-  .toggle-row { display: flex; gap: 6px; padding: 10px 16px; flex: none; }
-  .toggle-btn {
-    flex: 1; padding: 7px 8px; font-size: 12px; font-weight: 600; text-align: center;
-    background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--dim);
-    border-radius: 9px; cursor: pointer; transition: all .15s;
-  }
-  .toggle-btn.active {
-    color: #06222b; background: var(--cyan); border-color: var(--cyan);
-    box-shadow: 0 0 14px rgba(34,211,238,.55);
-  }
-
   .board { overflow-y: auto; flex: 1; padding: 4px 10px 10px; }
   .board::-webkit-scrollbar { width: 7px; }
   .board::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
@@ -119,17 +117,17 @@
   .row-body { flex: 1; min-width: 0; }
   .row-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row-bar-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,.08); margin-top: 4px; overflow: hidden; }
-  .row-bar { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--amber), var(--orange)); }
-  .row-metric { flex: none; text-align: right; font-size: 12.5px; font-weight: 700; min-width: 54px; }
-  .row-metric .mw { display: block; font-size: 10px; font-weight: 500; color: var(--dim); }
+  .row-bar { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--amber), var(--orange)); box-shadow: 0 0 6px rgba(249,115,22,.6); }
+  .row-metric { flex: none; text-align: right; }
+  .row-metric .pct { font-size: 14px; font-weight: 700; color: var(--cyan); text-shadow: 0 0 10px rgba(34,211,238,.45); }
+  .row-metric .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
   .children { padding-left: 26px; overflow: hidden; max-height: 0; transition: max-height .25s ease; }
   .children.open { max-height: 900px; }
   .child .row-main { padding: 5px 8px; }
   .child .row-name { font-size: 11.5px; font-weight: 500; color: #cbd5e1; }
-  .child .row-metric { font-size: 11.5px; }
+  .child .row-metric .pct { font-size: 12px; }
 
-  .dash-foot { padding: 10px 16px 12px; border-top: 1px solid var(--border); flex: none; font-size: 11px; color: var(--dim); line-height: 1.7; }
-  .dash-foot .dot { display: inline-block; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+  .empty-note { padding: 20px 16px; font-size: 12.5px; color: var(--dim); text-align: center; }
 
   #dashToggle {
     position: absolute; z-index: 7; width: 34px; height: 34px; border-radius: 10px;
@@ -158,17 +156,14 @@
     <div class="grabber"></div>
     <div class="dash-head">
       <div class="dash-title">
-        <span>NZ Solar Installations</span>
+        <span class="dash-title-normal">NZ Solar Installations</span>
+        <span class="dash-title-collapsed">View details</span>
         <button id="hideBtn" class="iconbtn" title="Hide dashboard">✕</button>
       </div>
       <div class="dash-sub" id="dashSub">Loading…</div>
     </div>
-    <div class="toggle-row">
-      <div class="toggle-btn active" data-metric="pct">% of ICPs</div>
-      <div class="toggle-btn" data-metric="icps">Installs</div>
-    </div>
+    <div class="list-caption">Regions within map view</div>
     <div class="board" id="board"><div class="loading-note">Loading regions…</div></div>
-    <div class="dash-foot" id="dashFoot"></div>
   </div>
 </div>
 
@@ -390,58 +385,62 @@ const dash = document.getElementById("dash");
 const dashToggle = document.getElementById("dashToggle");
 const boardEl = document.getElementById("board");
 const dashSubEl = document.getElementById("dashSub");
-const dashFootEl = document.getElementById("dashFoot");
 
-let currentMetric = "pct";     // "pct" | "icps"
-let regionData = [];
+let regionData = [];       // full national tree, as built by process.py
 let openCouncil = null;
 
 const fmt = n => n.toLocaleString();
 const fmtMW = kW => (kW / 1000).toLocaleString(undefined, { maximumFractionDigits: kW >= 10000 ? 0 : 1 });
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-function metricLabel(r) {
-  return currentMetric === "pct" ? `${r.pct.toFixed(1)}%` : fmt(r.icps);
+function bboxIntersects(b, view) {
+  if (!b) return true;   // no boundary data -- never hide it
+  const [s, w, n, e] = b;
+  return !(e < view.getWest() || w > view.getEast() || n < view.getSouth() || s > view.getNorth());
+}
+
+function visibleRegions() {
+  if (!map.isStyleLoaded || !map.style) return regionData;
+  const view = map.getBounds();
+  return regionData
+    .filter(r => bboxIntersects(r.bbox, view))
+    .map(r => ({ ...r, children: r.children.filter(c => bboxIntersects(c.bbox, view)) }))
+    .sort((a, b) => b.pct - a.pct);
+}
+
+function rowHTML(r, rank, isChild) {
+  const pctWidth = Math.max(2, Math.min(100, r.pct));
+  return `
+    <div class="row-main" ${isChild ? "" : `data-council="${r.name}"`} style="${isChild ? "cursor:default" : ""}">
+      <span class="row-rank">${rank != null ? rank : ""}</span>
+      <span class="row-chev ${!isChild && openCouncil === r.name ? "open" : ""}" style="${isChild ? "visibility:hidden" : ""}">▶</span>
+      <div class="row-body">
+        <div class="row-name">${r.name}</div>
+        <div class="row-bar-track"><div class="row-bar" style="width:${pctWidth}%"></div></div>
+      </div>
+      <div class="row-metric">
+        <span class="pct">${r.pct.toFixed(1)}%</span>
+        <span class="detail">${fmtMW(r.kW)} MW · ${fmt(r.icps)} installs</span>
+      </div>
+    </div>`;
 }
 
 function renderBoard() {
+  const visible = visibleRegions();
+
   if (!regionData.length) {
     boardEl.innerHTML = `<div class="loading-note">No regional data in this build yet.</div>`;
     return;
   }
-  const max = Math.max(...regionData.map(r => currentMetric === "pct" ? r.pct : r.icps), 1);
-  boardEl.innerHTML = regionData.map((r, i) => {
-    const open = openCouncil === r.name;
-    const pct = Math.min(100, ((currentMetric === "pct" ? r.pct : r.icps) / max) * 100);
-    const childMax = Math.max(...r.children.map(c => currentMetric === "pct" ? c.pct : c.icps), 1);
-    const children = r.children.map(c => {
-      const cpct = Math.min(100, ((currentMetric === "pct" ? c.pct : c.icps) / childMax) * 100);
-      return `
-        <div class="row child">
-          <div class="row-main" style="cursor:default">
-            <span class="row-rank"></span>
-            <span class="row-chev"></span>
-            <div class="row-body">
-              <div class="row-name">${c.name}</div>
-              <div class="row-bar-track"><div class="row-bar" style="width:${cpct}%"></div></div>
-            </div>
-            <div class="row-metric">${metricLabel(c)}<span class="mw">${fmtMW(c.kW)} MW</span></div>
-          </div>
-        </div>`;
-    }).join("");
+  if (!visible.length) {
+    boardEl.innerHTML = `<div class="empty-note">No mapped regions in this view — zoom out or pan to New Zealand.</div>`;
+    return;
+  }
 
-    return `
-      <div class="row">
-        <div class="row-main" data-council="${r.name}">
-          <span class="row-rank">${i + 1}</span>
-          <span class="row-chev ${open ? "open" : ""}">▶</span>
-          <div class="row-body">
-            <div class="row-name">${r.name}</div>
-            <div class="row-bar-track"><div class="row-bar" style="width:${pct}%"></div></div>
-          </div>
-          <div class="row-metric">${metricLabel(r)}<span class="mw">${fmtMW(r.kW)} MW</span></div>
-        </div>
-        <div class="children ${open ? "open" : ""}">${children}</div>
-      </div>`;
+  boardEl.innerHTML = visible.map((r, i) => {
+    const open = openCouncil === r.name;
+    const children = r.children.map(c => `<div class="row child">${rowHTML(c, null, true)}</div>`).join("");
+    return `<div class="row">${rowHTML(r, i + 1, false)}<div class="children ${open ? "open" : ""}">${children}</div></div>`;
   }).join("");
 
   boardEl.querySelectorAll("[data-council]").forEach(el => {
@@ -452,14 +451,6 @@ function renderBoard() {
     });
   });
 }
-
-document.querySelectorAll(".toggle-btn").forEach(btn => {
-  btn.addEventListener("click", () => {
-    currentMetric = btn.getAttribute("data-metric");
-    document.querySelectorAll(".toggle-btn").forEach(b => b.classList.toggle("active", b === btn));
-    renderBoard();
-  });
-});
 
 const hideBtn = document.getElementById("hideBtn");
 let dashHidden = false;
@@ -477,16 +468,6 @@ document.querySelector(".dash-head").addEventListener("click", e => {
   if (window.innerWidth < 768 && dashHidden && e.target !== hideBtn) setDashHidden(false);
 });
 
-function renderFooter() {
-  dashFootEl.innerHTML = `
-    <span class="dot" style="width:8px;height:8px;background:#f97316"></span>few
-    &nbsp;<span class="dot" style="width:15px;height:15px;background:#f97316"></span>many
-    <small class="muted">(dot size = connections)</small><br>
-    <span class="dot" style="width:10px;height:10px;background:#ffb703"></span>Mostly residential
-    &nbsp;<span class="dot" style="width:10px;height:10px;background:#22d3ee"></span>Mostly business<br>
-    <small class="muted">Click a dot for detail · <strong>3D</strong> tilts the view · ⛶ for fullscreen</small>`;
-}
-
 /* ================= LOAD ================= */
 
 (async function start() {
@@ -501,25 +482,23 @@ function renderFooter() {
 
     await mapReady;
     addLayers(data);
-    renderFooter();
 
     regionData = (meta && meta.regions) || [];
     renderBoard();
+    map.on("moveend", renderBoard);
 
-    const n = data.features.length.toLocaleString();
     const nat = meta && meta.national;
-    dashSubEl.innerHTML =
-      `${n} streets mapped` +
-      (nat && nat.icps ? `<br><strong>${fmt(nat.icps)}</strong> connections` +
-        (nat.pct ? ` · <strong>${nat.pct.toFixed(1)}%</strong> of ICPs` : "") : "") +
-      (nat && nat.kW ? `<br>${fmtMW(nat.kW)} MW installed` : "") +
-      (meta && meta.updated ? `<br><small class="muted">Updated ${meta.updated}</small>` : "");
+    const updated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
+    const parts = ["Solar installs: " + (nat && nat.icps ? fmt(nat.icps) : "—")];
+    if (nat && nat.kW) parts.push(`${fmtMW(nat.kW)} MW`);
+    if (nat && nat.pct) parts.push(`${nat.pct.toFixed(1)}% of connections`);
+    if (updated) parts.push(`Updated ${MONTHS[updated.getUTCMonth()]} ${updated.getUTCFullYear()}`);
+    dashSubEl.innerHTML = parts.join(" &nbsp;|&nbsp; ");
   } catch (err) {
     dashSubEl.innerHTML = `<span class="err">Couldn't load the data</span><br>` +
       `<small class="muted">${err.message}</small><br>` +
       `<small class="muted">Run the Update solar data workflow to build it.</small>`;
     boardEl.innerHTML = "";
-    renderFooter();
   }
 })();
 </script>

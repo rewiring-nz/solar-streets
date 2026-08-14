@@ -68,6 +68,7 @@ top of `docs/index.html`.
 | `docs/meta.json` | Build date, totals, match rate, and the region dashboard tree |
 | `road_cache.json` | Where each street is. The expensive bit, cached |
 | `sa2_areas.json` | Statistical area boundaries, cached |
+| `network_bounds.json` | Network region boundaries (EA), cached -- powers the "regions within map view" filter |
 | `previous_counts.json` | Last build's numbers, for the "+N since last update" figures |
 
 ## How streets get their positions
@@ -87,12 +88,17 @@ drops below 50%, so a bad build never gets published.
 ## The dashboard's region leaderboard
 
 The sidebar ranks NZ's 16 regional councils (expand one to see its
-network operators) by installs, % of ICPs with solar, or MW. The % figure
-is a real join, not an estimate: EMI publishes solar ICPs and total ICPs
-for the same 39 "network reporting regions", so both numbers come from
-the same source at the same granularity. The council grouping on top of
-that is a display choice (`NETWORK_TO_COUNCIL` in `process.py`) — a
-handful of networks straddle a council boundary and are marked there.
+network operators) by % of ICPs with solar, alongside installs and MW.
+The % figure is a real join, not an estimate: EMI publishes solar ICPs
+and total ICPs for the same 39 "network reporting regions", so both
+numbers come from the same source at the same granularity. The council
+grouping on top of that is a display choice (`NETWORK_TO_COUNCIL` in
+`process.py`) — a handful of networks straddle a council boundary and
+are marked there.
+
+The list also filters to whatever's in the current map view, using real
+network-region boundaries published by the Electricity Authority
+(`fetch_network_bounds()`/`network_bounds.json`) — not invented ones.
 
 ## Data sources
 

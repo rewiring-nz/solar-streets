@@ -41,6 +41,27 @@ REGION_CSV = EMI_BASE + "SolarInstallationsByRegion.csv"
 ICP_TOTALS_PAGE = "https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails"
 ICP_TOTALS_LINK_RE = re.compile(r'href="([^"]*\d{8}_MarketShareByMEPandTrader\.csv)"')
 
+# EA's own network-region boundaries -- real polygons, same 39 regions,
+# used only to answer "is this region in the current map view". Static
+# reference data (distributor footprints barely change), so it's cached
+# like the SA2 boundaries and fetched once.
+NETWORK_BOUNDARIES_ZIP = ("https://www.emi.ea.govt.nz/Wholesale/Datasets/"
+                           "MappingsAndGeospatial/NetworkRegionShapefiles/"
+                           "WGS84/GeoJSON/WGS84_GeoJSON_NRR.zip")
+NETWORK_BOUNDS_CACHE = "network_bounds.json"
+
+# The boundary file uses slightly older/unmacronned names for a few
+# regions -- these are the same real networks, just spelled differently.
+NETWORK_BOUNDARY_ALIASES = {
+    "Otago (OtagoNet JV)": "Otago (OtagoNet)",
+    "Kapiti and Horowhenua (Electra)": "Kāpiti and Horowhenua (Electra)",
+    "Manawatu (Powerco)": "Manawatū (Powerco)",
+    "Taupo (Unison Networks)": "Taupō (Unison Networks)",
+    "Wanganui (Powerco)": "Whanganui (Powerco)",
+    "Whangarei and Kaipara (Northpower)": "Whangārei and Kaipara (Northpower)",
+    "Eastland (Eastland Network)": "Tairāwhiti and Wairoa (Firstlight Network)",
+}
+
 # EMI's 39 "network reporting regions" (real distributor footprints, not
 # fabricated) grouped under their NZ regional council. A handful of
 # networks straddle a council boundary -- those are marked, and the
@@ -312,12 +333,63 @@ def fetch_total_icps():
     return totals
 
 
-def build_region_tree(networks, total_icps):
+def fetch_network_bounds():
+    """Real EA-published boundaries for the 39 network regions, as
+    [south, west, north, east] boxes. Cached -- distributor footprints
+    essentially never change, so there's no reason to refetch weekly.
+    """
+    cached = load(NETWORK_BOUNDS_CACHE, None)
+    if cached:
+        return cached
+
+    import io
+    import zipfile
+
+    print("Fetching network region boundaries from EA...")
+    r = session.get(NETWORK_BOUNDARIES_ZIP, timeout=120)
+    r.raise_for_status()
+    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
+        name = next(n for n in z.namelist() if n.lower().endswith((".json", ".geojson")))
+        geo = json.loads(z.read(name))
+
+    def bbox_of(geom):
+        xs, ys = [], []
+
+        def scan(c):
+            if isinstance(c[0], (int, float)):
+                xs.append(c[0]); ys.append(c[1])
+            else:
+                for s in c:
+                    scan(s)
+
+        scan(geom["coordinates"])
+        return [min(ys), min(xs), max(ys), max(xs)]
+
+    bounds = {}
+    for f in geo["features"]:
+        name = f["properties"].get("Region", "")
+        name = NETWORK_BOUNDARY_ALIASES.get(name, name)
+        bounds[name] = bbox_of(f["geometry"])
+
+    save(NETWORK_BOUNDS_CACHE, bounds)
+    return bounds
+
+
+def _union_bbox(boxes):
+    boxes = [b for b in boxes if b]
+    if not boxes:
+        return None
+    return [min(b[0] for b in boxes), min(b[1] for b in boxes),
+            max(b[2] for b in boxes), max(b[3] for b in boxes)]
+
+
+def build_region_tree(networks, total_icps, bounds):
     """Nest the 39 network regions under their regional council.
 
     Every number here is a real, unmodified EMI figure -- the council
     grouping is a display choice (see NETWORK_TO_COUNCIL), never a
-    fabricated one.
+    fabricated one. Ranked by % of ICPs with solar, which is what the
+    dashboard leads with.
     """
     councils = {}
     # Union with total_icps: a network can have real connections but zero
@@ -335,11 +407,22 @@ def build_region_tree(networks, total_icps):
             "name": name.split(" (")[0],
             "icps": s["icps"], "kW": s["kW"],
             "totalIcps": total, "pct": pct,
+            "bbox": bounds.get(name),   # filled in below if missing
+            "_fullName": name,
         })
 
     tree = []
     for council, children in councils.items():
-        children.sort(key=lambda c: c["icps"], reverse=True)
+        # A network missing its own boundary (e.g. the tiny Frankton
+        # embedded network) is treated as visible whenever its council is,
+        # rather than never showing up in the map-view filter.
+        council_bbox = _union_bbox([c["bbox"] for c in children])
+        for c in children:
+            if not c["bbox"]:
+                c["bbox"] = council_bbox
+            del c["_fullName"]
+        children.sort(key=lambda c: c["pct"], reverse=True)
+
         icps = sum(c["icps"] for c in children)
         total = sum(c["totalIcps"] for c in children)
         tree.append({
@@ -348,9 +431,10 @@ def build_region_tree(networks, total_icps):
             "kW": round(sum(c["kW"] for c in children), 1),
             "totalIcps": total,
             "pct": round(icps / total * 100, 2) if total else 0,
+            "bbox": council_bbox,
             "children": children,
         })
-    tree.sort(key=lambda r: r["icps"], reverse=True)
+    tree.sort(key=lambda r: r["pct"], reverse=True)
     return tree
 
 
@@ -501,7 +585,13 @@ def main():
         print(f"ICP totals unavailable ({exc}) -- % of ICPs will be omitted")
         total_icps = {}
 
-    region_tree = build_region_tree(networks, total_icps) if networks else []
+    try:
+        bounds = fetch_network_bounds()
+    except Exception as exc:                       # noqa: BLE001
+        print(f"Network boundaries unavailable ({exc}) -- map-view filter will be omitted")
+        bounds = {}
+
+    region_tree = build_region_tree(networks, total_icps, bounds) if networks else []
     national_total = sum(total_icps.values())
     if totals and national_total:
         totals["totalIcps"] = national_total
