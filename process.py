@@ -34,6 +34,61 @@ EMI_BASE = ("https://emidatasets.blob.core.windows.net/publicdata/Datasets/"
 STREET_CSV = EMI_BASE + "SolarInstallationsByStreet.csv"
 REGION_CSV = EMI_BASE + "SolarInstallationsByRegion.csv"
 
+# Total ICPs (not just solar) by network reporting region -- lets us show
+# "% of connections with solar", not just raw counts. The file is
+# date-stamped and moves monthly, so we scrape the current link off the
+# page rather than hardcoding a URL.
+ICP_TOTALS_PAGE = "https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails"
+ICP_TOTALS_LINK_RE = re.compile(r'href="([^"]*\d{8}_MarketShareByMEPandTrader\.csv)"')
+
+# EMI's 39 "network reporting regions" (real distributor footprints, not
+# fabricated) grouped under their NZ regional council. A handful of
+# networks straddle a council boundary -- those are marked, and the
+# grouping is a display choice only; every number shown is still the
+# real, unmodified EMI/network figure.
+NETWORK_TO_COUNCIL = {
+    "Bay of Islands (Top Energy)": "Northland",
+    "Whangārei and Kaipara (Northpower)": "Northland",
+    "Waitemata (Vector)": "Auckland",
+    "Auckland (Vector)": "Auckland",
+    "Counties (Counties Power)": "Auckland",          # spans into Waikato district
+    "Thames Valley (Powerco)": "Waikato",
+    "Waikato (WEL Networks)": "Waikato",
+    "Waipa (Waipa Networks)": "Waikato",
+    "King Country (The Lines Company)": "Waikato",    # spans into Manawatū-Whanganui
+    "Taupō (Unison Networks)": "Waikato",
+    "Tauranga (Powerco)": "Bay of Plenty",
+    "Eastern Bay of Plenty (Horizon Energy)": "Bay of Plenty",
+    "Rotorua (Unison Networks)": "Bay of Plenty",
+    "Tairāwhiti and Wairoa (Firstlight Network)": "Gisborne",  # Wairoa is technically Hawke's Bay
+    "Hawke's Bay (Unison Networks)": "Hawke's Bay",
+    "Central Hawke's Bay (Centralines)": "Hawke's Bay",
+    "Southern Hawke's Bay (Scanpower)": "Manawatū-Whanganui",  # Tararua district
+    "Taranaki (Powerco)": "Taranaki",
+    "Manawatū (Powerco)": "Manawatū-Whanganui",
+    "Whanganui (Powerco)": "Manawatū-Whanganui",
+    "Kāpiti and Horowhenua (Electra)": "Wellington",  # Horowhenua is Manawatū-Whanganui
+    "Wairarapa (Powerco)": "Wellington",
+    "Wellington (Wellington Electricity)": "Wellington",
+    "Tasman (Network Tasman)": "Tasman",
+    "Nelson (Nelson Electricity)": "Nelson",
+    "Marlborough (Marlborough Lines)": "Marlborough",
+    "Buller (Buller Electricity)": "West Coast",
+    "West Coast (Westpower)": "West Coast",
+    "North Canterbury (MainPower NZ)": "Canterbury",
+    "Central Canterbury (Orion New Zealand)": "Canterbury",
+    "Ashburton (Electricity Ashburton)": "Canterbury",
+    "South Canterbury (Alpine Energy)": "Canterbury",
+    "Waitaki (Network Waitaki)": "Canterbury",
+    "Central Otago (Aurora Energy)": "Otago",
+    "Queenstown (Aurora Energy)": "Otago",
+    "Frankton (Lakelands)": "Otago",
+    "Dunedin (Aurora Energy)": "Otago",
+    "Otago (OtagoNet)": "Otago",
+    "Southland (The Power Company)": "Southland",
+    "Invercargill (Electricity Invercargill)": "Southland",
+}
+
 SA2_SERVICE = (
     "https://services2.arcgis.com/vKb0s8tBIA3bdocZ/ArcGIS/rest/services/"
     "2023_Census_totals_by_topic_for_families_and_extended_families_by_SA2/"
@@ -209,11 +264,11 @@ def read_streets(text):
 
 
 def read_regions(text):
-    """National and regional totals -- handy context for the map header."""
+    """National and per-network-region solar totals for the dashboard."""
     import csv
     import io
 
-    totals, regions = {}, {}
+    totals, networks = {}, {}
     for row in csv.DictReader(io.StringIO(text)):
         if row.get("MarketSegment") != "All":
             continue
@@ -224,9 +279,79 @@ def read_regions(text):
             kw = 0.0
         if row.get("RegionType") == "NZ":
             totals = {"icps": n, "kW": round(kw, 1)}
-        elif row.get("RegionType") == "REG_COUNCIL":
-            regions[row.get("Region")] = {"icps": n, "kW": round(kw, 1)}
-    return totals, regions
+        elif row.get("RegionType") == "NWK_REPORTING_REGION":
+            networks[row.get("Region")] = {"icps": n, "kW": round(kw, 1)}
+    return totals, networks
+
+
+def fetch_total_icps():
+    """Total (not just solar) ICPs per network reporting region.
+
+    The source file is a monthly, date-stamped CSV -- we scrape today's
+    link off the EMI page rather than hardcoding a filename that expires.
+    """
+    page = session.get(ICP_TOTALS_PAGE, timeout=60).text
+    m = ICP_TOTALS_LINK_RE.search(page)
+    if not m:
+        print("  ! Couldn't find the ICP totals CSV link -- skipping % of ICPs")
+        return {}
+
+    url = m.group(1)
+    if url.startswith("/"):
+        url = "https://www.emi.ea.govt.nz" + url
+
+    import csv
+    import io
+
+    text = fetch_csv(url)
+    totals = {}
+    for row in csv.DictReader(io.StringIO(text)):
+        name = row.get("Network reporting region")
+        n, _ = icp_value(row.get("ICPs (Total)"))
+        totals[name] = totals.get(name, 0) + n
+    return totals
+
+
+def build_region_tree(networks, total_icps):
+    """Nest the 39 network regions under their regional council.
+
+    Every number here is a real, unmodified EMI figure -- the council
+    grouping is a display choice (see NETWORK_TO_COUNCIL), never a
+    fabricated one.
+    """
+    councils = {}
+    # Union with total_icps: a network can have real connections but zero
+    # solar rows in the source (e.g. Nelson) -- it should still show up,
+    # honestly, as 0% rather than silently vanishing from the leaderboard.
+    for name in set(networks) | set(total_icps):
+        council = NETWORK_TO_COUNCIL.get(name)
+        if not council:
+            print(f"  ! No council mapping for network region: {name}")
+            continue
+        s = networks.get(name, {"icps": 0, "kW": 0.0})
+        total = total_icps.get(name, 0)
+        pct = round(s["icps"] / total * 100, 2) if total else 0
+        councils.setdefault(council, []).append({
+            "name": name.split(" (")[0],
+            "icps": s["icps"], "kW": s["kW"],
+            "totalIcps": total, "pct": pct,
+        })
+
+    tree = []
+    for council, children in councils.items():
+        children.sort(key=lambda c: c["icps"], reverse=True)
+        icps = sum(c["icps"] for c in children)
+        total = sum(c["totalIcps"] for c in children)
+        tree.append({
+            "name": council,
+            "icps": icps,
+            "kW": round(sum(c["kW"] for c in children), 1),
+            "totalIcps": total,
+            "pct": round(icps / total * 100, 2) if total else 0,
+            "children": children,
+        })
+    tree.sort(key=lambda r: r["icps"], reverse=True)
+    return tree
 
 
 # ----------------------------------------------------------------------
@@ -365,10 +490,22 @@ def main():
     print(f"EMI: {len(records):,} streets")
 
     try:
-        totals, regions = read_regions(fetch_csv(REGION_CSV))
+        totals, networks = read_regions(fetch_csv(REGION_CSV))
     except Exception as exc:                       # noqa: BLE001
         print(f"Region file unavailable ({exc}) -- continuing without it")
-        totals, regions = {}, {}
+        totals, networks = {}, {}
+
+    try:
+        total_icps = fetch_total_icps()
+    except Exception as exc:                       # noqa: BLE001
+        print(f"ICP totals unavailable ({exc}) -- % of ICPs will be omitted")
+        total_icps = {}
+
+    region_tree = build_region_tree(networks, total_icps) if networks else []
+    national_total = sum(total_icps.values())
+    if totals and national_total:
+        totals["totalIcps"] = national_total
+        totals["pct"] = round(totals["icps"] / national_total * 100, 2)
 
     cache = geocode(records, areas)
 
@@ -387,7 +524,7 @@ def main():
         "streetsTotal": total,
         "matchRate": round(matched / total * 100, 1) if total else 0,
         "national": totals,
-        "regions": regions,
+        "regions": region_tree,
     }, indent=1)
 
     size = os.path.getsize(OUT_GEOJSON) / 1024 / 1024

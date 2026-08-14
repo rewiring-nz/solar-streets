@@ -65,7 +65,7 @@ top of `docs/index.html`.
 | `.github/workflows/update-data.yml` | Runs the above weekly |
 | `docs/index.html` | The map |
 | `docs/streets.geojson` | Built output — every street with coordinates |
-| `docs/meta.json` | Build date, totals, match rate |
+| `docs/meta.json` | Build date, totals, match rate, and the region dashboard tree |
 | `road_cache.json` | Where each street is. The expensive bit, cached |
 | `sa2_areas.json` | Statistical area boundaries, cached |
 | `previous_counts.json` | Last build's numbers, for the "+N since last update" figures |
@@ -84,8 +84,19 @@ private lanes, rural roads and recent renames. `process.py` prints the
 rate at the end of every run, and deliberately fails the build if it ever
 drops below 50%, so a bad build never gets published.
 
+## The dashboard's region leaderboard
+
+The sidebar ranks NZ's 16 regional councils (expand one to see its
+network operators) by installs, % of ICPs with solar, or MW. The % figure
+is a real join, not an estimate: EMI publishes solar ICPs and total ICPs
+for the same 39 "network reporting regions", so both numbers come from
+the same source at the same granularity. The council grouping on top of
+that is a display choice (`NETWORK_TO_COUNCIL` in `process.py`) — a
+handful of networks straddle a council boundary and are marked there.
+
 ## Data sources
 
 - Solar installations: [EMI, Electricity Authority](https://www.emi.ea.govt.nz/) (CC BY 4.0)
+- Total ICP counts: [EMI, ICP and metering details](https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails) (CC BY 4.0)
 - Street locations: [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL)
 - Statistical areas: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
