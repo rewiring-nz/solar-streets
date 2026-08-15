@@ -15,6 +15,7 @@ serves to the map.
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -55,6 +56,19 @@ REGC_SERVICE = (
     "nz_regional_councils/FeatureServer/0/query"
 )
 REGC_BOUNDS_CACHE = "regc_bounds.json"
+
+# LINZ's Suburbs and Localities (CC-BY-4.0, mirrored publicly on ArcGIS
+# Online -- no LINZ account/API key needed). Each row is a named locality
+# (e.g. "Albert Town") tagged with the larger town it belongs to via
+# major_name (e.g. "Wānaka") -- exactly the "one row per real town"
+# granularity for the dashboard, without needing SA2's finer split
+# ("Wanaka North"/"Wanaka West") or a district-level ("Queenstown-Lakes")
+# grouping that would merge Queenstown and Wānaka together.
+TOWN_ANCHORS_SERVICE = (
+    "https://services.arcgis.com/xdsHIIxuCWByZiCB/arcgis/rest/services/"
+    "LINZ_NZ_Suburbs_and_Localities/FeatureServer/0/query"
+)
+TOWN_ANCHORS_CACHE = "town_anchors.json"
 
 # EMI's 39 "network reporting regions" (real distributor footprints, not
 # fabricated) grouped under their NZ regional council. A handful of
@@ -339,24 +353,69 @@ def fetch_total_icps():
     return totals
 
 
-def fetch_regional_councils():
-    """Real regional-council boxes: [south, west, north, east], keyed by
-    the same council names used in NETWORK_TO_COUNCIL. Cached -- council
-    boundaries essentially never change.
+def _point_in_ring(x, y, ring):
+    inside = False
+    j = len(ring) - 1
+    for i, (xi, yi) in enumerate(ring):
+        xj, yj = ring[j]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    return inside
 
-    Used both to batch the geocoding queries (~16 requests instead of
-    ~2,100, one per council) and to assign each town/SA2 to its council
-    for the dashboard, and to power the map-view filter.
+
+def _point_in_polygon(x, y, coords, is_multi):
+    """coords is GeoJSON Polygon or MultiPolygon coordinates: a polygon's
+    first ring is its outer boundary, any further rings are holes."""
+    for poly in (coords if is_multi else [coords]):
+        if poly and _point_in_ring(x, y, poly[0]):
+            if not any(_point_in_ring(x, y, ring) for ring in poly[1:]):
+                return True
+    return False
+
+
+def council_of_point(lat, lng, councils):
+    """Which council a point falls inside, checked properly (polygon,
+    not bbox). NZ's regions are long and irregular, so adjacent
+    councils' *bounding boxes* overlap heavily even though the councils
+    themselves don't -- Otago's and Southland's boxes overlap enough
+    that Invercargill's coordinates sit inside both. Bbox is used only
+    to shortlist candidates before the precise check.
+    """
+    candidates = [name for name, c in councils.items()
+                  if c["bbox"][0] <= lat <= c["bbox"][2] and c["bbox"][1] <= lng <= c["bbox"][3]]
+    for name in candidates:
+        c = councils[name]
+        if _point_in_polygon(lng, lat, c["coords"], c["multi"]):
+            return name
+    return candidates[0] if candidates else None
+
+
+def fetch_regional_councils():
+    """Real regional-council polygons, keyed by the same council names
+    used in NETWORK_TO_COUNCIL. Cached -- council boundaries essentially
+    never change.
+
+    Used to batch the geocoding queries (~16 requests instead of
+    ~2,100, one per council), to assign each town/SA2 to its council for
+    the dashboard, and (bbox only) to power the map-view filter.
     """
     cached = load(REGC_BOUNDS_CACHE, None)
     if cached:
         return cached
 
     print("Fetching regional council boundaries from Stats NZ...")
+    # No maxAllowableOffset: for these large, coastline-heavy polygons it
+    # doesn't just simplify, it corrupts -- verified live that offset=500
+    # collapsed Otago's ~9,000-point coastline into ten 4-point rectangles,
+    # which silently failed point-in-polygon tests for real towns (Wanaka
+    # tested as outside Otago). SA2-sized polygons are small enough that
+    # the same parameter barely changes their bbox, so only this fetch
+    # needed the fix. Full precision here is ~9k points per council,
+    # trivial for point-in-polygon.
     r = session.get(REGC_SERVICE, timeout=120, params={
         "where": "1=1", "outFields": "REGC_name",
-        "returnGeometry": "true", "maxAllowableOffset": 500,
-        "geometryPrecision": 5, "f": "geojson",
+        "returnGeometry": "true", "geometryPrecision": 6, "f": "geojson",
     })
     r.raise_for_status()
     geo = r.json()
@@ -374,17 +433,22 @@ def fetch_regional_councils():
         scan(geom["coordinates"])
         return [min(ys), min(xs), max(ys), max(xs)]
 
-    bounds = {}
+    councils = {}
     for f in geo["features"]:
         name = f["properties"].get("REGC_name", "")
         if name.endswith(" Region"):
             name = name[:-len(" Region")]
         if name in ("Area Outside",):     # offshore/exclusion polygon
             continue
-        bounds[name] = bbox_of(f["geometry"])
+        geom = f["geometry"]
+        councils[name] = {
+            "bbox": bbox_of(geom),
+            "coords": geom["coordinates"],
+            "multi": geom["type"] == "MultiPolygon",
+        }
 
-    save(REGC_BOUNDS_CACHE, bounds)
-    return bounds
+    save(REGC_BOUNDS_CACHE, councils)
+    return councils
 
 
 def build_region_tree(networks, total_icps, council_bounds):
@@ -420,41 +484,100 @@ def build_region_tree(networks, total_icps, council_bounds):
             "kW": round(acc["kW"], 1),
             "totalIcps": acc["totalIcps"],
             "pct": round(acc["icps"] / acc["totalIcps"] * 100, 2) if acc["totalIcps"] else 0,
-            "bbox": council_bounds.get(council),
+            "bbox": council_bounds.get(council, {}).get("bbox"),
             "children": [],   # filled in by build_town_tree
         })
     tree.sort(key=lambda r: r["pct"], reverse=True)
     return tree
 
 
-def build_town_tree(features, areas, council_bounds, cap=15):
-    """Group placed streets into towns (SA2 areas) nested under the
-    regional council their centre falls inside -- e.g. "Wanaka North" and
-    "Dunedin Central" under Otago. No % here: EMI publishes total ICPs
-    per network-reporting-region, not per SA2, so there's no honest
-    denominator at town granularity -- installs and MW only.
+def fetch_town_anchors():
+    """One representative point per named NZ town ('major_name' in
+    LINZ's Suburbs and Localities data), used to group solar
+    installations by real, commonly-recognised town rather than a
+    statistical-area fragment: SA2 alone would split "Wanaka" into
+    "Wanaka North"/"Wanaka West"/etc, and a district-level grouping would
+    merge Queenstown and Wanaka into one "Queenstown-Lakes" bucket.
+
+    The anchor for each major_name cluster is the centroid of its
+    highest-population locality (not every cluster has a locality
+    literally named the same as its major_name).
+    """
+    cached = load(TOWN_ANCHORS_CACHE, None)
+    if cached:
+        return cached
+
+    print("Fetching NZ town/locality names from LINZ...")
+    best = {}   # major_name -> (population, [lat, lng])
+    offset = 0
+    while True:
+        r = session.get(TOWN_ANCHORS_SERVICE, timeout=120, params={
+            "where": "1=1", "outFields": "major_name,population_estimate",
+            "returnCentroid": "true", "returnGeometry": "false", "f": "json",
+            "resultOffset": offset, "resultRecordCount": 2000,
+        })
+        r.raise_for_status()
+        feats = r.json().get("features", [])
+        if not feats:
+            break
+        for f in feats:
+            name = f["attributes"].get("major_name")
+            pop = f["attributes"].get("population_estimate") or 0
+            c = f.get("centroid")
+            if not name or not c:
+                continue
+            if name not in best or pop > best[name][0]:
+                best[name] = (pop, [c["y"], c["x"]])
+        offset += len(feats)
+
+    anchors = {name: pt for name, (pop, pt) in best.items()}
+    save(TOWN_ANCHORS_CACHE, anchors)
+    return anchors
+
+
+def build_town_tree(features, town_anchors, council_bounds, cap=15):
+    """Group placed streets into real towns (nearest named-locality
+    centre) nested under the regional council the town falls inside --
+    e.g. "Wanaka" and "Queenstown" as separate entries under Otago. No %
+    here: EMI publishes total ICPs per network-reporting-region, not per
+    town, so there's no honest denominator at this granularity --
+    installs and MW only.
 
     Capped to the top `cap` towns per council by installs, so a big
     council's list stays readable; the numbers themselves aren't affected.
     """
-    towns = {}   # sa2 code -> accumulator
+    if not town_anchors:
+        return {}
+
+    names = list(town_anchors)
+    pts = [town_anchors[n] for n in names]
+
+    def nearest_town(lat, lng):
+        coslat = math.cos(math.radians(lat))
+        best_i, best_d = 0, float("inf")
+        for i, (alat, alng) in enumerate(pts):
+            dx = (lng - alng) * coslat
+            dy = lat - alat
+            d = dx * dx + dy * dy
+            if d < best_d:
+                best_d, best_i = d, i
+        return names[best_i]
+
+    towns = {}   # town name -> accumulator
     for f in features:
         p = f["properties"]
-        code = p["sa2"]
-        t = towns.setdefault(code, {"name": p["area"], "icps": 0, "kW": 0.0})
+        lng, lat = f["geometry"]["coordinates"]
+        name = nearest_town(lat, lng)
+        t = towns.setdefault(name, {"icps": 0, "kW": 0.0})
         t["icps"] += p["icps"]; t["kW"] += p["kW"]
 
     by_council = {}
-    for code, t in towns.items():
-        if code not in areas:
-            continue
-        _, s, w, n, e = areas[code]
-        cy, cx = (s + n) / 2, (w + e) / 2
-        for council, box in council_bounds.items():
-            if box and box[0] <= cy <= box[2] and box[1] <= cx <= box[3]:
-                by_council.setdefault(council, []).append(
-                    {"name": t["name"], "icps": t["icps"], "kW": round(t["kW"], 1)})
-                break
+    for name, t in towns.items():
+        alat, alng = town_anchors[name]
+        council = council_of_point(alat, alng, council_bounds)
+        if council:
+            by_council.setdefault(council, []).append(
+                {"name": name, "icps": t["icps"], "kW": round(t["kW"], 1)})
 
     for towns_list in by_council.values():
         towns_list.sort(key=lambda x: x["icps"], reverse=True)
@@ -524,10 +647,9 @@ def geocode(records, areas, council_bounds):
             continue
         _, s, w, n, e = areas[code]
         cy, cx = (s + n) / 2, (w + e) / 2
-        for council, box in council_bounds.items():
-            if box and box[0] <= cy <= box[2] and box[1] <= cx <= box[3]:
-                codes_by_council.setdefault(council, []).append(code)
-                break
+        council = council_of_point(cy, cx, council_bounds)
+        if council:
+            codes_by_council.setdefault(council, []).append(code)
 
     names_by_code = {}
     for code, norm in records:
@@ -536,7 +658,7 @@ def geocode(records, areas, council_bounds):
     cache = {}
     n_councils = len(codes_by_council)
     for i, (council, codes) in enumerate(codes_by_council.items(), 1):
-        bbox = council_bounds[council]
+        bbox = council_bounds[council]["bbox"]
         print(f"  [{i}/{n_councils}] {council}: {len(codes)} areas...")
         # A single query covers ~100+ areas now, so a transient failure
         # (a busy mirror timing out, a 504) is worth retrying rather than
@@ -642,6 +764,12 @@ def main():
         print("No council boundaries -- can't batch-geocode; aborting")
         sys.exit(1)
 
+    try:
+        town_anchors = fetch_town_anchors()
+    except Exception as exc:                       # noqa: BLE001
+        print(f"Town names unavailable ({exc}) -- town-level grouping will be omitted")
+        town_anchors = {}
+
     region_tree = build_region_tree(networks, total_icps, council_bounds) if networks else []
     national_total = sum(total_icps.values())
     if totals and national_total:
@@ -653,7 +781,7 @@ def main():
     previous = load("previous_counts.json", {})
     features, missing = build(records, cache, areas, previous)
 
-    town_tree = build_town_tree(features, areas, council_bounds)
+    town_tree = build_town_tree(features, town_anchors, council_bounds)
     for council in region_tree:
         council["children"] = town_tree.get(council["name"], [])
 

@@ -69,7 +69,8 @@ top of `docs/index.html`.
 | `docs/meta.json` | Build date, totals, match rate, and the region dashboard tree |
 | `road_cache.json` | Where each street is, from the latest run (not incrementally reused -- see below) |
 | `sa2_areas.json` | Statistical area boundaries, cached |
-| `regc_bounds.json` | Real regional council boundaries (Stats NZ), cached -- powers the town grouping and the "regions within map view" filter |
+| `regc_bounds.json` | Real regional council boundaries (Stats NZ), cached -- powers the council grouping and the "regions within map view" filter |
+| `town_anchors.json` | One point per real NZ town (LINZ), cached -- powers the town grouping |
 | `previous_counts.json` | Last build's numbers, for the "+N since last update" figures |
 
 ## How streets get their positions
@@ -102,10 +103,18 @@ same granularity. The council grouping on top of that is a display
 choice (`NETWORK_TO_COUNCIL` in `process.py`) — a handful of networks
 straddle a council boundary and are marked there.
 
-Expand a council to see its towns (SA2 areas) — e.g. "Wanaka North",
-"Dunedin Central" — with their own installs and MW. No % at this level:
-EMI doesn't publish a total-ICP figure per SA2, only per network region,
-so there's no honest denominator to divide by that finely.
+Expand a council to see its towns — e.g. "Wānaka" and "Queenstown" as
+separate entries — with their own installs and MW. No % at this level:
+EMI doesn't publish a total-ICP figure per town, only per network
+region, so there's no honest denominator to divide by that finely.
+
+Towns are real places, not SA2 fragments: each solar record is assigned
+to its nearest named town centre from LINZ's Suburbs and Localities data
+(`fetch_town_anchors()`/`town_anchors.json`), grouped by that dataset's
+own `major_name` field. Plain SA2 would split "Wanaka" into "Wanaka
+North"/"Wanaka West"; a district-level grouping would merge Wānaka and
+Queenstown into one "Queenstown-Lakes" bucket. This sits at the
+granularity in between — one row per commonly-recognised town.
 
 Both levels use real regional-council boundaries from Stats NZ
 (`fetch_regional_councils()`/`regc_bounds.json`) to decide which council
@@ -121,4 +130,5 @@ council polygons don't have that problem.
 - Solar installations: [EMI, Electricity Authority](https://www.emi.ea.govt.nz/) (CC BY 4.0)
 - Total ICP counts: [EMI, ICP and metering details](https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails) (CC BY 4.0)
 - Street locations: [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL)
-- Statistical areas: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
+- Statistical areas and regional councils: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
+- Town/locality names: [LINZ, Suburbs and Localities](https://data.linz.govt.nz/layer/113764-nz-suburbs-and-localities/) (CC BY 4.0)
