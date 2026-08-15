@@ -39,26 +39,22 @@ REGION_CSV = EMI_BASE + "SolarInstallationsByRegion.csv"
 ICP_TOTALS_PAGE = "https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails"
 ICP_TOTALS_LINK_RE = re.compile(r'href="([^"]*\d{8}_MarketShareByMEPandTrader\.csv)"')
 
-# EA's own network-region boundaries -- real polygons, same 39 regions,
-# used only to answer "is this region in the current map view". Static
-# reference data (distributor footprints barely change), so it's cached
-# like the SA2 boundaries and fetched once.
-NETWORK_BOUNDARIES_ZIP = ("https://www.emi.ea.govt.nz/Wholesale/Datasets/"
-                           "MappingsAndGeospatial/NetworkRegionShapefiles/"
-                           "WGS84/GeoJSON/WGS84_GeoJSON_NRR.zip")
-NETWORK_BOUNDS_CACHE = "network_bounds.json"
-
-# The boundary file uses slightly older/unmacronned names for a few
-# regions -- these are the same real networks, just spelled differently.
-NETWORK_BOUNDARY_ALIASES = {
-    "Otago (OtagoNet JV)": "Otago (OtagoNet)",
-    "Kapiti and Horowhenua (Electra)": "Kāpiti and Horowhenua (Electra)",
-    "Manawatu (Powerco)": "Manawatū (Powerco)",
-    "Taupo (Unison Networks)": "Taupō (Unison Networks)",
-    "Wanganui (Powerco)": "Whanganui (Powerco)",
-    "Whangarei and Kaipara (Northpower)": "Whangārei and Kaipara (Northpower)",
-    "Eastland (Eastland Network)": "Tairāwhiti and Wairoa (Firstlight Network)",
-}
+# Real, official regional council boundaries (Eagle Technology, sourced
+# from Stats NZ, CC-BY-4.0) -- used to decide which council a SA2/town
+# falls inside, and to power the "regions within map view" filter.
+#
+# Earlier this was approximated by unioning EA's network-operator
+# boundaries per council, which is wrong: a network operator's footprint
+# doesn't follow council lines. Concretely, "Nelson (Nelson Electricity)"
+# is a tiny legacy embedded network covering a few blocks, while most of
+# Nelson city is actually served by "Tasman (Network Tasman)" -- so the
+# old approach had almost all of Nelson's real data geographically
+# misattributed to Tasman. Real council polygons don't have that problem.
+REGC_SERVICE = (
+    "https://services.arcgis.com/XTtANUDT8Va4DLwI/arcgis/rest/services/"
+    "nz_regional_councils/FeatureServer/0/query"
+)
+REGC_BOUNDS_CACHE = "regc_bounds.json"
 
 # EMI's 39 "network reporting regions" (real distributor footprints, not
 # fabricated) grouped under their NZ regional council. A handful of
@@ -343,24 +339,27 @@ def fetch_total_icps():
     return totals
 
 
-def fetch_network_bounds():
-    """Real EA-published boundaries for the 39 network regions, as
-    [south, west, north, east] boxes. Cached -- distributor footprints
-    essentially never change, so there's no reason to refetch weekly.
+def fetch_regional_councils():
+    """Real regional-council boxes: [south, west, north, east], keyed by
+    the same council names used in NETWORK_TO_COUNCIL. Cached -- council
+    boundaries essentially never change.
+
+    Used both to batch the geocoding queries (~16 requests instead of
+    ~2,100, one per council) and to assign each town/SA2 to its council
+    for the dashboard, and to power the map-view filter.
     """
-    cached = load(NETWORK_BOUNDS_CACHE, None)
+    cached = load(REGC_BOUNDS_CACHE, None)
     if cached:
         return cached
 
-    import io
-    import zipfile
-
-    print("Fetching network region boundaries from EA...")
-    r = session.get(NETWORK_BOUNDARIES_ZIP, timeout=120)
+    print("Fetching regional council boundaries from Stats NZ...")
+    r = session.get(REGC_SERVICE, timeout=120, params={
+        "where": "1=1", "outFields": "REGC_name",
+        "returnGeometry": "true", "maxAllowableOffset": 500,
+        "geometryPrecision": 5, "f": "geojson",
+    })
     r.raise_for_status()
-    with zipfile.ZipFile(io.BytesIO(r.content)) as z:
-        name = next(n for n in z.namelist() if n.lower().endswith((".json", ".geojson")))
-        geo = json.loads(z.read(name))
+    geo = r.json()
 
     def bbox_of(geom):
         xs, ys = [], []
@@ -377,47 +376,32 @@ def fetch_network_bounds():
 
     bounds = {}
     for f in geo["features"]:
-        name = f["properties"].get("Region", "")
-        name = NETWORK_BOUNDARY_ALIASES.get(name, name)
+        name = f["properties"].get("REGC_name", "")
+        if name.endswith(" Region"):
+            name = name[:-len(" Region")]
+        if name in ("Area Outside",):     # offshore/exclusion polygon
+            continue
         bounds[name] = bbox_of(f["geometry"])
 
-    save(NETWORK_BOUNDS_CACHE, bounds)
+    save(REGC_BOUNDS_CACHE, bounds)
     return bounds
 
 
-def _union_bbox(boxes):
-    boxes = [b for b in boxes if b]
-    if not boxes:
-        return None
-    return [min(b[0] for b in boxes), min(b[1] for b in boxes),
-            max(b[2] for b in boxes), max(b[3] for b in boxes)]
+def build_region_tree(networks, total_icps, council_bounds):
+    """Council-level stats: % of ICPs, installs, MW -- all real EMI
+    figures, joined at the network-reporting-region granularity where
+    EMI itself publishes both solar and total ICPs (see
+    fetch_total_icps). The council grouping on top is a display choice
+    (NETWORK_TO_COUNCIL), never a fabricated number.
 
-
-def council_bounds_from(bounds):
-    """Regional-council-level bboxes, unioned from the 39 network-region
-    boundaries. Used both to batch the geocoding queries (~16 requests
-    instead of ~2,100) and to power the dashboard's map-view filter.
-    """
-    by_council = {}
-    for name, box in bounds.items():
-        council = NETWORK_TO_COUNCIL.get(name)
-        if council:
-            by_council.setdefault(council, []).append(box)
-    return {c: _union_bbox(b) for c, b in by_council.items()}
-
-
-def build_region_tree(networks, total_icps, bounds, council_bounds):
-    """Nest the 39 network regions under their regional council.
-
-    Every number here is a real, unmodified EMI figure -- the council
-    grouping is a display choice (see NETWORK_TO_COUNCIL), never a
-    fabricated one. Ranked by % of ICPs with solar, which is what the
-    dashboard leads with.
+    Town-level children are attached separately by build_town_tree, once
+    the actual placed streets are known -- EMI doesn't publish a total-ICP
+    figure at town granularity, so towns can't get their own % here.
     """
     councils = {}
     # Union with total_icps: a network can have real connections but zero
-    # solar rows in the source (e.g. Nelson) -- it should still show up,
-    # honestly, as 0% rather than silently vanishing from the leaderboard.
+    # solar rows in the source (e.g. Nelson Electricity) -- it should
+    # still count, honestly, rather than silently vanishing.
     for name in set(networks) | set(total_icps):
         council = NETWORK_TO_COUNCIL.get(name)
         if not council:
@@ -425,33 +409,57 @@ def build_region_tree(networks, total_icps, bounds, council_bounds):
             continue
         s = networks.get(name, {"icps": 0, "kW": 0.0})
         total = total_icps.get(name, 0)
-        pct = round(s["icps"] / total * 100, 2) if total else 0
-        # A network missing its own boundary (e.g. the tiny Frankton
-        # embedded network) falls back to its council's bbox, so it's
-        # still shown whenever that council is in view.
-        councils.setdefault(council, []).append({
-            "name": name.split(" (")[0],
-            "icps": s["icps"], "kW": s["kW"],
-            "totalIcps": total, "pct": pct,
-            "bbox": bounds.get(name) or council_bounds.get(council),
-        })
+        acc = councils.setdefault(council, {"icps": 0, "kW": 0.0, "totalIcps": 0})
+        acc["icps"] += s["icps"]; acc["kW"] += s["kW"]; acc["totalIcps"] += total
 
     tree = []
-    for council, children in councils.items():
-        children.sort(key=lambda c: c["pct"], reverse=True)
-        icps = sum(c["icps"] for c in children)
-        total = sum(c["totalIcps"] for c in children)
+    for council, acc in councils.items():
         tree.append({
             "name": council,
-            "icps": icps,
-            "kW": round(sum(c["kW"] for c in children), 1),
-            "totalIcps": total,
-            "pct": round(icps / total * 100, 2) if total else 0,
+            "icps": acc["icps"],
+            "kW": round(acc["kW"], 1),
+            "totalIcps": acc["totalIcps"],
+            "pct": round(acc["icps"] / acc["totalIcps"] * 100, 2) if acc["totalIcps"] else 0,
             "bbox": council_bounds.get(council),
-            "children": children,
+            "children": [],   # filled in by build_town_tree
         })
     tree.sort(key=lambda r: r["pct"], reverse=True)
     return tree
+
+
+def build_town_tree(features, areas, council_bounds, cap=15):
+    """Group placed streets into towns (SA2 areas) nested under the
+    regional council their centre falls inside -- e.g. "Wanaka North" and
+    "Dunedin Central" under Otago. No % here: EMI publishes total ICPs
+    per network-reporting-region, not per SA2, so there's no honest
+    denominator at town granularity -- installs and MW only.
+
+    Capped to the top `cap` towns per council by installs, so a big
+    council's list stays readable; the numbers themselves aren't affected.
+    """
+    towns = {}   # sa2 code -> accumulator
+    for f in features:
+        p = f["properties"]
+        code = p["sa2"]
+        t = towns.setdefault(code, {"name": p["area"], "icps": 0, "kW": 0.0})
+        t["icps"] += p["icps"]; t["kW"] += p["kW"]
+
+    by_council = {}
+    for code, t in towns.items():
+        if code not in areas:
+            continue
+        _, s, w, n, e = areas[code]
+        cy, cx = (s + n) / 2, (w + e) / 2
+        for council, box in council_bounds.items():
+            if box and box[0] <= cy <= box[2] and box[1] <= cx <= box[3]:
+                by_council.setdefault(council, []).append(
+                    {"name": t["name"], "icps": t["icps"], "kW": round(t["kW"], 1)})
+                break
+
+    for towns_list in by_council.values():
+        towns_list.sort(key=lambda x: x["icps"], reverse=True)
+        del towns_list[cap:]
+    return by_council
 
 
 # ----------------------------------------------------------------------
@@ -586,6 +594,7 @@ def build(records, cache, areas, previous):
         props = {
             "street": rec["street"],
             "area": rec["area"],
+            "sa2": code,
             "icps": rec["icps"],
             "res": rec["res"],
             "bus": rec["bus"],
@@ -628,26 +637,25 @@ def main():
         print(f"ICP totals unavailable ({exc}) -- % of ICPs will be omitted")
         total_icps = {}
 
-    try:
-        bounds = fetch_network_bounds()
-    except Exception as exc:                       # noqa: BLE001
-        print(f"Network boundaries unavailable ({exc}) -- map-view filter will be omitted")
-        bounds = {}
+    council_bounds = fetch_regional_councils()
+    if not council_bounds:
+        print("No council boundaries -- can't batch-geocode; aborting")
+        sys.exit(1)
 
-    council_bounds = council_bounds_from(bounds)
-    region_tree = build_region_tree(networks, total_icps, bounds, council_bounds) if networks else []
+    region_tree = build_region_tree(networks, total_icps, council_bounds) if networks else []
     national_total = sum(total_icps.values())
     if totals and national_total:
         totals["totalIcps"] = national_total
         totals["pct"] = round(totals["icps"] / national_total * 100, 2)
 
-    if not council_bounds:
-        print("No council boundaries -- can't batch-geocode; aborting")
-        sys.exit(1)
     cache = geocode(records, areas, council_bounds)
 
     previous = load("previous_counts.json", {})
     features, missing = build(records, cache, areas, previous)
+
+    town_tree = build_town_tree(features, areas, council_bounds)
+    for council in region_tree:
+        council["children"] = town_tree.get(council["name"], [])
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
     save("previous_counts.json",

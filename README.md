@@ -69,7 +69,7 @@ top of `docs/index.html`.
 | `docs/meta.json` | Build date, totals, match rate, and the region dashboard tree |
 | `road_cache.json` | Where each street is, from the latest run (not incrementally reused -- see below) |
 | `sa2_areas.json` | Statistical area boundaries, cached |
-| `network_bounds.json` | Network region boundaries (EA), cached -- powers the "regions within map view" filter |
+| `regc_bounds.json` | Real regional council boundaries (Stats NZ), cached -- powers the town grouping and the "regions within map view" filter |
 | `previous_counts.json` | Last build's numbers, for the "+N since last update" figures |
 
 ## How streets get their positions
@@ -94,18 +94,27 @@ drops below 50%, so a bad build never gets published.
 
 ## The dashboard's region leaderboard
 
-The sidebar ranks NZ's 16 regional councils (expand one to see its
-network operators) by % of ICPs with solar, alongside installs and MW.
-The % figure is a real join, not an estimate: EMI publishes solar ICPs
-and total ICPs for the same 39 "network reporting regions", so both
-numbers come from the same source at the same granularity. The council
-grouping on top of that is a display choice (`NETWORK_TO_COUNCIL` in
-`process.py`) — a handful of networks straddle a council boundary and
-are marked there.
+The sidebar ranks NZ's 16 regional councils by % of ICPs with solar,
+alongside installs and MW. The % figure is a real join, not an estimate:
+EMI publishes solar ICPs and total ICPs for the same 39 "network
+reporting regions", so both numbers come from the same source at the
+same granularity. The council grouping on top of that is a display
+choice (`NETWORK_TO_COUNCIL` in `process.py`) — a handful of networks
+straddle a council boundary and are marked there.
 
-The list also filters to whatever's in the current map view, using real
-network-region boundaries published by the Electricity Authority
-(`fetch_network_bounds()`/`network_bounds.json`) — not invented ones.
+Expand a council to see its towns (SA2 areas) — e.g. "Wanaka North",
+"Dunedin Central" — with their own installs and MW. No % at this level:
+EMI doesn't publish a total-ICP figure per SA2, only per network region,
+so there's no honest denominator to divide by that finely.
+
+Both levels use real regional-council boundaries from Stats NZ
+(`fetch_regional_councils()`/`regc_bounds.json`) to decide which council
+a town falls inside, and to power the "regions within map view" filter.
+An earlier version approximated council boundaries by unioning network
+operators' own footprints, which don't follow council lines — Network
+Tasman serves most of Nelson city, for instance, so that approach had
+Nelson's real numbers geographically misattributed to Tasman. Real
+council polygons don't have that problem.
 
 ## Data sources
 

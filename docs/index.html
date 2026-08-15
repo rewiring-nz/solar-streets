@@ -29,55 +29,32 @@
   }
   .maplibregl-popup-tip { border-top-color: var(--glass-hi) !important; border-bottom-color: var(--glass-hi) !important; }
   .maplibregl-popup-close-button { color: var(--dim); font-size: 16px; }
-  small.muted { color: var(--dim); }
+  .muted { color: var(--dim); }
   .up { color: var(--up); font-weight: 600; }
   .err { color: #f87171; font-weight: 600; }
 
-  /* ============ Dashboard ============ */
-  #dash {
-    position: absolute; z-index: 6; background: var(--glass);
-    backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--border); color: var(--text);
-    display: flex; flex-direction: column;
+  /* ============ Top stats bar ============ */
+  /* Always visible, both breakpoints -- doubles as the minimised-state
+     indicator and the expand/collapse control. */
+  #topbar {
+    position: absolute; z-index: 7; top: 10px; left: 10px; right: 10px;
+    background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border); border-radius: 14px; color: var(--text);
+    padding: 9px 12px; cursor: pointer;
+    display: flex; align-items: center; gap: 10px;
     box-shadow: 0 8px 32px rgba(0,0,0,.45);
-    transition: transform .28s ease;
   }
-  /* Desktop: left sidebar */
-  @media (min-width: 768px) {
-    #dash {
-      top: 14px; left: 14px; bottom: 14px; width: 330px;
-      border-radius: 16px;
-    }
-    #dash.collapsed { transform: translateX(-352px); }
-    #dashToggle { top: 14px; left: 14px; }
-    #dashToggle.shifted { left: 358px; }
+  @media (min-width: 768px) { #topbar { max-width: 640px; } }
+  .stat-lines { flex: 1; min-width: 0; }
+  .stat-line {
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
+    font-size: 12px; color: var(--dim); line-height: 1.6;
   }
-  /* Mobile: bottom sheet */
-  @media (max-width: 767px) {
-    #dash {
-      left: 8px; right: 8px; bottom: 8px; border-radius: 16px;
-      max-height: 62vh;
-    }
-    #dash.collapsed .dash-sub,
-    #dash.collapsed .list-caption,
-    #dash.collapsed .board { display: none; }
-    #dash.collapsed .dash-head { border-bottom: none; }
-    #dashToggle { display: none; }
-  }
+  .stat-line .label { font-weight: 700; color: var(--text); }
+  .stat-line strong { color: var(--text); }
+  .stat-seg { white-space: nowrap; }
 
-  .dash-head {
-    padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
-    cursor: default; flex: none;
-  }
-  .dash-title { font-size: 14px; font-weight: 700; letter-spacing: .2px; display: flex; align-items: center; justify-content: space-between; }
-  .dash-title-collapsed { display: none; color: var(--cyan); }
-  #dash.collapsed .dash-title-normal { display: none; }
-  #dash.collapsed .dash-title-collapsed { display: inline; }
-  .dash-sub {
-    font-size: 12px; color: var(--dim); margin-top: 4px; line-height: 1.5;
-    white-space: nowrap; overflow-x: auto; overflow-y: hidden;
-  }
-  .dash-sub strong { color: var(--text); }
   .list-caption {
     padding: 8px 16px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
     text-transform: uppercase; color: var(--dim); flex: none;
@@ -97,9 +74,36 @@
     background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--text);
     width: 26px; height: 26px; border-radius: 8px; cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
+    flex: none;
     transition: background .15s;
   }
   .iconbtn:hover { background: rgba(255,255,255,.14); }
+
+  /* ============ Region list panel ============ */
+  #dash {
+    position: absolute; z-index: 6; background: var(--glass);
+    backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border); color: var(--text);
+    display: flex; flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    transition: transform .28s ease;
+  }
+  /* Desktop: left sidebar, below the top bar */
+  @media (min-width: 768px) {
+    #dash {
+      top: calc(var(--topbar-h, 70px) + 18px); left: 14px; bottom: 14px; width: 260px;
+      border-radius: 16px;
+    }
+    #dash.collapsed { transform: translateX(-282px); }
+  }
+  /* Mobile: bottom sheet */
+  @media (max-width: 767px) {
+    #dash {
+      left: 8px; right: 8px; bottom: 8px; border-radius: 16px;
+      max-height: 55vh;
+    }
+    #dash.collapsed { transform: translateY(calc(100% + 8px)); }
+  }
 
   .board { overflow-y: auto; flex: 1; padding: 4px 10px 10px; }
   .board::-webkit-scrollbar { width: 7px; }
@@ -115,33 +119,18 @@
   .row-chev { width: 12px; flex: none; color: var(--dim); font-size: 10px; transition: transform .15s; }
   .row-chev.open { transform: rotate(90deg); }
   .row-body { flex: 1; min-width: 0; }
-  .row-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .row-bar-track { height: 4px; border-radius: 2px; background: rgba(255,255,255,.08); margin-top: 4px; overflow: hidden; }
-  .row-bar { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--amber), var(--orange)); box-shadow: 0 0 6px rgba(249,115,22,.6); }
+  .row-name { font-size: 12.5px; font-weight: 600; line-height: 1.25; }
   .row-metric { flex: none; text-align: right; }
   .row-metric .pct { font-size: 14px; font-weight: 700; color: var(--cyan); text-shadow: 0 0 10px rgba(34,211,238,.45); }
   .row-metric .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
   .children { padding-left: 26px; overflow: hidden; max-height: 0; transition: max-height .25s ease; }
   .children.open { max-height: 900px; }
-  .child .row-main { padding: 5px 8px; }
+  .child .row-main { padding: 5px 8px; cursor: default; }
+  .child .row-main:hover { background: transparent; }
   .child .row-name { font-size: 11.5px; font-weight: 500; color: #cbd5e1; }
-  .child .row-metric .pct { font-size: 12px; }
+  .child .row-metric .detail { font-size: 11px; }
 
   .empty-note { padding: 20px 16px; font-size: 12.5px; color: var(--dim); text-align: center; }
-
-  #dashToggle {
-    position: absolute; z-index: 7; width: 34px; height: 34px; border-radius: 10px;
-    background: var(--glass-hi); border: 1px solid var(--border); color: var(--text);
-    backdrop-filter: blur(10px); cursor: pointer; font-size: 15px;
-    display: flex; align-items: center; justify-content: center;
-    box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: left .28s ease;
-  }
-
-  .terrain-btn {
-    display: block; width: 29px; height: 29px; border: none; cursor: pointer;
-    background: #fff; font-size: 12px; font-weight: 700; color: #333;
-  }
-  .terrain-btn.on { background: var(--orange); color: #fff; }
 
   .loading-note { padding: 16px; font-size: 12.5px; color: var(--dim); }
 </style>
@@ -150,18 +139,15 @@
 <div id="app">
   <div id="map"></div>
 
-  <button id="dashToggle" class="iconbtn" title="Show/hide dashboard" style="width:34px;height:34px;">☰</button>
+  <div id="topbar" title="Show/hide region list">
+    <div class="stat-lines" id="statLines">
+      <div class="stat-line"><span class="stat-seg">Loading…</span></div>
+    </div>
+    <button id="hideBtn" class="iconbtn" title="Hide region list">✕</button>
+  </div>
 
   <div id="dash">
     <div class="grabber"></div>
-    <div class="dash-head">
-      <div class="dash-title">
-        <span class="dash-title-normal">NZ Solar Installations</span>
-        <span class="dash-title-collapsed">View details</span>
-        <button id="hideBtn" class="iconbtn" title="Hide dashboard">✕</button>
-      </div>
-      <div class="dash-sub" id="dashSub">Loading…</div>
-    </div>
     <div class="list-caption">Regions within map view</div>
     <div class="board" id="board"><div class="loading-note">Loading regions…</div></div>
   </div>
@@ -205,12 +191,13 @@ const map = new maplibregl.Map({
   }
 });
 
-map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), "bottom-right");
 map.addControl(new maplibregl.FullscreenControl({ container: document.getElementById("app") }), "top-right");
 
 const mapReady = new Promise(r => map.loaded() ? r() : map.once("load", r));
 
+// Terrain/sky stay on (relief shows if a visitor manually pitches via
+// right-drag) even with no on-screen 3D button cluttering the corner.
 mapReady.then(() => {
   try {
     map.addSource("dem", {
@@ -225,34 +212,10 @@ mapReady.then(() => {
       "horizon-color": "#e6eef5", "horizon-fog-blend": 0.6,
       "fog-color": "#cfd9e2", "fog-ground-blend": 0.15
     });
-    map.addControl(new maplibregl.TerrainControl({
-      source: "dem", exaggeration: TERRAIN_EXAGGERATION
-    }), "top-right");
   } catch (err) { console.warn("Terrain unavailable:", err); }
-
-  class TiltControl {
-    onAdd(m) {
-      this._c = document.createElement("div");
-      this._c.className = "maplibregl-ctrl maplibregl-ctrl-group";
-      const b = document.createElement("button");
-      b.className = "terrain-btn"; b.title = "Toggle 3D view"; b.textContent = "3D";
-      b.onclick = () => {
-        const flat = m.getPitch() < 5;
-        m.easeTo({ pitch: flat ? 62 : 0, bearing: flat ? -18 : 0, duration: 900 });
-        b.classList.toggle("on", flat);
-      };
-      this._c.appendChild(b);
-      return this._c;
-    }
-    onRemove() { this._c.remove(); }
-  }
-  map.addControl(new TiltControl(), "top-right");
 });
 
-const COLOUR_RAMP = [
-  "interpolate", ["linear"], ["get", "busShare"],
-  0, "#ffb703",   0.5, "#f97316",   1, "#22d3ee"
-];
+const DOT_COLOR = "#ffb703";
 
 /* ================= SPIDERFY ================= */
 
@@ -315,14 +278,14 @@ function addLayers(data) {
     paint: {
       "circle-radius": [
         "interpolate", ["linear"], ["zoom"],
-        4,  ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 1.3, 5, 2.2, 15, 3.6],
-        9,  ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 2.6, 5, 5,   15, 8],
-        14, ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 4.5, 5, 8,   15, 15]
+        4,  ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 2.6, 5, 4.4, 15, 7.2],
+        9,  ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 5.2, 5, 10,  15, 16],
+        14, ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 9,   5, 16,  15, 30]
       ],
-      "circle-color": COLOUR_RAMP,
+      "circle-color": DOT_COLOR,
       "circle-opacity": ["interpolate", ["linear"], ["zoom"], 4, 0.7, 10, 0.9],
-      "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 7, 0, 11, 1.1],
-      "circle-stroke-color": "rgba(255,255,255,.9)",
+      "circle-stroke-width": 1,
+      "circle-stroke-color": "rgba(0,0,0,.85)",
       "circle-pitch-alignment": "map"
     }
   });
@@ -344,9 +307,9 @@ function addLayers(data) {
   map.addLayer({
     id: "spider-nodes", type: "circle", source: "spider-nodes",
     paint: {
-      "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 5, 5, 8, 15, 15],
-      "circle-color": COLOUR_RAMP, "circle-opacity": .95,
-      "circle-stroke-width": 1.8, "circle-stroke-color": "#fff"
+      "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 10, 5, 16, 15, 30],
+      "circle-color": DOT_COLOR, "circle-opacity": .95,
+      "circle-stroke-width": 1.5, "circle-stroke-color": "rgba(0,0,0,.85)"
     }
   });
   map.addLayer({
@@ -382,11 +345,13 @@ function addLayers(data) {
 /* ================= DASHBOARD ================= */
 
 const dash = document.getElementById("dash");
-const dashToggle = document.getElementById("dashToggle");
+const topbar = document.getElementById("topbar");
+const statLinesEl = document.getElementById("statLines");
 const boardEl = document.getElementById("board");
-const dashSubEl = document.getElementById("dashSub");
 
 let regionData = [];       // full national tree, as built by process.py
+let metaNational = null;
+let metaUpdated = null;
 let openCouncil = null;
 
 const fmt = n => n.toLocaleString();
@@ -408,25 +373,50 @@ function visibleRegions() {
     .sort((a, b) => b.pct - a.pct);
 }
 
+// Aggregate a set of council entries into one stat line's worth of totals.
+function aggregate(list) {
+  const icps = list.reduce((s, r) => s + r.icps, 0);
+  const kW = list.reduce((s, r) => s + r.kW, 0);
+  const totalIcps = list.reduce((s, r) => s + r.totalIcps, 0);
+  return { icps, kW, pct: totalIcps ? icps / totalIcps * 100 : 0 };
+}
+
+function statLineHTML(label, stats) {
+  const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
+  segs.push(`<span class="stat-seg"><strong>${fmtMW(stats.kW)}</strong> MW</span>`);
+  if (stats.pct) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of connections</span>`);
+  return `<div class="stat-line"><span class="label">${label}:</span>${segs.join("")}</div>`;
+}
+
+function renderTopbar() {
+  if (!metaNational) return;
+  const inView = aggregate(visibleRegions());
+  let html = statLineHTML("National", metaNational) + statLineHTML("Within map view", inView);
+  if (metaUpdated) {
+    html += `<div class="stat-line"><span class="stat-seg">Updated ${MONTHS[metaUpdated.getUTCMonth()]} ${metaUpdated.getUTCFullYear()}</span></div>`;
+  }
+  statLinesEl.innerHTML = html;
+}
+
 function rowHTML(r, rank, isChild) {
-  const pctWidth = Math.max(2, Math.min(100, r.pct));
+  const detail = `${fmtMW(r.kW)} MW · ${fmt(r.icps)} installs`;
   return `
-    <div class="row-main" ${isChild ? "" : `data-council="${r.name}"`} style="${isChild ? "cursor:default" : ""}">
+    <div class="row-main" ${isChild ? "" : `data-council="${r.name}"`}>
       <span class="row-rank">${rank != null ? rank : ""}</span>
       <span class="row-chev ${!isChild && openCouncil === r.name ? "open" : ""}" style="${isChild ? "visibility:hidden" : ""}">▶</span>
       <div class="row-body">
         <div class="row-name">${r.name}</div>
-        <div class="row-bar-track"><div class="row-bar" style="width:${pctWidth}%"></div></div>
       </div>
       <div class="row-metric">
-        <span class="pct">${r.pct.toFixed(1)}%</span>
-        <span class="detail">${fmtMW(r.kW)} MW · ${fmt(r.icps)} installs</span>
+        ${!isChild ? `<span class="pct">${r.pct.toFixed(1)}%</span>` : ""}
+        <span class="detail">${detail}</span>
       </div>
     </div>`;
 }
 
 function renderBoard() {
   const visible = visibleRegions();
+  renderTopbar();
 
   if (!regionData.length) {
     boardEl.innerHTML = `<div class="loading-note">No regional data in this build yet.</div>`;
@@ -457,16 +447,18 @@ let dashHidden = false;
 function setDashHidden(hidden) {
   dashHidden = hidden;
   dash.classList.toggle("collapsed", hidden);
-  dashToggle.classList.toggle("shifted", !hidden);
-  hideBtn.textContent = hidden ? "▲" : "✕";
-  hideBtn.title = hidden ? "Show dashboard" : "Hide dashboard";
+  hideBtn.textContent = hidden ? "▤" : "✕";
+  hideBtn.title = hidden ? "Show region list" : "Hide region list";
 }
+topbar.addEventListener("click", e => { if (e.target !== hideBtn) setDashHidden(!dashHidden); });
 hideBtn.addEventListener("click", () => setDashHidden(!dashHidden));
-dashToggle.addEventListener("click", () => setDashHidden(!dashHidden));
-// Mobile: tapping the collapsed sheet's handle/header re-opens it.
-document.querySelector(".dash-head").addEventListener("click", e => {
-  if (window.innerWidth < 768 && dashHidden && e.target !== hideBtn) setDashHidden(false);
-});
+
+// #dash sits below the top bar on desktop; the bar's height varies with
+// how many stat segments wrap, so measure it rather than hardcode it.
+function syncTopbarHeight() {
+  document.documentElement.style.setProperty("--topbar-h", topbar.offsetHeight + "px");
+}
+new ResizeObserver(syncTopbarHeight).observe(topbar);
 
 /* ================= LOAD ================= */
 
@@ -484,21 +476,16 @@ document.querySelector(".dash-head").addEventListener("click", e => {
     addLayers(data);
 
     regionData = (meta && meta.regions) || [];
+    const nat = meta && meta.national;
+    metaNational = nat ? { icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0 } : { icps: 0, kW: 0, pct: 0 };
+    metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
+
     renderBoard();
     map.on("moveend", renderBoard);
-
-    const nat = meta && meta.national;
-    const updated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
-    const parts = ["Solar installs: " + (nat && nat.icps ? fmt(nat.icps) : "—")];
-    if (nat && nat.kW) parts.push(`${fmtMW(nat.kW)} MW`);
-    if (nat && nat.pct) parts.push(`${nat.pct.toFixed(1)}% of connections`);
-    if (updated) parts.push(`Updated ${MONTHS[updated.getUTCMonth()]} ${updated.getUTCFullYear()}`);
-    dashSubEl.innerHTML = parts.join(" &nbsp;|&nbsp; ");
   } catch (err) {
-    dashSubEl.innerHTML = `<span class="err">Couldn't load the data</span><br>` +
-      `<small class="muted">${err.message}</small><br>` +
-      `<small class="muted">Run the Update solar data workflow to build it.</small>`;
-    boardEl.innerHTML = "";
+    statLinesEl.innerHTML = `<div class="stat-line"><span class="stat-seg err">Couldn't load the data</span></div>` +
+      `<div class="stat-line"><span class="stat-seg muted">${err.message}</span></div>`;
+    boardEl.innerHTML = `<div class="empty-note">Run the Update solar data workflow to build it.</div>`;
   }
 })();
 </script>
