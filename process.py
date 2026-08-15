@@ -458,9 +458,10 @@ def build_region_tree(networks, total_icps, council_bounds):
     fetch_total_icps). The council grouping on top is a display choice
     (NETWORK_TO_COUNCIL), never a fabricated number.
 
-    Town-level children are attached separately by build_town_tree, once
-    the actual placed streets are known -- EMI doesn't publish a total-ICP
-    figure at town granularity, so towns can't get their own % here.
+    This isn't shown as a list in the dashboard (see build_towns for
+    that) -- it only powers the "National"/"within map view" stat
+    aggregates, which need a real total-ICP denominator that only
+    exists at council granularity.
     """
     councils = {}
     # Union with total_icps: a network can have real connections but zero
@@ -485,7 +486,6 @@ def build_region_tree(networks, total_icps, council_bounds):
             "totalIcps": acc["totalIcps"],
             "pct": round(acc["icps"] / acc["totalIcps"] * 100, 2) if acc["totalIcps"] else 0,
             "bbox": council_bounds.get(council, {}).get("bbox"),
-            "children": [],   # filled in by build_town_tree
         })
     tree.sort(key=lambda r: r["pct"], reverse=True)
     return tree
@@ -535,19 +535,20 @@ def fetch_town_anchors():
     return anchors
 
 
-def build_town_tree(features, town_anchors, council_bounds, cap=15):
+def build_towns(features, town_anchors, council_bounds):
     """Group placed streets into real towns (nearest named-locality
-    centre) nested under the regional council the town falls inside --
-    e.g. "Wanaka" and "Queenstown" as separate entries under Otago. No %
-    here: EMI publishes total ICPs per network-reporting-region, not per
-    town, so there's no honest denominator at this granularity --
-    installs and MW only.
+    centre) -- e.g. "Wanaka" and "Queenstown" as separate entries -- each
+    tagged with the regional council it falls inside and its own
+    coordinates (so the dashboard can filter towns to the current map
+    view directly, not via their council's much coarser bbox). No %:
+    EMI publishes total ICPs per network-reporting-region, not per town,
+    so there's no honest denominator at this granularity -- installs and
+    MW only.
 
-    Capped to the top `cap` towns per council by installs, so a big
-    council's list stays readable; the numbers themselves aren't affected.
+    Returns a flat list, sorted by installs descending.
     """
     if not town_anchors:
-        return {}
+        return []
 
     names = list(town_anchors)
     pts = [town_anchors[n] for n in names]
@@ -571,18 +572,18 @@ def build_town_tree(features, town_anchors, council_bounds, cap=15):
         t = towns.setdefault(name, {"icps": 0, "kW": 0.0})
         t["icps"] += p["icps"]; t["kW"] += p["kW"]
 
-    by_council = {}
+    out = []
     for name, t in towns.items():
         alat, alng = town_anchors[name]
         council = council_of_point(alat, alng, council_bounds)
-        if council:
-            by_council.setdefault(council, []).append(
-                {"name": name, "icps": t["icps"], "kW": round(t["kW"], 1)})
+        out.append({
+            "name": name, "council": council,
+            "icps": t["icps"], "kW": round(t["kW"], 1),
+            "lat": round(alat, 4), "lng": round(alng, 4),
+        })
 
-    for towns_list in by_council.values():
-        towns_list.sort(key=lambda x: x["icps"], reverse=True)
-        del towns_list[cap:]
-    return by_council
+    out.sort(key=lambda x: x["icps"], reverse=True)
+    return out
 
 
 # ----------------------------------------------------------------------
@@ -781,9 +782,7 @@ def main():
     previous = load("previous_counts.json", {})
     features, missing = build(records, cache, areas, previous)
 
-    town_tree = build_town_tree(features, town_anchors, council_bounds)
-    for council in region_tree:
-        council["children"] = town_tree.get(council["name"], [])
+    towns = build_towns(features, town_anchors, council_bounds)
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
     save("previous_counts.json",
@@ -798,6 +797,7 @@ def main():
         "matchRate": round(matched / total * 100, 1) if total else 0,
         "national": totals,
         "regions": region_tree,
+        "towns": towns,
     }, indent=1)
 
     size = os.path.getsize(OUT_GEOJSON) / 1024 / 1024

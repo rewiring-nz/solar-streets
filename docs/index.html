@@ -34,26 +34,24 @@
   .err { color: #f87171; font-weight: 600; }
 
   /* ============ Top stats bar ============ */
-  /* Always visible, both breakpoints -- doubles as the minimised-state
-     indicator and the expand/collapse control. */
+  /* Compact, non-interactive -- sized to its content, not the screen. */
   #topbar {
-    position: absolute; z-index: 7; top: 10px; left: 10px; right: 10px;
+    position: absolute; z-index: 7; top: 10px; left: 10px;
     background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--border); border-radius: 14px; color: var(--text);
-    padding: 9px 12px; cursor: pointer;
-    display: flex; align-items: center; gap: 10px;
+    border: 1px solid var(--border); border-radius: 10px; color: var(--text);
+    padding: 6px 11px;
+    width: max-content; max-width: calc(100vw - 20px);
     box-shadow: 0 8px 32px rgba(0,0,0,.45);
   }
-  @media (min-width: 768px) { #topbar { max-width: 640px; } }
-  .stat-lines { flex: 1; min-width: 0; }
   .stat-line {
-    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px;
-    font-size: 12px; color: var(--dim); line-height: 1.6;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 0;
+    font-size: 12px; color: var(--dim); line-height: 1.5;
   }
-  .stat-line .label { font-weight: 700; color: var(--text); }
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
+  .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
+  .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; margin-top: 1px; }
 
   .list-caption {
     padding: 8px 16px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
@@ -70,16 +68,37 @@
     }
   }
 
-  .iconbtn {
-    background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--text);
-    width: 26px; height: 26px; border-radius: 8px; cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
-    flex: none;
-    transition: background .15s;
+  /* ============ Edge arrow (open/close the town list) ============ */
+  .edge-arrow {
+    position: absolute; z-index: 8; cursor: pointer;
+    background: var(--glass-hi); border: 1px solid var(--border); color: var(--text);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,.4);
+    transition: left .28s ease, bottom .28s ease, background .15s;
   }
-  .iconbtn:hover { background: rgba(255,255,255,.14); }
+  .edge-arrow:hover { background: rgba(255,255,255,.14); }
+  .edge-arrow .glyph { display: inline-block; font-size: 13px; transition: transform .28s ease; }
+  @media (min-width: 768px) {
+    .edge-arrow {
+      top: calc(var(--topbar-h, 46px) + 28px); left: 0; width: 26px; height: 46px;
+      border-radius: 0 10px 10px 0; border-left: none;
+    }
+    .edge-arrow.open { left: 260px; }
+    .edge-arrow .glyph { transform: rotate(0deg); }
+    .edge-arrow.open .glyph { transform: rotate(180deg); }
+  }
+  @media (max-width: 767px) {
+    .edge-arrow {
+      left: 50%; margin-left: -23px; bottom: 0; width: 46px; height: 24px;
+      border-radius: 10px 10px 0 0; border-bottom: none;
+    }
+    .edge-arrow.open { bottom: 55vh; }
+    .edge-arrow .glyph { transform: rotate(-90deg); }
+    .edge-arrow.open .glyph { transform: rotate(90deg); }
+  }
 
-  /* ============ Region list panel ============ */
+  /* ============ Town list panel ============ */
   #dash {
     position: absolute; z-index: 6; background: var(--glass);
     backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
@@ -91,7 +110,7 @@
   /* Desktop: left sidebar, below the top bar */
   @media (min-width: 768px) {
     #dash {
-      top: calc(var(--topbar-h, 70px) + 18px); left: 14px; bottom: 14px; width: 260px;
+      top: calc(var(--topbar-h, 46px) + 18px); left: 14px; bottom: 14px; width: 260px;
       border-radius: 16px;
     }
     #dash.collapsed { transform: translateX(-282px); }
@@ -109,26 +128,17 @@
   .board::-webkit-scrollbar { width: 7px; }
   .board::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
 
-  .row { border-radius: 10px; margin: 2px 0; }
   .row-main {
-    display: flex; align-items: center; gap: 8px; padding: 8px 8px; cursor: pointer;
-    border-radius: 10px; transition: background .15s;
+    display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px;
+    border-radius: 10px; margin: 2px 0;
   }
-  .row-main:hover { background: rgba(255,255,255,.06); }
-  .row-rank { width: 16px; font-size: 10px; color: var(--dim); text-align: right; flex: none; }
-  .row-chev { width: 12px; flex: none; color: var(--dim); font-size: 10px; transition: transform .15s; }
-  .row-chev.open { transform: rotate(90deg); }
+  .row-rank { width: 16px; font-size: 10px; color: var(--dim); text-align: right; flex: none; padding-top: 2px; }
   .row-body { flex: 1; min-width: 0; }
-  .row-name { font-size: 12.5px; font-weight: 600; line-height: 1.25; }
+  .row-name { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
+  .row-sub { font-size: 10.5px; color: var(--dim); line-height: 1.3; }
   .row-metric { flex: none; text-align: right; }
-  .row-metric .pct { font-size: 14px; font-weight: 700; color: var(--cyan); text-shadow: 0 0 10px rgba(34,211,238,.45); }
+  .row-metric .headline { font-size: 13.5px; font-weight: 700; color: var(--amber); text-shadow: 0 0 10px rgba(255,183,3,.4); white-space: nowrap; }
   .row-metric .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
-  .children { padding-left: 26px; overflow: hidden; max-height: 0; transition: max-height .25s ease; }
-  .children.open { max-height: 900px; }
-  .child .row-main { padding: 5px 8px; cursor: default; }
-  .child .row-main:hover { background: transparent; }
-  .child .row-name { font-size: 11.5px; font-weight: 500; color: #cbd5e1; }
-  .child .row-metric .detail { font-size: 11px; }
 
   .empty-note { padding: 20px 16px; font-size: 12.5px; color: var(--dim); text-align: center; }
 
@@ -139,17 +149,16 @@
 <div id="app">
   <div id="map"></div>
 
-  <div id="topbar" title="Show/hide region list">
-    <div class="stat-lines" id="statLines">
-      <div class="stat-line"><span class="stat-seg">Loading…</span></div>
-    </div>
-    <button id="hideBtn" class="iconbtn" title="Hide region list">✕</button>
+  <div id="topbar">
+    <div class="stat-line"><span class="stat-seg">Loading…</span></div>
   </div>
+
+  <button id="dashArrow" class="edge-arrow" title="Show/hide towns"><span class="glyph">▶</span></button>
 
   <div id="dash">
     <div class="grabber"></div>
-    <div class="list-caption">Regions within map view</div>
-    <div class="board" id="board"><div class="loading-note">Loading regions…</div></div>
+    <div class="list-caption">Towns within map view</div>
+    <div class="board" id="board"><div class="loading-note">Loading towns…</div></div>
   </div>
 </div>
 
@@ -346,17 +355,16 @@ function addLayers(data) {
 
 const dash = document.getElementById("dash");
 const topbar = document.getElementById("topbar");
-const statLinesEl = document.getElementById("statLines");
+const dashArrow = document.getElementById("dashArrow");
 const boardEl = document.getElementById("board");
 
-let regionData = [];       // full national tree, as built by process.py
-let metaNational = null;
+let regionData = [];   // council-level, real %/totalIcps -- powers the topbar stat only
+let townData = [];     // flat town list, as built by process.py -- powers the list
 let metaUpdated = null;
-let openCouncil = null;
 
 const fmt = n => n.toLocaleString();
 const fmtMW = kW => (kW / 1000).toLocaleString(undefined, { maximumFractionDigits: kW >= 10000 ? 0 : 1 });
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const MONTHS3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 function bboxIntersects(b, view) {
   if (!b) return true;   // no boundary data -- never hide it
@@ -364,97 +372,102 @@ function bboxIntersects(b, view) {
   return !(e < view.getWest() || w > view.getEast() || n < view.getSouth() || s > view.getNorth());
 }
 
-function visibleRegions() {
-  if (!map.isStyleLoaded || !map.style) return regionData;
-  const view = map.getBounds();
-  return regionData
-    .filter(r => bboxIntersects(r.bbox, view))
-    .map(r => ({ ...r, children: r.children.filter(c => bboxIntersects(c.bbox, view)) }))
-    .sort((a, b) => b.pct - a.pct);
+function pointInView(lat, lng, view) {
+  return lng >= view.getWest() && lng <= view.getEast() && lat >= view.getSouth() && lat <= view.getNorth();
 }
 
-// Aggregate a set of council entries into one stat line's worth of totals.
-function aggregate(list) {
+function currentView() {
+  return (map.isStyleLoaded && map.style) ? map.getBounds() : null;
+}
+
+// Council-level totals for whatever's in view -- the only granularity
+// with a real total-ICP denominator, so it's the only honest source for
+// the "% of connections" figure.
+function inViewStats() {
+  const view = currentView();
+  const list = view ? regionData.filter(r => bboxIntersects(r.bbox, view)) : regionData;
   const icps = list.reduce((s, r) => s + r.icps, 0);
   const kW = list.reduce((s, r) => s + r.kW, 0);
   const totalIcps = list.reduce((s, r) => s + r.totalIcps, 0);
   return { icps, kW, pct: totalIcps ? icps / totalIcps * 100 : 0 };
 }
 
-function statLineHTML(label, stats) {
-  const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
-  segs.push(`<span class="stat-seg"><strong>${fmtMW(stats.kW)}</strong> MW</span>`);
-  if (stats.pct) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of connections</span>`);
-  return `<div class="stat-line"><span class="label">${label}:</span>${segs.join("")}</div>`;
+function visibleTowns() {
+  const view = currentView();
+  const list = view ? townData.filter(t => pointInView(t.lat, t.lng, view)) : townData;
+  return list;   // already sorted by installs at build time
 }
 
 function renderTopbar() {
-  if (!metaNational) return;
-  const inView = aggregate(visibleRegions());
-  let html = statLineHTML("National", metaNational) + statLineHTML("Within map view", inView);
+  const s = inViewStats();
+  const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(s.icps)}</strong></span>`];
+  segs.push(`<span class="stat-seg"><strong>${fmtMW(s.kW)}</strong> MW</span>`);
+  if (s.pct) segs.push(`<span class="stat-seg"><strong>${s.pct.toFixed(1)}%</strong> of connections</span>`);
+  let html = `<div class="stat-line">${segs.join("")}</div>`;
   if (metaUpdated) {
-    html += `<div class="stat-line"><span class="stat-seg">Updated ${MONTHS[metaUpdated.getUTCMonth()]} ${metaUpdated.getUTCFullYear()}</span></div>`;
+    html += `<div class="updated-line">Updated ${MONTHS3[metaUpdated.getUTCMonth()]} ${metaUpdated.getUTCFullYear()}</div>`;
   }
-  statLinesEl.innerHTML = html;
+  topbar.innerHTML = html;
 }
 
-function rowHTML(r, rank, isChild) {
-  const detail = `${fmtMW(r.kW)} MW · ${fmt(r.icps)} installs`;
+function rowHTML(t, rank) {
   return `
-    <div class="row-main" ${isChild ? "" : `data-council="${r.name}"`}>
-      <span class="row-rank">${rank != null ? rank : ""}</span>
-      <span class="row-chev ${!isChild && openCouncil === r.name ? "open" : ""}" style="${isChild ? "visibility:hidden" : ""}">▶</span>
+    <div class="row-main">
+      <span class="row-rank">${rank}</span>
       <div class="row-body">
-        <div class="row-name">${r.name}</div>
+        <div class="row-name">${t.name}</div>
+        <div class="row-sub">${t.council}</div>
       </div>
       <div class="row-metric">
-        ${!isChild ? `<span class="pct">${r.pct.toFixed(1)}%</span>` : ""}
-        <span class="detail">${detail}</span>
+        <span class="headline">${fmt(t.icps)} installs</span>
+        <span class="detail">${fmtMW(t.kW)} MW</span>
       </div>
     </div>`;
 }
 
 function renderBoard() {
-  const visible = visibleRegions();
   renderTopbar();
+  const visible = visibleTowns();
 
-  if (!regionData.length) {
-    boardEl.innerHTML = `<div class="loading-note">No regional data in this build yet.</div>`;
+  if (!townData.length) {
+    boardEl.innerHTML = `<div class="loading-note">No town data in this build yet.</div>`;
     return;
   }
   if (!visible.length) {
-    boardEl.innerHTML = `<div class="empty-note">No mapped regions in this view — zoom out or pan to New Zealand.</div>`;
+    boardEl.innerHTML = `<div class="empty-note">No mapped towns in this view — zoom out or pan to New Zealand.</div>`;
     return;
   }
 
-  boardEl.innerHTML = visible.map((r, i) => {
-    const open = openCouncil === r.name;
-    const children = r.children.map(c => `<div class="row child">${rowHTML(c, null, true)}</div>`).join("");
-    return `<div class="row">${rowHTML(r, i + 1, false)}<div class="children ${open ? "open" : ""}">${children}</div></div>`;
-  }).join("");
-
-  boardEl.querySelectorAll("[data-council]").forEach(el => {
-    el.addEventListener("click", () => {
-      const name = el.getAttribute("data-council");
-      openCouncil = openCouncil === name ? null : name;
-      renderBoard();
-    });
-  });
+  boardEl.innerHTML = visible.map((t, i) => rowHTML(t, i + 1)).join("");
 }
 
-const hideBtn = document.getElementById("hideBtn");
 let dashHidden = false;
 function setDashHidden(hidden) {
   dashHidden = hidden;
   dash.classList.toggle("collapsed", hidden);
-  hideBtn.textContent = hidden ? "▤" : "✕";
-  hideBtn.title = hidden ? "Show region list" : "Hide region list";
+  dashArrow.classList.toggle("open", !hidden);
+  dashArrow.title = hidden ? "Show towns" : "Hide towns";
 }
-topbar.addEventListener("click", e => { if (e.target !== hideBtn) setDashHidden(!dashHidden); });
-hideBtn.addEventListener("click", () => setDashHidden(!dashHidden));
+dashArrow.addEventListener("click", () => setDashHidden(!dashHidden));
+setDashHidden(false);   // sync the arrow's glyph/title to the initial (open) state
 
-// #dash sits below the top bar on desktop; the bar's height varies with
-// how many stat segments wrap, so measure it rather than hardcode it.
+// Swipe to open (on the arrow) or close (on the panel) -- mobile only.
+function attachSwipe(el) {
+  let startY = null;
+  el.addEventListener("touchstart", e => { startY = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener("touchend", e => {
+    if (startY == null || window.innerWidth >= 768) return;
+    const dy = e.changedTouches[0].clientY - startY;
+    if (dy < -30) setDashHidden(false);
+    else if (dy > 30) setDashHidden(true);
+    startY = null;
+  }, { passive: true });
+}
+attachSwipe(dashArrow);
+attachSwipe(dash);
+
+// #dash and the arrow sit below the top bar on desktop; the bar's width
+// (and so its height, since it wraps) varies with content, so measure it.
 function syncTopbarHeight() {
   document.documentElement.style.setProperty("--topbar-h", topbar.offsetHeight + "px");
 }
@@ -476,14 +489,13 @@ new ResizeObserver(syncTopbarHeight).observe(topbar);
     addLayers(data);
 
     regionData = (meta && meta.regions) || [];
-    const nat = meta && meta.national;
-    metaNational = nat ? { icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0 } : { icps: 0, kW: 0, pct: 0 };
+    townData = (meta && meta.towns) || [];
     metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
 
     renderBoard();
     map.on("moveend", renderBoard);
   } catch (err) {
-    statLinesEl.innerHTML = `<div class="stat-line"><span class="stat-seg err">Couldn't load the data</span></div>` +
+    topbar.innerHTML = `<div class="stat-line"><span class="stat-seg err">Couldn't load the data</span></div>` +
       `<div class="stat-line"><span class="stat-seg muted">${err.message}</span></div>`;
     boardEl.innerHTML = `<div class="empty-note">Run the Update solar data workflow to build it.</div>`;
   }
