@@ -29,10 +29,11 @@ EMI CSVs ──> process.py ──> docs/streets.geojson ──> the map
 4. **Run the first build**
    Actions tab → *Update solar data* → *Run workflow*.
 
-   The first run geocodes about 2,100 areas and takes roughly an hour.
-   It's caching where every street physically is, which is the slow part
-   and only has to happen once. Later runs take a few minutes because
-   they only look up streets that are genuinely new.
+   Takes roughly 15-20 minutes. Road positions are geocoded via
+   OpenStreetMap in one query per regional council (~16 requests, not one
+   per street), so this isn't a "slow first run, fast after" split --
+   every run does the same fresh lookup and finishes in about the same
+   time.
 
 5. **Open your map** at
    `https://YOUR-USERNAME.github.io/YOUR-REPO/`
@@ -66,7 +67,7 @@ top of `docs/index.html`.
 | `docs/index.html` | The map |
 | `docs/streets.geojson` | Built output — every street with coordinates |
 | `docs/meta.json` | Build date, totals, match rate, and the region dashboard tree |
-| `road_cache.json` | Where each street is. The expensive bit, cached |
+| `road_cache.json` | Where each street is, from the latest run (not incrementally reused -- see below) |
 | `sa2_areas.json` | Statistical area boundaries, cached |
 | `network_bounds.json` | Network region boundaries (EA), cached -- powers the "regions within map view" filter |
 | `previous_counts.json` | Last build's numbers, for the "+N since last update" figures |
@@ -75,10 +76,16 @@ top of `docs/index.html`.
 
 EMI publishes street *names*, not coordinates — and New Zealand has a
 great many Queen Streets. Each EMI row also carries a Statistical Area 2
-code, so the pipeline asks OpenStreetMap for the roads inside *that
-specific area* and matches on name. A road only counts if it falls within
-the area EMI assigned it to, which is what keeps Auckland's Queen Street
-out of Invercargill.
+(SA2) code, and every SA2 has a known bounding box (from Stats NZ,
+covering all boundary vintages back to 2018 — EMI's data references a
+mix of them). A road only counts for a given street if its OpenStreetMap
+position falls inside the exact SA2 EMI assigned it to, which is what
+keeps Auckland's Queen Street out of Invercargill.
+
+The OpenStreetMap side is queried once per regional council (~16
+requests covering the whole country), not once per SA2 (~2,100) — a
+council's worth of roads is fetched in one go, then matched to the right
+SA2 locally. Same accuracy, far fewer requests.
 
 Expect a match rate in the 80–95% range. The stragglers are usually
 private lanes, rural roads and recent renames. `process.py` prints the

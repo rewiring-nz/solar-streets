@@ -2,10 +2,9 @@
 """
 Turn EMI's monthly solar CSVs into a map-ready GeoJSON.
 
-Runs weekly in GitHub Actions. The expensive part -- working out where
-each street physically is -- is cached in road_cache.json and committed
-back to the repo, so only genuinely new streets cost anything after the
-first run. Weekly updates take minutes; the first run takes an hour or so.
+Runs weekly in GitHub Actions. Road positions come from OpenStreetMap via
+Overpass, queried once per regional council (~16 requests) rather than
+once per statistical area (~2,100) -- the whole run takes a few minutes.
 
     EMI street CSV ─┐
     EMI region CSV ─┼─> join on (SA2 area + street name) ─> docs/streets.geojson
@@ -20,7 +19,6 @@ import os
 import re
 import sys
 import time
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import requests
@@ -110,10 +108,11 @@ NETWORK_TO_COUNCIL = {
     "Invercargill (Electricity Invercargill)": "Southland",
 }
 
+# The archive layer (Eagle Technology, sourced from Stats NZ, CC-BY-4.0),
+# not just current-year boundaries -- see get_areas() for why.
 SA2_SERVICE = (
-    "https://services2.arcgis.com/vKb0s8tBIA3bdocZ/ArcGIS/rest/services/"
-    "2023_Census_totals_by_topic_for_families_and_extended_families_by_SA2/"
-    "FeatureServer/0/query"
+    "https://services.arcgis.com/XTtANUDT8Va4DLwI/arcgis/rest/services/"
+    "nz_statistical_areas_2_archive/FeatureServer/0/query"
 )
 
 # Verified-working mirrors first (checked 2026-08-15): private.coffee and
@@ -136,8 +135,6 @@ SA2_CACHE = "sa2_areas.json"        # {sa2: [name, s, w, n, e]}   -- committed
 OUT_GEOJSON = "docs/streets.geojson"
 OUT_META = "docs/meta.json"
 
-WORKERS = 3          # parallel Overpass queries -- polite, not greedy
-PAUSE = 0.9          # seconds each worker waits between queries
 SUPPRESSED = 2       # EMI's "3 or less" counted as this many
 
 session = requests.Session()
@@ -197,18 +194,24 @@ def get_areas():
         print(f"Areas: {len(cached)} (cached)")
         return cached
 
-    print("Fetching SA2 boundaries from Stats NZ...")
+    # The archive (not just the current-year layer) matters: EMI's street
+    # data references a mix of SA2 vintages, including codes retired in
+    # the 2023 boundary revision. Querying every year and keeping the
+    # newest boundary per code covers current *and* legacy codes.
+    print("Fetching SA2 boundaries from Stats NZ (all vintages)...")
     areas, offset = {}, 0
     while True:
         r = session.get(SA2_SERVICE, timeout=180, params={
-            "where": "1=1",
-            "outFields": "SA22023_V1_00,SA22023_V1_00_NAME",
+            "where": "1=1", "orderByFields": "dataset_year ASC",
+            "outFields": "SA2_code,SA2_name,dataset_year",
             "returnGeometry": "true", "maxAllowableOffset": 500,
             "geometryPrecision": 5, "f": "geojson",
-            "resultOffset": offset, "resultRecordCount": 2000,
+            "resultOffset": offset, "resultRecordCount": 1000,
         })
         r.raise_for_status()
         feats = r.json().get("features", [])
+        if not feats:
+            break
         for f in feats:
             if not f.get("geometry"):
                 continue
@@ -224,13 +227,13 @@ def get_areas():
             scan(f["geometry"]["coordinates"])
             if not xs:
                 continue
-            areas[str(f["properties"]["SA22023_V1_00"])] = [
-                f["properties"]["SA22023_V1_00_NAME"],
+            # Later years overwrite earlier ones (ordered ASC), so each
+            # code ends up with its most recent known boundary.
+            areas[str(f["properties"]["SA2_code"])] = [
+                f["properties"]["SA2_name"],
                 min(ys), min(xs), max(ys), max(xs),
             ]
-        if len(feats) < 2000:
-            break
-        offset += 2000
+        offset += len(feats)
 
     save(SA2_CACHE, areas)
     print(f"Areas: {len(areas)}")
@@ -390,7 +393,20 @@ def _union_bbox(boxes):
             max(b[2] for b in boxes), max(b[3] for b in boxes)]
 
 
-def build_region_tree(networks, total_icps, bounds):
+def council_bounds_from(bounds):
+    """Regional-council-level bboxes, unioned from the 39 network-region
+    boundaries. Used both to batch the geocoding queries (~16 requests
+    instead of ~2,100) and to power the dashboard's map-view filter.
+    """
+    by_council = {}
+    for name, box in bounds.items():
+        council = NETWORK_TO_COUNCIL.get(name)
+        if council:
+            by_council.setdefault(council, []).append(box)
+    return {c: _union_bbox(b) for c, b in by_council.items()}
+
+
+def build_region_tree(networks, total_icps, bounds, council_bounds):
     """Nest the 39 network regions under their regional council.
 
     Every number here is a real, unmodified EMI figure -- the council
@@ -410,26 +426,19 @@ def build_region_tree(networks, total_icps, bounds):
         s = networks.get(name, {"icps": 0, "kW": 0.0})
         total = total_icps.get(name, 0)
         pct = round(s["icps"] / total * 100, 2) if total else 0
+        # A network missing its own boundary (e.g. the tiny Frankton
+        # embedded network) falls back to its council's bbox, so it's
+        # still shown whenever that council is in view.
         councils.setdefault(council, []).append({
             "name": name.split(" (")[0],
             "icps": s["icps"], "kW": s["kW"],
             "totalIcps": total, "pct": pct,
-            "bbox": bounds.get(name),   # filled in below if missing
-            "_fullName": name,
+            "bbox": bounds.get(name) or council_bounds.get(council),
         })
 
     tree = []
     for council, children in councils.items():
-        # A network missing its own boundary (e.g. the tiny Frankton
-        # embedded network) is treated as visible whenever its council is,
-        # rather than never showing up in the map-view filter.
-        council_bbox = _union_bbox([c["bbox"] for c in children])
-        for c in children:
-            if not c["bbox"]:
-                c["bbox"] = council_bbox
-            del c["_fullName"]
         children.sort(key=lambda c: c["pct"], reverse=True)
-
         icps = sum(c["icps"] for c in children)
         total = sum(c["totalIcps"] for c in children)
         tree.append({
@@ -438,7 +447,7 @@ def build_region_tree(networks, total_icps, bounds):
             "kW": round(sum(c["kW"] for c in children), 1),
             "totalIcps": total,
             "pct": round(icps / total * 100, 2) if total else 0,
-            "bbox": council_bbox,
+            "bbox": council_bounds.get(council),
             "children": children,
         })
     tree.sort(key=lambda r: r["pct"], reverse=True)
@@ -466,62 +475,89 @@ def overpass(query):
     raise RuntimeError(f"all Overpass mirrors failed ({last})")
 
 
-def roads_in_area(bounds):
-    s, w, n, e = bounds
+def roads_in_bbox(bbox):
+    """Every named-highway way centre in a (possibly large) bbox, grouped
+    by normalised name but deliberately NOT collapsed to one point -- a
+    name can be several distinct real streets (NZ has a lot of Queen
+    Streets), so every candidate location is kept and disambiguated later
+    by which SA2 it actually falls inside.
+    """
+    s, w, n, e = bbox
     data = overpass(
-        f'[out:json][timeout:120];way["highway"]["name"]({s},{w},{n},{e});'
+        f'[out:json][timeout:180];way["highway"]["name"]({s},{w},{n},{e});'
         "out center tags;"
     )
-    sums = {}
+    by_name = {}
     for el in data.get("elements", []):
         name = el.get("tags", {}).get("name")
         centre = el.get("center")
         if not name or not centre:
             continue
-        acc = sums.setdefault(normalise(name), [0.0, 0.0, 0])
-        acc[0] += centre["lon"]; acc[1] += centre["lat"]; acc[2] += 1
-    return {k: [round(v[0] / v[2], 5), round(v[1] / v[2], 5)]
-            for k, v in sums.items()}
+        by_name.setdefault(normalise(name), []).append((centre["lon"], centre["lat"]))
+    return by_name
 
 
-def geocode(records, areas):
-    cache = load(ROAD_CACHE, {})
+def geocode(records, areas, council_bounds):
+    """One Overpass query per regional council (~16), not per SA2
+    (~2,100). Batching by a much larger area cuts network round-trips by
+    two orders of magnitude -- verified live: a whole-council query
+    (Otago, ~9,200 roads) took 3.5s, the same order as a single small
+    per-SA2 query used to take.
 
-    # Only visit areas that contain streets we can't already place.
-    todo = sorted({
-        code for (code, norm) in records
-        if code in areas and norm not in cache.get(code, {})
-    })
-    if not todo:
-        print("Geocoding: nothing new")
-        return cache
+    Each SA2's roads are then matched from its council's result set by
+    keeping only the candidate points that fall inside *that SA2's own
+    bbox* -- the same containment check the old per-SA2 design relied on,
+    just done locally instead of via a separate network call, so multiple
+    same-named streets in different towns still resolve correctly.
+    """
+    codes_by_council = {}
+    for code in {code for (code, _) in records}:
+        if code not in areas:
+            continue
+        _, s, w, n, e = areas[code]
+        cy, cx = (s + n) / 2, (w + e) / 2
+        for council, box in council_bounds.items():
+            if box and box[0] <= cy <= box[2] and box[1] <= cx <= box[3]:
+                codes_by_council.setdefault(council, []).append(code)
+                break
 
-    print(f"Geocoding {len(todo)} areas via OpenStreetMap "
-          f"({WORKERS} workers, ~{len(todo) * PAUSE / WORKERS / 60:.0f} min)")
+    names_by_code = {}
+    for code, norm in records:
+        names_by_code.setdefault(code, set()).add(norm)
 
-    done = [0]
-    failures = [0]
+    cache = {}
+    n_councils = len(codes_by_council)
+    for i, (council, codes) in enumerate(codes_by_council.items(), 1):
+        bbox = council_bounds[council]
+        print(f"  [{i}/{n_councils}] {council}: {len(codes)} areas...")
+        # A single query covers ~100+ areas now, so a transient failure
+        # (a busy mirror timing out, a 504) is worth retrying rather than
+        # silently dropping that much data for the whole week.
+        by_name, last_exc = None, None
+        for attempt in range(3):
+            try:
+                by_name = roads_in_bbox(bbox)
+                break
+            except Exception as exc:                  # noqa: BLE001
+                last_exc = exc
+                if attempt < 2:
+                    time.sleep(10)
+        if by_name is None:
+            print(f"  ! {council} failed after retries, its areas stay unplaced: {last_exc}")
+            continue
 
-    def work(code):
-        if failures[0] > 25:            # something is systemically wrong
-            return
-        try:
-            cache[code] = roads_in_area(areas[code][1:])
-        except Exception as exc:        # noqa: BLE001 - keep going, log it
-            failures[0] += 1
-            print(f"  ! {areas[code][0]}: {exc}")
-        done[0] += 1
-        if done[0] % 50 == 0:
-            print(f"  {done[0]}/{len(todo)} areas")
-            save(ROAD_CACHE, cache)
-        time.sleep(PAUSE)
-
-    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        list(pool.map(work, todo))
+        for code in codes:
+            _, s, w, n, e = areas[code]
+            local = {}
+            for name in names_by_code.get(code, ()):
+                pts = [(lng, lat) for lng, lat in by_name.get(name, ())
+                       if w <= lng <= e and s <= lat <= n]
+                if pts:
+                    local[name] = [round(sum(p[0] for p in pts) / len(pts), 5),
+                                    round(sum(p[1] for p in pts) / len(pts), 5)]
+            cache[code] = local
 
     save(ROAD_CACHE, cache)
-    if failures[0]:
-        print(f"  {failures[0]} areas failed -- they'll retry next run")
     return cache
 
 
@@ -598,13 +634,17 @@ def main():
         print(f"Network boundaries unavailable ({exc}) -- map-view filter will be omitted")
         bounds = {}
 
-    region_tree = build_region_tree(networks, total_icps, bounds) if networks else []
+    council_bounds = council_bounds_from(bounds)
+    region_tree = build_region_tree(networks, total_icps, bounds, council_bounds) if networks else []
     national_total = sum(total_icps.values())
     if totals and national_total:
         totals["totalIcps"] = national_total
         totals["pct"] = round(totals["icps"] / national_total * 100, 2)
 
-    cache = geocode(records, areas)
+    if not council_bounds:
+        print("No council boundaries -- can't batch-geocode; aborting")
+        sys.exit(1)
+    cache = geocode(records, areas, council_bounds)
 
     previous = load("previous_counts.json", {})
     features, missing = build(records, cache, areas, previous)
