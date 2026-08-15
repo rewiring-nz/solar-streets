@@ -116,13 +116,20 @@ SA2_SERVICE = (
     "FeatureServer/0/query"
 )
 
+# Verified-working mirrors first (checked 2026-08-15): private.coffee and
+# kumi.systems currently don't respond at all, and a 180s timeout per dead
+# mirror meant every single lookup paid up to 6 minutes before reaching a
+# working one -- ~2,100 areas at that rate is measured in days, not hours.
 OVERPASS_MIRRORS = [
-    "https://overpass.private.coffee/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://z.overpass-api.de/api/interpreter",
     "https://lz4.overpass-api.de/api/interpreter",
     "https://overpass-api.de/api/interpreter",
+    "https://z.overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
 ]
+OVERPASS_TIMEOUT = 90   # live testing showed 3-44s depending on server load
+                        # and area size; this comfortably covers that while
+                        # still capping a dead mirror far below the old 180s
 
 ROAD_CACHE = "road_cache.json"      # {sa2: {street: [lng, lat]}} -- committed
 SA2_CACHE = "sa2_areas.json"        # {sa2: [name, s, w, n, e]}   -- committed
@@ -447,7 +454,7 @@ def overpass(query):
     last = ""
     for url in OVERPASS_MIRRORS:
         try:
-            r = session.post(url, data={"data": query}, timeout=180)
+            r = session.post(url, data={"data": query}, timeout=OVERPASS_TIMEOUT)
             if r.status_code in (429, 504, 406):
                 last = f"{r.status_code}"
                 time.sleep(5)
