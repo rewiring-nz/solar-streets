@@ -821,9 +821,8 @@ function loadSolarTownsLayer() {
         paint: {
           "fill-color": DOT_COLOR,
           // Full opacity under the cursor -- same hover cue as solar's
-          // Regions mode -- scaled up from the much lighter base
-          // opacity a border-focused fill needs.
-          "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], .5, .18],
+          // Regions mode -- scaled up from the base opacity.
+          "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], .7, .4],
         },
       });
       map.addLayer({
