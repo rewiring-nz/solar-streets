@@ -816,9 +816,9 @@ const chartLegendEl = document.getElementById("chartLegend");
 // Fixed stacking order (largest category at the base) and a colour per
 // category for the chart's stacked areas, the map choropleth legend
 // swatches, and anywhere else the categories need telling apart.
-const EV_CHART_ORDER = ["Cars", "Trucks", "Buses", "Utes", "Tractors"];
+const EV_CHART_ORDER = ["Cars", "Utes", "Buses", "Trucks", "Tractors"];
 const EV_CATEGORY_COLORS = {
-  Cars: "#22d3ee", Trucks: "#0e7490", Buses: "#38bdf8", Utes: "#a5f3fc", Tractors: "#f97316",
+  Cars: "#3b82f6", Utes: "#a855f7", Buses: "#f97316", Trucks: "#eab308", Tractors: "#ef4444",
 };
 
 let evNational = null;
@@ -883,13 +883,24 @@ function addEvLayer(boundaries) {
   }, beforeId);
 
   map.on("click", "ev-fill", e => {
-    const p = e.features[0].properties;
-    new maplibregl.Popup()
+    // Look the clicked district up in evTlas (already fully loaded)
+    // rather than trusting the map feature's own properties -- GeoJSON
+    // sources get internally tiled, which can't carry nested objects
+    // like a per-category breakdown, only flat values.
+    const t = evTlas.find(x => x.name === e.features[0].properties.name);
+    if (!t) return;
+    const catLines = EV_CHART_ORDER.map(cat => {
+      const c = (t.categories && t.categories[cat]) || {};
+      const pctText = c.pct != null ? `${c.pct.toFixed(1)}%` : "no data";
+      return `<div class="ev-cat-line"><span>Electric ${cat}</span><span class="n">${fmt(c.ev || 0)}, ${pctText} of total</span></div>`;
+    }).join("");
+    new maplibregl.Popup({ maxWidth: "260px" })
       .setLngLat(e.lngLat)
       .setHTML(
-        `<strong>${p.name}</strong><br><small class="muted">${p.region || ""}</small><br>` +
-        `Electric vehicles: <strong>${fmt(p.ev)}</strong>` +
-        (p.pct != null ? `<br>${(+p.pct).toFixed(1)}% of the local fleet` : "")
+        `<strong>${t.name}</strong><br><small class="muted">${t.region || ""}</small><br>` +
+        `Electric vehicles: <strong>${fmt(t.ev)}</strong>` +
+        (t.pct != null ? ` <small class="muted">(${t.pct.toFixed(1)}% of the local fleet)</small>` : "") +
+        `<div class="ev-categories" style="padding-left:0;margin-top:6px">${catLines}</div>`
       ).addTo(map);
   });
   map.on("mouseenter", "ev-fill", () => map.getCanvas().style.cursor = "pointer");
