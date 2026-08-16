@@ -17,6 +17,7 @@
     --orange: #f97316;
     --amber: #ffb703;
     --up: #4ade80;
+    --red: #ff5a5a;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
@@ -215,6 +216,8 @@
   .row-metric { flex: none; text-align: right; }
   .row-metric .headline { font-size: 13.5px; font-weight: 700; color: var(--amber); text-shadow: 0 0 10px rgba(255,183,3,.4); white-space: nowrap; }
   .row-metric .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
+  .est-badge { cursor: help; border-bottom: 1px dotted var(--dim); }
+  .est-badge b { color: var(--red); font-weight: 700; letter-spacing: .02em; }
 
   /* ============ EV rows (category breakdown per TLA) ============ */
   .ev-row { padding: 8px 8px 10px; border-radius: 10px; margin: 2px 0; }
@@ -586,6 +589,22 @@ const fmt = n => n.toLocaleString();
 const fmtMW = kW => (kW / 1000).toLocaleString(undefined, { maximumFractionDigits: kW >= 10000 ? 0 : 1 });
 const MONTHS3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+// Small towns have no real per-town ICP total to divide by (EMI only
+// publishes that at network-region granularity) -- estPct is a
+// *modelled* stand-in: real Census dwellings in the town's real
+// catchment, projected to this year and scaled by its council's real
+// residential/business mix (see write_town_boundaries/process.py). The
+// "~" and "est" tag keep it visually distinct from the real region %
+// shown elsewhere -- it's a reasoned estimate, not a measurement.
+const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this town, " +
+  "projected forward using its own 2018–2023 growth rate, then scaled to a full " +
+  "connections estimate using its council's real residential/business mix (EMI). " +
+  "Unlike the region %, this isn't a direct EMI figure.";
+function estBadge(pct) {
+  if (pct == null) return "";
+  return ` <span class="est-badge" title="${EST_PCT_TITLE}">~${pct.toFixed(1)}% <b>est</b></span>`;
+}
+
 function bboxIntersects(b, view) {
   if (!b) return true;   // no boundary data -- never hide it
   const [s, w, n, e] = b;
@@ -737,7 +756,7 @@ function rowHTML(t, rank) {
       </div>
       <div class="row-metric">
         <span class="headline">${fmt(t.icps)} installs</span>
-        <span class="detail">${fmtMW(t.kW)} MW</span>
+        <span class="detail">${fmtMW(t.kW)} MW${estBadge(t.estPct)}</span>
       </div>
     </div>`;
 }
@@ -808,7 +827,7 @@ function loadSolarTownsLayer() {
       map.on("click", "solar-town-boundaries-fill", e => {
         const p = e.features[0].properties;
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
-          `<strong>${p.name}</strong><br>Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW` +
+          `<strong>${p.name}</strong><br>Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW${estBadge(p.estPct != null ? +p.estPct : null)}` +
           (p.councilPct != null ? `<br>${p.council} region: ${(+p.councilPct).toFixed(1)}%` : "")
         ).addTo(map);
       });
@@ -858,7 +877,7 @@ function loadSolarRegionsLayer() {
             "case", ["==", ["get", "pct"], null], "",
             ["concat", ["number-format", ["get", "pct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
           ],
-          "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": false,
+          "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": true,
         },
         paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0,0,0,.45)", "text-halo-width": 1 },
       });
@@ -1102,7 +1121,7 @@ function addEvLayer(boundaries) {
         "case", ["==", ["get", "pct"], null], "",
         ["concat", ["number-format", ["get", "pct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
       ],
-      "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": false
+      "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": true
     },
     paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0,0,0,.45)", "text-halo-width": 1 }
   }, beforeId);

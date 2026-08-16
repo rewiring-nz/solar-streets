@@ -40,6 +40,12 @@ REGION_CSV = EMI_BASE + "SolarInstallationsByRegion.csv"
 ICP_TOTALS_PAGE = "https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails"
 ICP_TOTALS_LINK_RE = re.compile(r'href="([^"]*\d{8}_MarketShareByMEPandTrader\.csv)"')
 
+# ICPs by ANZSIC industry classification per network region, same page as
+# the total-ICPs file above -- gives a real ratio of all-connections to
+# residential-only connections, used to scale a town's Census-dwelling
+# estimate up to a full-ICP estimate (see fetch_anzsic_ratios).
+ANZSIC_LINK_RE = re.compile(r'href="([^"]*\d{8}_MeterCategoryByLevel1ANZSIC\.csv)"')
+
 # Real, official regional council boundaries (Eagle Technology, sourced
 # from Stats NZ, CC-BY-4.0) -- used to decide which council a SA2/town
 # falls inside, and to power the "regions within map view" filter.
@@ -69,6 +75,18 @@ TOWN_ANCHORS_SERVICE = (
     "LINZ_NZ_Suburbs_and_Localities/FeatureServer/0/query"
 )
 TOWN_ANCHORS_CACHE = "town_anchors.json"
+
+# Real 2018 and 2023 Census occupied-private-dwelling counts, one point
+# (SA1 centroid) per statistical area nationally -- same Stats NZ ArcGIS
+# org as the boundary layers below. Lets small towns (below EMI's
+# per-network-region % granularity) get an *estimated* connection
+# percentage: real dwellings inside the town's real boundary, not a
+# population/household-size guess (see write_town_boundaries).
+SA1_CENSUS_SERVICE = (
+    "https://services.arcgis.com/XTtANUDT8Va4DLwI/arcgis/rest/services/"
+    "Key_Census_Insights_2018_and_2023_by_SA1/FeatureServer/19/query"
+)
+SA1_CENSUS_CACHE = "sa1_dwellings.json"
 
 # EMI's 39 "network reporting regions" (real distributor footprints, not
 # fabricated) grouped under their NZ regional council. A handful of
@@ -412,6 +430,100 @@ def fetch_total_icps():
         n, _ = icp_value(row.get("ICPs (Total)"))
         totals[name] = totals.get(name, 0) + n
     return totals
+
+
+def fetch_anzsic_ratios():
+    """{council: total ICPs / residential ICPs}, from EMI's own ICP count
+    by ANZSIC industry classification per network region (same page as
+    fetch_total_icps, a different date-stamped CSV off it). ANZSIC L1
+    code "0" is Residential; everything else is business/industrial.
+    Rolled up from network to council via NETWORK_TO_COUNCIL, same as
+    the rest of this file's region grouping.
+
+    Used by write_town_boundaries to scale a town's real Census-dwelling
+    count (residential-only) up to an estimated *total* ICP figure --
+    the real ratio EMI's own data shows for that town's council, not a
+    guessed multiplier.
+    """
+    page = session.get(ICP_TOTALS_PAGE, timeout=60).text
+    m = ANZSIC_LINK_RE.search(page)
+    if not m:
+        print("  ! Couldn't find the ANZSIC breakdown CSV link -- skipping town % estimates")
+        return {}
+
+    url = m.group(1)
+    if url.startswith("/"):
+        url = "https://www.emi.ea.govt.nz" + url
+
+    import csv
+    import io
+
+    text = fetch_csv(url)
+    totals, residential = {}, {}
+    for row in csv.DictReader(io.StringIO(text)):
+        region = row.get("Network reporting region")
+        n, _ = icp_value(row.get("ICP count (total)"))
+        totals[region] = totals.get(region, 0) + n
+        if row.get("ANZSIC L1") == "0":
+            residential[region] = residential.get(region, 0) + n
+
+    council_totals, council_res = {}, {}
+    for region, n in totals.items():
+        council = NETWORK_TO_COUNCIL.get(region)
+        if not council:
+            continue
+        council_totals[council] = council_totals.get(council, 0) + n
+        council_res[council] = council_res.get(council, 0) + residential.get(region, 0)
+
+    return {
+        c: council_totals[c] / council_res[c]
+        for c in council_totals if council_res.get(c)
+    }
+
+
+def fetch_sa1_dwellings():
+    """[[lat, lng, dwellings_2018, dwellings_2023], ...] -- real Census
+    occupied-private-dwelling counts, one point (SA1 centroid) per
+    statistical area, nationally.
+
+    Feeds _estimate_town_pcts' town-level % estimate: real dwellings in
+    each town's real catchment (nearest-anchor, matched against these
+    centroids -- see _nearest_town_fn), not a population/household-size
+    guess. SA1 is Stats NZ's finest published granularity -- far smaller
+    than the SA2 areas used elsewhere in this file -- so a centroid is
+    precise enough without needing full SA1 geometry.
+    """
+    cached = load(SA1_CENSUS_CACHE, None)
+    if cached is not None:
+        print(f"SA1 dwelling points: {len(cached)} (cached)")
+        return cached
+
+    print("Fetching 2018/2023 Census dwelling counts by SA1...")
+    rows, offset = [], 0
+    while True:
+        r = session.get(SA1_CENSUS_SERVICE, timeout=180, params={
+            "where": "1=1",
+            "outFields": "C18_DwellOccupancy_Occupied,C23_DwellOccupancy_Occupied",
+            "returnCentroid": "true", "returnGeometry": "false", "f": "json",
+            "outSR": 4326,   # this layer's native SR is NZTM (2193), not lat/lng
+            "resultOffset": offset, "resultRecordCount": 2000,
+        })
+        r.raise_for_status()
+        feats = r.json().get("features", [])
+        if not feats:
+            break
+        for f in feats:
+            c = f.get("centroid")
+            a = f["attributes"]
+            c23 = a.get("C23_DwellOccupancy_Occupied")
+            if not c or c23 is None:
+                continue
+            rows.append([c["y"], c["x"], a.get("C18_DwellOccupancy_Occupied") or 0, c23])
+        offset += len(feats)
+
+    save(SA1_CENSUS_CACHE, rows)
+    print(f"SA1 dwelling points: {len(rows)}")
+    return rows
 
 
 def _bbox_of(geom):
@@ -760,7 +872,77 @@ def fetch_town_anchors():
     return anchors
 
 
-def write_town_boundaries(towns):
+def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios):
+    """Attaches row["estPct"] in place to entries of `towns`, for towns
+    small enough that EMI has no real per-town ICP total to divide by
+    (see build_towns). An *estimate*, built entirely from real numbers:
+
+      1. Real 2018 and 2023 Census occupied-dwelling counts inside the
+         town's real catchment -- SA1 centroids assigned to their
+         nearest town anchor via _nearest_town_fn, the *same* catchment
+         build_towns uses for installs (not the narrower boundary
+         polygon written by write_town_boundaries, which only covers
+         named localities -- using that here would put installs and
+         dwellings on two different-sized catchments and skew the
+         ratio; see fetch_sa1_dwellings for the source).
+      2. The town's own real 2018->2023 dwelling growth rate, compounded
+         forward to the current year (clamped to +-5%/15% annually --
+         a guard against small-sample noise in low-dwelling towns, not
+         a claim about real growth ceilings).
+      3. Scaled from a residential dwelling count to a full ICP estimate
+         using its council's real residential/total ICP mix (EMI's own
+         ANZSIC breakdown -- see fetch_anzsic_ratios).
+
+    Two approximations remain even so -- dwellings aren't exactly
+    residential ICPs, and a town's business density is assumed to match
+    its whole council's -- which is why this is surfaced in the UI as
+    an estimate, never with the same weight as the real region %.
+    Towns where the chain doesn't produce a sane number (no dwelling
+    data, no council ratio, or an impossible result) are left with no
+    estPct at all -- the same "omit rather than mislead" rule the real
+    percentages elsewhere in this file already follow.
+    """
+    if not sa1_dwellings or not anzsic_ratios or not town_anchors:
+        return
+
+    nearest_town = _nearest_town_fn(town_anchors)
+    sums = {}   # name -> [dwellings_2018, dwellings_2023]
+    for lat, lng, d18, d23 in sa1_dwellings:
+        acc = sums.setdefault(nearest_town(lat, lng), [0, 0])
+        acc[0] += d18
+        acc[1] += d23
+
+    # A town with too few (or zero) 2018 dwellings to compute its own
+    # growth rate falls back to the national rate across every matched
+    # town, rather than getting no estimate at all.
+    all_d18 = sum(v[0] for v in sums.values())
+    all_d23 = sum(v[1] for v in sums.values())
+    fallback_cagr = (all_d23 / all_d18) ** (1 / 5) - 1 if all_d18 else 0.0
+
+    years_ahead = max(datetime.now(timezone.utc).year - 2023, 0)
+    by_name = {t["name"]: t for t in towns}
+
+    for name, (d18, d23) in sums.items():
+        row = by_name.get(name)
+        # Below ~30 dwellings the 2018->2023 ratio swings wildly on a
+        # handful of houses (a literal conservation park matched 9
+        # dwellings in testing) -- too little signal for a 3-year
+        # compounded projection to mean anything.
+        if not row or d23 < 30:
+            continue
+        cagr = (d23 / d18) ** (1 / 5) - 1 if d18 else fallback_cagr
+        cagr = max(-0.05, min(0.15, cagr))
+        est_dwellings = d23 * (1 + cagr) ** years_ahead
+        ratio = anzsic_ratios.get(row["council"])
+        if not ratio or est_dwellings <= 0:
+            continue
+        est_total_icps = est_dwellings * ratio
+        if est_total_icps < row["icps"]:
+            continue   # impossible -- same null-out as the real region % elsewhere
+        row["estPct"] = round(row["icps"] / est_total_icps * 100, 1)
+
+
+def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_ratios=None):
     """docs/town_boundaries.geojson -- a real boundary per town, for
     solar's "Towns" map mode (border lines rather than dots). Built by
     merging LINZ's own locality polygons within each major_name
@@ -769,9 +951,14 @@ def write_town_boundaries(towns):
     than an approximation (e.g. a convex hull, which would bulge over
     empty land for any spread-out town). A town's footprint can extend
     well beyond its built-up area for locality groups with surrounding
-    rural land -- that's the real LINZ grouping, the same catchment
-    build_towns' nearest-anchor install assignment already implicitly
-    uses, not an artefact of this merge.
+    rural land -- that's the real LINZ grouping, drawn here purely for
+    display; it's *narrower* in places than build_towns' actual
+    nearest-anchor install catchment, which is why the estPct step below
+    uses town_anchors instead of these polygons (see _estimate_town_pcts).
+
+    Also computes each town's estPct (see _estimate_town_pcts), when
+    Census/ANZSIC data is available -- mutates `towns` in place, so
+    meta.json picks it up too.
 
     Needs shapely (not used anywhere else in this file) for the union
     itself; degrades gracefully (see main()) if it's not installed.
@@ -805,22 +992,30 @@ def write_town_boundaries(towns):
         offset += len(feats)
 
     by_name = {t["name"]: t for t in towns}
-    features = []
+    merged_by_name = {}
     for name, polys in groups.items():
-        row = by_name.get(name)
-        if not row:
+        if name not in by_name:
             continue
         try:
-            merged = unary_union(polys)
+            merged_by_name[name] = unary_union(polys)
         except Exception as exc:                       # noqa: BLE001
             print(f"  ! Couldn't merge locality boundary for {name}: {exc}")
-            continue
+
+    try:
+        _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios)
+    except Exception as exc:                       # noqa: BLE001
+        print(f"  ! Town %-estimate step failed ({exc}) -- towns will show no estPct")
+
+    features = []
+    for name, merged in merged_by_name.items():
+        row = by_name[name]
         features.append({
             "type": "Feature",
             "geometry": mapping(merged),
             "properties": {
                 "name": name, "council": row["council"],
                 "icps": row["icps"], "kW": row["kW"], "councilPct": row.get("councilPct"),
+                "estPct": row.get("estPct"),
             },
         })
 
@@ -1098,6 +1293,33 @@ def build_ev_data(tlas, tla_region, tla_centroids, council_bounds, overall_ev, o
     return national, region_rows, tla_rows, trends
 
 
+def _nearest_town_fn(town_anchors):
+    """A lat,lng -> town-name closure over town_anchors' nearest-named-
+    anchor catchment. Shared by build_towns (streets) and
+    _estimate_town_pcts (Census dwellings) so both sides of the
+    estimated-%'s ratio are drawn from the identical catchment -- a
+    town's boundary polygon (write_town_boundaries) only covers its
+    named localities and is narrower than this catchment in places with
+    sparse surrounding naming, so using it for both would systematically
+    undercount whichever side used it, skewing the ratio.
+    """
+    names = list(town_anchors)
+    pts = [town_anchors[n] for n in names]
+
+    def nearest_town(lat, lng):
+        coslat = math.cos(math.radians(lat))
+        best_i, best_d = 0, float("inf")
+        for i, (alat, alng) in enumerate(pts):
+            dx = (lng - alng) * coslat
+            dy = lat - alat
+            d = dx * dx + dy * dy
+            if d < best_d:
+                best_d, best_i = d, i
+        return names[best_i]
+
+    return nearest_town
+
+
 def build_towns(features, town_anchors, council_bounds):
     """Group placed streets into real towns (nearest named-locality
     centre) -- e.g. "Wanaka" and "Queenstown" as separate entries -- each
@@ -1113,19 +1335,7 @@ def build_towns(features, town_anchors, council_bounds):
     if not town_anchors:
         return []
 
-    names = list(town_anchors)
-    pts = [town_anchors[n] for n in names]
-
-    def nearest_town(lat, lng):
-        coslat = math.cos(math.radians(lat))
-        best_i, best_d = 0, float("inf")
-        for i, (alat, alng) in enumerate(pts):
-            dx = (lng - alng) * coslat
-            dy = lat - alat
-            d = dx * dx + dy * dy
-            if d < best_d:
-                best_d, best_i = d, i
-        return names[best_i]
+    nearest_town = _nearest_town_fn(town_anchors)
 
     towns = {}   # town name -> accumulator
     for f in features:
@@ -1435,7 +1645,17 @@ def main():
 
     if towns:
         try:
-            write_town_boundaries(towns)
+            sa1_dwellings = fetch_sa1_dwellings()
+        except Exception as exc:                       # noqa: BLE001
+            print(f"Census dwelling data unavailable ({exc}) -- town % estimates will be omitted")
+            sa1_dwellings = []
+        try:
+            anzsic_ratios = fetch_anzsic_ratios()
+        except Exception as exc:                       # noqa: BLE001
+            print(f"ANZSIC ICP breakdown unavailable ({exc}) -- town % estimates will be omitted")
+            anzsic_ratios = {}
+        try:
+            write_town_boundaries(towns, town_anchors, sa1_dwellings, anzsic_ratios)
         except Exception as exc:                       # noqa: BLE001
             print(f"Town boundaries unavailable ({exc}) -- solar's Towns map mode will fall back to dots")
 
