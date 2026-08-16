@@ -1,6 +1,6 @@
 {
  "updated": "2026-08-16",
- "streets": 29832,
+ "streets": 29828,
  "streetsTotal": 36963,
  "matchRate": 80.7,
  "national": {
@@ -12,8 +12,8 @@
  "regions": [
   {
    "name": "Tasman",
-   "icps": 4186,
-   "kW": 35707.5,
+   "icps": 2261,
+   "kW": 10407.4,
    "totalIcps": 53471,
    "pct": 7.83,
    "bbox": [
@@ -25,8 +25,8 @@
   },
   {
    "name": "Marlborough",
-   "icps": 1737,
-   "kW": 37246.4,
+   "icps": 1579,
+   "kW": 16789.9,
    "totalIcps": 26803,
    "pct": 6.48,
    "bbox": [
@@ -38,8 +38,8 @@
   },
   {
    "name": "Northland",
-   "icps": 6387,
-   "kW": 149062.4,
+   "icps": 5760,
+   "kW": 62655.9,
    "totalIcps": 98670,
    "pct": 6.47,
    "bbox": [
@@ -51,8 +51,8 @@
   },
   {
    "name": "Hawke's Bay",
-   "icps": 4779,
-   "kW": 36416.4,
+   "icps": 4334,
+   "kW": 17472.5,
    "totalIcps": 75835,
    "pct": 6.3,
    "bbox": [
@@ -64,8 +64,8 @@
   },
   {
    "name": "Bay of Plenty",
-   "icps": 7613,
-   "kW": 108447.5,
+   "icps": 6924,
+   "kW": 24941.6,
    "totalIcps": 152712,
    "pct": 4.99,
    "bbox": [
@@ -77,8 +77,8 @@
   },
   {
    "name": "Otago",
-   "icps": 5626,
-   "kW": 40232.9,
+   "icps": 5365,
+   "kW": 14403.0,
    "totalIcps": 121077,
    "pct": 4.65,
    "bbox": [
@@ -90,8 +90,8 @@
   },
   {
    "name": "Canterbury",
-   "icps": 15782,
-   "kW": 346401.0,
+   "icps": 14105,
+   "kW": 43963.7,
    "totalIcps": 349875,
    "pct": 4.51,
    "bbox": [
@@ -103,8 +103,8 @@
   },
   {
    "name": "Taranaki",
-   "icps": 2764,
-   "kW": 34476.6,
+   "icps": 2625,
+   "kW": 8743.9,
    "totalIcps": 61435,
    "pct": 4.5,
    "bbox": [
@@ -116,8 +116,8 @@
   },
   {
    "name": "Waikato",
-   "icps": 9606,
-   "kW": 157566.8,
+   "icps": 9444,
+   "kW": 74187.3,
    "totalIcps": 251899,
    "pct": 3.81,
    "bbox": [
@@ -129,8 +129,8 @@
   },
   {
    "name": "Manawat\u016b-Whanganui",
-   "icps": 3469,
-   "kW": 28084.3,
+   "icps": 3950,
+   "kW": 8195.1,
    "totalIcps": 100147,
    "pct": 3.46,
    "bbox": [
@@ -142,8 +142,8 @@
   },
   {
    "name": "Wellington",
-   "icps": 8661,
-   "kW": 61062.1,
+   "icps": 7167,
+   "kW": 18192.7,
    "totalIcps": 259973,
    "pct": 3.33,
    "bbox": [
@@ -155,8 +155,8 @@
   },
   {
    "name": "Gisborne",
-   "icps": 782,
-   "kW": 10148.7,
+   "icps": 717,
+   "kW": 1078.5,
    "totalIcps": 26223,
    "pct": 2.98,
    "bbox": [
@@ -168,8 +168,8 @@
   },
   {
    "name": "Auckland",
-   "icps": 17349,
-   "kW": 143607.7,
+   "icps": 16234,
+   "kW": 46328.3,
    "totalIcps": 708213,
    "pct": 2.45,
    "bbox": [
@@ -181,8 +181,8 @@
   },
   {
    "name": "Southland",
-   "icps": 1054,
-   "kW": 7254.4,
+   "icps": 1215,
+   "kW": 892.2,
    "totalIcps": 56284,
    "pct": 1.87,
    "bbox": [
@@ -194,8 +194,8 @@
   },
   {
    "name": "West Coast",
-   "icps": 347,
-   "kW": 2609.2,
+   "icps": 422,
+   "kW": 169.0,
    "totalIcps": 19705,
    "pct": 1.76,
    "bbox": [
@@ -207,10 +207,10 @@
   },
   {
    "name": "Nelson",
-   "icps": 0,
-   "kW": 0.0,
+   "icps": 1552,
+   "kW": 6187.2,
    "totalIcps": 12,
-   "pct": 0.0,
+   "pct": null,
    "bbox": [
     -41.393427,
     173.189654,
@@ -290,7 +290,7 @@
    "kW": 4778.5,
    "lat": -41.3235,
    "lng": 173.2373,
-   "councilPct": 0.0
+   "councilPct": null
   },
   {
    "name": "Wellington",
@@ -601,7 +601,7 @@
   {
    "name": "Invercargill",
    "council": "Southland",
-   "icps": 517,
+   "icps": 515,
    "kW": 497.0,
    "lat": -46.426,
    "lng": 168.353,
@@ -860,22 +860,22 @@
    "councilPct": 3.81
   },
   {
-   "name": "H\u0101wera",
-   "council": "Taranaki",
-   "icps": 283,
-   "kW": 1000.7,
-   "lat": -39.5811,
-   "lng": 174.3012,
-   "councilPct": 4.5
-  },
-  {
    "name": "Hira",
    "council": "Nelson",
    "icps": 283,
    "kW": 1408.7,
    "lat": -41.2132,
    "lng": 173.4024,
-   "councilPct": 0.0
+   "councilPct": null
+  },
+  {
+   "name": "H\u0101wera",
+   "council": "Taranaki",
+   "icps": 281,
+   "kW": 1000.7,
+   "lat": -39.5811,
+   "lng": 174.3012,
+   "councilPct": 4.5
   },
   {
    "name": "Levin",
@@ -1958,15 +1958,6 @@
    "councilPct": 4.99
   },
   {
-   "name": "\u014cpunake",
-   "council": "Taranaki",
-   "icps": 75,
-   "kW": 320.9,
-   "lat": -39.4132,
-   "lng": 173.9052,
-   "councilPct": 4.5
-  },
-  {
    "name": "Tangiteroria",
    "council": "Northland",
    "icps": 73,
@@ -2001,6 +1992,15 @@
    "lat": -38.3419,
    "lng": 175.1402,
    "councilPct": 3.81
+  },
+  {
+   "name": "\u014cpunake",
+   "council": "Taranaki",
+   "icps": 71,
+   "kW": 320.9,
+   "lat": -39.4132,
+   "lng": 173.9052,
+   "councilPct": 4.5
   },
   {
    "name": "Raumati South",
