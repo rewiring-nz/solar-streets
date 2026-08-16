@@ -152,6 +152,58 @@ OUT_TRENDS = "docs/trends.json"
 # is a snapshot of; this pulls the time series instead.
 GUEHMT_URL = "https://www.emi.ea.govt.nz/Retail/Download/DataReport/CSV/GUEHMT"
 
+# ----------------------------------------------------------------------
+# EV dashboard -- a second, independent dataset the map can switch to.
+# Built entirely from NZTA's Motor Vehicle Register (MVR): a live,
+# keyless ArcGIS table of every currently-registered NZ vehicle (~5.9M
+# rows). Never downloaded whole -- every number here comes from a
+# server-side grouped-count query, same idea as EMI's own pre-aggregated
+# figures, just aggregated by us instead of them.
+# ----------------------------------------------------------------------
+
+MVR_SERVICE = (
+    "https://services.arcgis.com/CXBb7LAjgIIdcsPt/arcgis/rest/services/"
+    "MVR_Mar26/FeatureServer/0/query"
+)
+
+# Real Territorial Authority (district/city council) boundaries -- the
+# MVR tags every vehicle with its owner's TLA directly, so unlike solar
+# this needs no town-anchor approximation: TLA *is* the real, official
+# "town level" granularity. Same ArcGIS org as the regional council
+# boundaries above.
+TLA_SERVICE = (
+    "https://services.arcgis.com/XTtANUDT8Va4DLwI/arcgis/rest/services/"
+    "nz_territorial_authorities/FeatureServer/0/query"
+)
+TLA_BOUNDS_CACHE = "tla_bounds.json"
+OUT_EV = "docs/ev.json"
+OUT_EV_BOUNDARIES = "docs/ev_boundaries.geojson"
+
+# Vehicle categories for the EV dashboard, drawn straight from the MVR's
+# own VEHICLE_TYPE/BODY_TYPE fields (verified live against real data),
+# not guessed from make/model. "Trucks" folds in vans, since the MVR's
+# own VEHICLE_TYPE bucket ("GOODS VAN/TRUCK/UTILITY") already lumps
+# them and there's no separate BODY_TYPE for "van" fleet trucks.
+EV_CATEGORIES = [
+    ("Cars", "VEHICLE_TYPE = 'PASSENGER CAR/VAN'"),
+    ("Utes", "BODY_TYPE = 'UTILITY'"),
+    ("Trucks", "BODY_TYPE IN ('FLAT-DECK TRUCK','ARTICULATED TRUCK','OTHER TRUCK',"
+               "'CAB AND CHASSIS ONLY','HEAVY VAN','LIGHT VAN')"),
+    ("Buses", "VEHICLE_TYPE = 'BUS'"),
+    ("Tractors", "VEHICLE_TYPE = 'TRACTOR'"),
+]
+
+# Rotorua Lakes District's territory straddles Bay of Plenty and
+# Waikato -- most of its area and Rotorua city itself is Bay of Plenty,
+# but the district's geometric centroid falls on its (larger, rural)
+# Waikato-side land. Every other TLA resolves correctly via real
+# point-in-polygon against council boundaries (checked all 67 against
+# known fact); this is the one genuine exception, the same kind of
+# real-world straddle NETWORK_TO_COUNCIL above already documents.
+TLA_REGION_OVERRIDES = {
+    "Rotorua District": "Bay of Plenty",
+}
+
 SUPPRESSED = 2       # EMI's "3 or less" counted as this many
 
 session = requests.Session()
@@ -360,6 +412,21 @@ def fetch_total_icps():
     return totals
 
 
+def _bbox_of(geom):
+    """[south, west, north, east] of a GeoJSON Polygon/MultiPolygon."""
+    xs, ys = [], []
+
+    def scan(c):
+        if isinstance(c[0], (int, float)):
+            xs.append(c[0]); ys.append(c[1])
+        else:
+            for s in c:
+                scan(s)
+
+    scan(geom["coordinates"])
+    return [min(ys), min(xs), max(ys), max(xs)]
+
+
 def _point_in_ring(x, y, ring):
     inside = False
     j = len(ring) - 1
@@ -427,19 +494,6 @@ def fetch_regional_councils():
     r.raise_for_status()
     geo = r.json()
 
-    def bbox_of(geom):
-        xs, ys = [], []
-
-        def scan(c):
-            if isinstance(c[0], (int, float)):
-                xs.append(c[0]); ys.append(c[1])
-            else:
-                for s in c:
-                    scan(s)
-
-        scan(geom["coordinates"])
-        return [min(ys), min(xs), max(ys), max(xs)]
-
     councils = {}
     for f in geo["features"]:
         name = f["properties"].get("REGC_name", "")
@@ -449,13 +503,112 @@ def fetch_regional_councils():
             continue
         geom = f["geometry"]
         councils[name] = {
-            "bbox": bbox_of(geom),
+            "bbox": _bbox_of(geom),
             "coords": geom["coordinates"],
             "multi": geom["type"] == "MultiPolygon",
         }
 
     save(REGC_BOUNDS_CACHE, councils)
     return councils
+
+
+def fetch_territorial_authorities():
+    """Real TLA (district/city council) polygons, for the EV dashboard.
+    Cached, same reasoning as fetch_regional_councils -- these boundaries
+    essentially never change, and full precision matters for the same
+    reason (see the no-maxAllowableOffset note above).
+
+    Unlike solar's towns, the EV data source (NZTA's vehicle register)
+    already tags every vehicle with its real TLA directly -- these
+    boundaries are only needed to draw the choropleth and to derive
+    each TLA's parent region (assign_tla_regions).
+    """
+    cached = load(TLA_BOUNDS_CACHE, None)
+    if cached:
+        return cached
+
+    print("Fetching territorial authority boundaries from Stats NZ...")
+    r = session.get(TLA_SERVICE, timeout=120, params={
+        "where": "1=1", "outFields": "TA_name_ascii",
+        "returnGeometry": "true", "geometryPrecision": 6, "f": "geojson",
+    })
+    r.raise_for_status()
+    geo = r.json()
+
+    tlas = {}
+    for f in geo["features"]:
+        name = f["properties"].get("TA_name_ascii", "")
+        if not name or name in ("Area Outside Territorial Authority", "Chatham Islands Territory"):
+            continue    # not part of any of the 16 mainland regions
+        geom = f["geometry"]
+        tlas[name] = {
+            "bbox": _bbox_of(geom),
+            "coords": geom["coordinates"],
+            "multi": geom["type"] == "MultiPolygon",
+        }
+
+    save(TLA_BOUNDS_CACHE, tlas)
+    return tlas
+
+
+def write_ev_boundaries(ev_tla_rows):
+    """docs/ev_boundaries.geojson -- TLA polygons for the EV choropleth,
+    tagged with each TLA's stats so the frontend can colour them without
+    a second lookup. A visually-simplified fetch (unlike
+    fetch_territorial_authorities' full precision, which point-in-polygon
+    needs to be exact) -- fine for a filled map layer, and cuts this from
+    tens of MB to a few hundred KB.
+    """
+    print("Fetching simplified TLA boundaries for the EV choropleth...")
+    r = session.get(TLA_SERVICE, timeout=120, params={
+        "where": "1=1", "outFields": "TA_name_ascii",
+        "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.005,
+        "f": "geojson",
+    })
+    r.raise_for_status()
+    geo = r.json()
+
+    by_name = {row["name"]: row for row in ev_tla_rows}
+    features = []
+    for f in geo["features"]:
+        name = f["properties"].get("TA_name_ascii", "")
+        row = by_name.get(name)
+        if not row:
+            continue
+        features.append({
+            "type": "Feature",
+            "geometry": f["geometry"],
+            "properties": {
+                "name": name, "region": row["region"],
+                "ev": row["ev"], "total": row["total"], "pct": row["pct"],
+            },
+        })
+
+    save(OUT_EV_BOUNDARIES, {"type": "FeatureCollection", "features": features})
+
+
+def assign_tla_regions(tlas, councils):
+    """Which region each TLA belongs to -- derived geometrically (real
+    point-in-polygon against council boundaries, same function used for
+    every other region assignment in this file), not hand-typed, so it's
+    checked against the same real boundary data everywhere else relies
+    on. Verified against all 67 real TLAs; TLA_REGION_OVERRIDES covers
+    the one genuine exception (a TLA whose territory itself straddles
+    two regions).
+    """
+    result = {}
+    for name, t in tlas.items():
+        if name in TLA_REGION_OVERRIDES:
+            result[name] = TLA_REGION_OVERRIDES[name]
+            continue
+        ring = max(
+            (poly[0] for poly in (t["coords"] if t["multi"] else [t["coords"]])),
+            key=len,
+        )
+        lat = sum(p[1] for p in ring) / len(ring)
+        lng = sum(p[0] for p in ring) / len(ring)
+        result[name] = council_of_point(lat, lng, councils)
+    return result
 
 
 def build_region_tree(networks, total_icps, council_bounds):
@@ -611,6 +764,202 @@ def fetch_trends():
     }
 
     return {"dates": dates, "national": national, "councils": councils, "networks": networks}
+
+
+# ----------------------------------------------------------------------
+# EV dashboard
+# ----------------------------------------------------------------------
+
+def _mvr_query(where, group_fields=None):
+    """One query against the Motor Vehicle Register -- either a plain
+    count, or a server-side grouped count (never raw rows: the table is
+    ~5.9M records, far too large to page through for what's ultimately
+    just a handful of numbers per TLA).
+    """
+    params = {"where": where, "f": "json"}
+    if group_fields:
+        params["groupByFieldsForStatistics"] = group_fields
+        params["outStatistics"] = json.dumps([{
+            "statisticType": "count", "onStatisticField": "OBJECTID", "outStatisticFieldName": "cnt",
+        }])
+        params["orderByFields"] = group_fields
+        r = session.get(MVR_SERVICE, timeout=180, params=params)
+        r.raise_for_status()
+        return r.json().get("features", [])
+    params["returnCountOnly"] = "true"
+    r = session.get(MVR_SERVICE, timeout=180, params=params)
+    r.raise_for_status()
+    return r.json().get("count", 0)
+
+
+def fetch_ev_snapshot(tla_names):
+    """Current EV counts, and each category's real % of the *local*
+    vehicle fleet, by TLA -- one groupBy-TLA query per category for EVs
+    and one for that category's total fleet (2 x 5 categories + 2
+    overall = 12 queries total, each aggregated server-side).
+
+    tla_names maps the MVR's own ALL-CAPS TLA spelling (e.g. "FAR NORTH
+    DISTRICT") to the boundary layer's proper-case name ("Far North
+    District") -- the two are different fields from different sources,
+    matched by uppercasing rather than str.title() (which mangles
+    apostrophes: "Hawke's" -> "Hawke'S").
+    """
+    print("Fetching EV snapshot from the Motor Vehicle Register...")
+
+    def counts_by_tla(where):
+        rows = _mvr_query(where, "TLA")
+        out = {}
+        for r in rows:
+            raw = r["attributes"]["TLA"]
+            name = tla_names.get(raw)
+            if name:
+                out[name] = out.get(name, 0) + r["attributes"]["cnt"]
+        return out
+
+    overall_ev = counts_by_tla("MOTIVE_POWER = 'ELECTRIC'")
+    overall_total = counts_by_tla("1=1")
+
+    categories = {}
+    for name, clause in EV_CATEGORIES:
+        categories[name] = {
+            "ev": counts_by_tla(f"MOTIVE_POWER = 'ELECTRIC' AND {clause}"),
+            "total": counts_by_tla(clause),
+        }
+
+    return overall_ev, overall_total, categories
+
+
+def fetch_ev_trends(tla_names):
+    """Yearly EV history per TLA, overall and per category -- "vehicles
+    first registered in NZ in year Y that are still on the road today",
+    from one 2-D groupBy (TLA x year) query per series rather than one
+    per TLA. This is current-fleet-by-vintage, not a strict historical
+    registration count (a vehicle scrapped or exported since its first
+    year wouldn't show) -- but EVs are almost all under ~12 years old,
+    so the gap is negligible, same honest framing as the MVR itself
+    supports.
+    """
+    print("Fetching EV registration history...")
+
+    def yearly_by_tla(where):
+        rows = _mvr_query(where, "TLA,FIRST_NZ_REGISTRATION_YEAR")
+        out = {}
+        for r in rows:
+            a = r["attributes"]
+            name, year = tla_names.get(a["TLA"]), a["FIRST_NZ_REGISTRATION_YEAR"]
+            if not name or not year:
+                continue
+            yearly = out.setdefault(name, {})
+            yearly[year] = yearly.get(year, 0) + a["cnt"]
+        return out
+
+    series = {"All": yearly_by_tla("MOTIVE_POWER = 'ELECTRIC'")}
+    for name, clause in EV_CATEGORIES:
+        series[name] = yearly_by_tla(f"MOTIVE_POWER = 'ELECTRIC' AND {clause}")
+
+    years = sorted({y for by_tla in series.values() for counts in by_tla.values() for y in counts})
+    return years, series
+
+
+def build_ev_data(tlas, tla_region, council_bounds, overall_ev, overall_total, categories, years, trend_series):
+    """Assemble docs/ev.json: national + per-region + per-TLA snapshots
+    (counts and real % of the local fleet, overall and per category),
+    plus cumulative yearly trend lines at the same three granularities.
+    """
+    def pct(ev, total):
+        return round(ev / total * 100, 2) if total else None
+
+    tla_rows = []
+    for name, bounds in tlas.items():
+        region = tla_region.get(name)
+        if not region:
+            continue
+        ev = overall_ev.get(name, 0)
+        total = overall_total.get(name, 0)
+        cat_out = {}
+        for cat_name, _ in EV_CATEGORIES:
+            c_ev = categories[cat_name]["ev"].get(name, 0)
+            c_total = categories[cat_name]["total"].get(name, 0)
+            cat_out[cat_name] = {"ev": c_ev, "total": c_total, "pct": pct(c_ev, c_total)}
+        tla_rows.append({
+            "name": name, "region": region,
+            "ev": ev, "total": total, "pct": pct(ev, total),
+            "bbox": bounds["bbox"], "categories": cat_out,
+        })
+    tla_rows.sort(key=lambda r: r["ev"], reverse=True)
+
+    region_acc = {}
+    for row in tla_rows:
+        acc = region_acc.setdefault(row["region"], {
+            "ev": 0, "total": 0,
+            "categories": {c: {"ev": 0, "total": 0} for c, _ in EV_CATEGORIES},
+        })
+        acc["ev"] += row["ev"]; acc["total"] += row["total"]
+        for cat_name, _ in EV_CATEGORIES:
+            acc["categories"][cat_name]["ev"] += row["categories"][cat_name]["ev"]
+            acc["categories"][cat_name]["total"] += row["categories"][cat_name]["total"]
+
+    region_rows = []
+    for name, acc in region_acc.items():
+        cat_out = {c: {"ev": v["ev"], "total": v["total"], "pct": pct(v["ev"], v["total"])}
+                   for c, v in acc["categories"].items()}
+        region_rows.append({
+            "name": name, "ev": acc["ev"], "total": acc["total"], "pct": pct(acc["ev"], acc["total"]),
+            "bbox": council_bounds.get(name, {}).get("bbox"), "categories": cat_out,
+        })
+    region_rows.sort(key=lambda r: r["ev"], reverse=True)
+
+    national_categories = {}
+    for cat_name, _ in EV_CATEGORIES:
+        c_ev = sum(categories[cat_name]["ev"].values())
+        c_total = sum(categories[cat_name]["total"].values())
+        national_categories[cat_name] = {"ev": c_ev, "total": c_total, "pct": pct(c_ev, c_total)}
+    national_ev, national_total = sum(overall_ev.values()), sum(overall_total.values())
+    national = {
+        "ev": national_ev, "total": national_total, "pct": pct(national_ev, national_total),
+        "categories": national_categories,
+    }
+
+    # A handful of EVs go back to the 1930s (early imports/curiosities),
+    # but real uptake doesn't start until ~2016 -- stretching the chart
+    # back to cover 80-odd near-flat years wastes the whole width on
+    # nothing. The cumulative running total still starts from the real
+    # first year (so 2013's value correctly includes everything before
+    # it); only the displayed window is trimmed.
+    DISPLAY_START_YEAR = 2013
+    start_idx = next((i for i, y in enumerate(years) if y >= DISPLAY_START_YEAR), 0)
+    dates = [str(y) for y in years[start_idx:]]
+
+    def cumulative(year_counts):
+        out, running = [], 0
+        for y in years:
+            running += year_counts.get(y, 0)
+            out.append(running)
+        return out[start_idx:]
+
+    trend_tlas, trend_regions, trend_national = {}, {}, {}
+    for series_name, by_tla in trend_series.items():
+        trend_tlas[series_name] = {tla: cumulative(counts) for tla, counts in by_tla.items()}
+
+        region_year = {}
+        for tla, counts in by_tla.items():
+            region = tla_region.get(tla)
+            if not region:
+                continue
+            acc = region_year.setdefault(region, {})
+            for y, c in counts.items():
+                acc[y] = acc.get(y, 0) + c
+        trend_regions[series_name] = {r: cumulative(counts) for r, counts in region_year.items()}
+
+        nat_year = {}
+        for counts in by_tla.values():
+            for y, c in counts.items():
+                nat_year[y] = nat_year.get(y, 0) + c
+        trend_national[series_name] = cumulative(nat_year)
+
+    trends = {"dates": dates, "national": trend_national, "regions": trend_regions, "tlas": trend_tlas}
+
+    return national, region_rows, tla_rows, trends
 
 
 def build_towns(features, town_anchors, council_bounds):
@@ -862,6 +1211,28 @@ def main():
         save(OUT_TRENDS, trends)
     except Exception as exc:                       # noqa: BLE001
         print(f"Trend history unavailable ({exc}) -- charts will be omitted")
+
+    try:
+        tlas = fetch_territorial_authorities()
+        tla_region = assign_tla_regions(tlas, council_bounds)
+        tla_names = {name.upper(): name for name in tlas}
+        overall_ev, overall_total, ev_categories = fetch_ev_snapshot(tla_names)
+        ev_years, ev_trend_series = fetch_ev_trends(tla_names)
+        ev_national, ev_regions, ev_tlas, ev_trends = build_ev_data(
+            tlas, tla_region, council_bounds,
+            overall_ev, overall_total, ev_categories, ev_years, ev_trend_series,
+        )
+        save(OUT_EV, {
+            "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            "categories": [name for name, _ in EV_CATEGORIES],
+            "national": ev_national,
+            "regions": ev_regions,
+            "tlas": ev_tlas,
+            "trends": ev_trends,
+        })
+        write_ev_boundaries(ev_tlas)
+    except Exception as exc:                       # noqa: BLE001
+        print(f"EV data unavailable ({exc}) -- EV dashboard will be omitted")
 
     region_tree = build_region_tree(networks, total_icps, council_bounds) if networks else []
     national_total = sum(total_icps.values())

@@ -2,15 +2,18 @@
 
 A map of every street in New Zealand with solar connections, from the
 Electricity Authority's EMI data. Dots sit on the actual streets, and the
-whole country loads at once.
+whole country loads at once. A second dashboard, switchable from the
+buttons at the top, shows electric vehicle uptake by district instead.
 
-The map itself does no work: a scheduled job turns EMI's CSVs into a
-single GeoJSON file, and the page just downloads and draws it.
+The map itself does no work: a scheduled job turns EMI's (and NZTA's)
+data into static JSON/GeoJSON files, and the page just downloads and
+draws them.
 
 ```
-EMI CSVs ──> process.py ──> docs/streets.geojson ──> the map
-  (monthly)   (weekly, in       (static file,          (instant)
-               GitHub Actions)   served by Pages)
+EMI CSVs ──────────────┐
+NZTA vehicle register ─┼─> process.py ──> docs/*.json, *.geojson ──> the map
+Stats NZ boundaries ────┘    (weekly, in       (static files,          (instant)
+                              GitHub Actions)    served by Pages)
 ```
 
 ## Setup (about ten minutes, once)
@@ -45,6 +48,22 @@ EMI CSVs ──> process.py ──> docs/streets.geojson ──> the map
         width="100%" height="600" style="border:0"></iframe>
 ```
 
+Inside an iframe, scroll-to-zoom automatically requires Ctrl/Cmd+scroll
+instead (MapLibre's `cooperativeGestures`), so scrolling past the embed
+scrolls the host page rather than fighting the map. Opened standalone,
+it behaves as a normal map.
+
+Query params customise what loads, for a specific-region embed or link:
+
+| Param | Values | Effect |
+|---|---|---|
+| `?dataset=` | `solar` (default) or `ev` | Which dashboard opens |
+| `?region=` | any region/district/town name | Flies there on load (macron-insensitive, e.g. `Wanaka` matches `Wānaka`) |
+| `?chart=` | `open` | Opens the trend chart by default (always closed on mobile-width screens) |
+| `?dash=` | `closed` | Starts with the regions/districts list collapsed |
+
+e.g. `https://YOUR-USERNAME.github.io/YOUR-REPO/?dataset=ev&region=Canterbury&chart=open`
+
 ## Keeping it current
 
 The workflow runs every Monday at 6am NZ time and commits only if
@@ -62,15 +81,19 @@ top of `docs/index.html`.
 
 | File | Purpose |
 |---|---|
-| `process.py` | Downloads EMI data, geocodes streets, writes the GeoJSON |
+| `process.py` | Downloads EMI/NZTA data, geocodes streets, writes the JSON/GeoJSON |
 | `.github/workflows/update-data.yml` | Runs the above weekly |
-| `docs/index.html` | The map |
-| `docs/streets.geojson` | Built output — every street with coordinates |
-| `docs/meta.json` | Build date, totals, match rate, and the region dashboard tree |
+| `docs/index.html` | The map (both dashboards) |
+| `docs/streets.geojson` | Solar: every street with coordinates |
+| `docs/meta.json` | Solar: build date, totals, match rate, and the region/town dashboard tree |
+| `docs/trends.json` | Solar: monthly install/battery history since 2014 |
+| `docs/ev.json` | EVs: national/region/district counts, % of local fleet, and yearly uptake trend, per vehicle category |
+| `docs/ev_boundaries.geojson` | EVs: simplified district polygons for the choropleth, tagged with each district's stats |
 | `road_cache.json` | Where each street is, from the latest run (not incrementally reused -- see below) |
 | `sa2_areas.json` | Statistical area boundaries, cached |
 | `regc_bounds.json` | Real regional council boundaries (Stats NZ), cached -- powers the council grouping and the "regions within map view" filter |
-| `town_anchors.json` | One point per real NZ town (LINZ), cached -- powers the town grouping |
+| `tla_bounds.json` | Real territorial authority (district/city) boundaries (Stats NZ), cached -- full precision, for the EV dashboard |
+| `town_anchors.json` | One point per real NZ town (LINZ), cached -- powers the solar town grouping |
 | `previous_counts.json` | Last build's numbers, for the "+N since last update" figures |
 
 ## How streets get their positions
@@ -125,10 +148,54 @@ Tasman serves most of Nelson city, for instance, so that approach had
 Nelson's real numbers geographically misattributed to Tasman. Real
 council polygons don't have that problem.
 
+## The EV dashboard
+
+Built entirely from NZTA's Motor Vehicle Register (MVR) -- the live
+register of every currently-registered NZ vehicle (~5.9M rows), queried
+as server-side aggregate counts (`fetch_ev_snapshot`/`fetch_ev_trends`
+in `process.py`), never downloaded whole.
+
+Every vehicle in the MVR carries its owner's real Territorial Authority
+(TLA -- district/city council, e.g. "Queenstown-Lakes District")
+directly, so unlike solar's towns this needs no nearest-anchor
+approximation: TLA *is* the real "district level" granularity, straight
+from official data. Districts roll up to the same 16 regions solar
+uses, via `assign_tla_regions` -- derived geometrically (real
+point-in-polygon against the regional council boundaries already
+fetched for solar), not hand-typed, and checked against all 67 real
+districts. `TLA_REGION_OVERRIDES` covers the one genuine exception:
+Rotorua Lakes District's own territory straddles Bay of Plenty and
+Waikato.
+
+Five vehicle categories (Cars, Utes, Trucks, Buses, Tractors) are drawn
+straight from the MVR's own `VEHICLE_TYPE`/`BODY_TYPE` fields
+(`EV_CATEGORIES` in `process.py`), not guessed from make or model. Each
+one's % figure is a real join: electric count and *total local fleet*
+count for that category, in that district, from the same register at
+the same time -- not population-normalised, so it answers "what
+fraction of this district's trucks/buses/etc. are electric", the same
+style of honest, real-join percentage as solar's "% of connections".
+
+The uptake chart is a cumulative count of vehicles by first-NZ-
+registration year that are still on the road today -- not a strict
+historical registration count (a vehicle scrapped or exported since
+wouldn't show), but EVs are almost all under ~12 years old, so the
+difference is negligible. The display window starts at 2013; a handful
+of EVs go back to the 1930s (early imports/curiosities), and including
+those 80-odd near-flat years would waste the whole chart width on
+nothing -- the running total itself still starts from the real first
+year, so 2013's value correctly includes everything before it.
+
+Because the MVR has no street-level address (only district + postcode,
+for privacy), districts are shown as a shaded choropleth rather than
+individual dots like solar's streets -- there's no honest point to
+place a dot at.
+
 ## Data sources
 
 - Solar installations: [EMI, Electricity Authority](https://www.emi.ea.govt.nz/) (CC BY 4.0)
 - Total ICP counts: [EMI, ICP and metering details](https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails) (CC BY 4.0)
 - Street locations: [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL)
-- Statistical areas and regional councils: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
+- Electric vehicle counts: [NZTA Waka Kotahi, Motor Vehicle Register](https://opendata-nzta.opendata.arcgis.com/datasets/NZTA::motor-vehicle-register) (CC BY 4.0)
+- Statistical areas, regional councils, and territorial authorities: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
 - Town/locality names: [LINZ, Suburbs and Localities](https://data.linz.govt.nz/layer/113764-nz-suburbs-and-localities/) (CC BY 4.0)

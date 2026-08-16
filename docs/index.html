@@ -34,11 +34,31 @@
   .up { color: var(--up); font-weight: 600; }
   .err { color: #f87171; font-weight: 600; }
 
-  /* ============ Top stats bar ============ */
-  /* Compact by default, sized to its content -- grows to fit a chart
-     when expanded. Click the stats area to expand/collapse downward. */
-  #topbar {
+  .hidden { display: none !important; }
+
+  /* ============ Top-left stack: dataset switch + stats bar ============ */
+  #topWrap {
     position: absolute; z-index: 7; top: 10px; left: 10px;
+    display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+    max-width: calc(100vw - 20px);
+  }
+  #datasetSwitch {
+    display: flex; background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+  }
+  .dataset-btn {
+    border: none; background: transparent; color: var(--dim); font-size: 11px; font-weight: 700;
+    padding: 6px 12px; border-radius: 999px; cursor: pointer; letter-spacing: .2px;
+    white-space: nowrap; transition: background .15s, color .15s;
+  }
+  .dataset-btn.active { background: var(--amber); color: #241a00; }
+  .dataset-btn:not(.active):hover { color: var(--text); }
+
+  /* Compact by default, sized to its content -- grows to fit a chart
+     when expanded. Click the "Show Chart" button to expand/collapse. */
+  #topbar {
     background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid var(--border); border-radius: 10px; color: var(--text);
@@ -181,6 +201,16 @@
   .row-metric .headline { font-size: 13.5px; font-weight: 700; color: var(--amber); text-shadow: 0 0 10px rgba(255,183,3,.4); white-space: nowrap; }
   .row-metric .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
 
+  /* ============ EV rows (category breakdown per TLA) ============ */
+  .ev-row { padding: 8px 8px 10px; border-radius: 10px; margin: 2px 0; }
+  .ev-row-head { display: flex; align-items: flex-start; gap: 8px; }
+  .ev-row-overall { text-align: right; flex: none; }
+  .ev-row-overall .headline { font-size: 13.5px; font-weight: 700; color: var(--cyan); text-shadow: 0 0 10px rgba(34,211,238,.4); white-space: nowrap; }
+  .ev-row-overall .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
+  .ev-categories { margin: 6px 0 0; padding-left: 24px; }
+  .ev-cat-line { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--dim); line-height: 1.65; }
+  .ev-cat-line .n { color: var(--text); font-weight: 600; }
+
   .empty-note { padding: 20px 16px; font-size: 12.5px; color: var(--dim); text-align: center; }
 
   .loading-note { padding: 16px; font-size: 12.5px; color: var(--dim); }
@@ -196,23 +226,32 @@
   .chart-legend .swatch { display: inline-block; width: 10px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
   .chart-legend .installs { background: var(--amber); }
   .chart-legend .battery { background: #38bdf8; }
+  .chart-legend .ev { background: var(--cyan); }
 </style>
 </head>
 <body>
 <div id="app">
   <div id="map"></div>
 
-  <div id="topbar">
-    <div id="topbarStats">
-      <div class="stat-line"><span class="stat-seg">Loading…</span></div>
+  <div id="topWrap">
+    <div id="datasetSwitch">
+      <button type="button" class="dataset-btn active" data-dataset="solar">Solar Installs</button>
+      <button type="button" class="dataset-btn" data-dataset="ev">Electric Vehicles</button>
     </div>
-    <div id="topbarChart" class="topbar-chart">
-      <div class="topbar-chart-inner">
-        <select id="chartSelect" class="chart-select"></select>
-        <div class="chart-svg-wrap"><svg id="chartSvg" viewBox="0 0 700 320"></svg></div>
-        <div class="chart-legend">
-          <span><i class="swatch installs"></i>Solar installs</span>
-          <span><i class="swatch battery"></i>% of installs with a battery</span>
+
+    <div id="topbar">
+      <div id="topbarStats">
+        <div class="stat-line"><span class="stat-seg">Loading…</span></div>
+      </div>
+      <div id="topbarChart" class="topbar-chart">
+        <div class="topbar-chart-inner">
+          <select id="chartSelect" class="chart-select"></select>
+          <select id="evCategorySelect" class="chart-select hidden"></select>
+          <div class="chart-svg-wrap"><svg id="chartSvg" viewBox="0 0 700 320"></svg></div>
+          <div class="chart-legend" id="chartLegend">
+            <span><i class="swatch installs"></i>Solar installs</span>
+            <span><i class="swatch battery"></i>% of installs with a battery</span>
+          </div>
         </div>
       </div>
     </div>
@@ -236,6 +275,8 @@
 const DATA_URL = "streets.geojson";
 const META_URL = "meta.json";
 const TRENDS_URL = "trends.json";
+const EV_URL = "ev.json";
+const EV_BOUNDARIES_URL = "ev_boundaries.geojson";
 
 const LINZ_API_KEY = "";
 const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -248,6 +289,7 @@ const urlParams = new URLSearchParams(location.search);
 const REGION_PARAM = (urlParams.get("region") || "").trim();
 const CHART_PARAM = (urlParams.get("chart") || "").toLowerCase();
 const DASH_PARAM = (urlParams.get("dash") || "").toLowerCase();
+const DATASET_PARAM = (urlParams.get("dataset") || "").toLowerCase();
 
 // Inside an iframe (e.g. embedded in Webflow), an ordinary scroll over
 // the map would hijack the page's scroll to zoom the map instead --
@@ -490,16 +532,24 @@ function addLayers(data) {
 /* ================= DASHBOARD ================= */
 
 const dash = document.getElementById("dash");
+const topWrapEl = document.getElementById("topWrap");
 const topbarEl = document.getElementById("topbar");
 const topbarStatsEl = document.getElementById("topbarStats");
 const dashArrow = document.getElementById("dashArrow");
 const boardEl = document.getElementById("board");
+const listCaptionEl = document.querySelector(".list-caption");
 
 let regionData = [];   // council-level, real %/totalIcps
 let townData = [];     // flat town list, as built by process.py -- powers the list
 let metaNational = null;
 let metaUpdated = null;
 let currentFocus = { level: "national", name: "New Zealand" };
+
+// Which dataset the map/dashboard is currently showing -- "solar" (the
+// default) or "ev". Everything downstream (map layers, topbar, the
+// list, the chart) branches on this rather than being two separate
+// pages, so switching is instant once the EV data's been lazy-loaded.
+let DATASET = "solar";
 
 const fmt = n => n.toLocaleString();
 const fmtMW = kW => (kW / 1000).toLocaleString(undefined, { maximumFractionDigits: kW >= 10000 ? 0 : 1 });
@@ -583,16 +633,18 @@ function findPlace(term) {
   const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   const q = norm(term);
   if (!q) return null;
+  const regions = DATASET === "ev" ? evRegions : regionData;
+  const places = DATASET === "ev" ? evTlas : townData;   // EV "towns" are TLAs (polygons, no point)
   const tiers = [
     s => norm(s) === q,
     s => norm(s).startsWith(q),
     s => norm(s).includes(q),
   ];
   for (const test of tiers) {
-    const region = regionData.find(r => test(r.name));
-    if (region) return { type: "region", data: region };
-    const town = townData.find(t => test(t.name));
-    if (town) return { type: "town", data: town };
+    const region = regions.find(r => test(r.name));
+    if (region) return region;
+    const place = places.find(t => test(t.name));
+    if (place) return place;
   }
   return null;
 }
@@ -600,15 +652,16 @@ function findPlace(term) {
 function focusOnPlace(term) {
   const match = findPlace(term);
   if (!match) { console.warn(`?region=${term} -- no matching region or town found`); return; }
-  if (match.type === "region" && match.data.bbox) {
-    const [s, w, n, e] = match.data.bbox;
+  if (match.bbox) {
+    const [s, w, n, e] = match.bbox;
     map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 0 });
   } else {
-    map.jumpTo({ center: [match.data.lng, match.data.lat], zoom: 12 });
+    map.jumpTo({ center: [match.lng, match.lat], zoom: 12 });
   }
 }
 
 function renderTopbar() {
+  if (DATASET === "ev") { renderEvTopbar(); return; }
   currentFocus = focusRegion();
   const stats = currentFocus.level === "national" ? metaNational : currentFocus.data;
   const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
@@ -654,6 +707,7 @@ function rowHTML(t, rank) {
 }
 
 function renderBoard() {
+  if (DATASET === "ev") { renderEvBoard(); return; }
   renderTopbar();
   const visible = visibleTowns();
 
@@ -670,13 +724,16 @@ function renderBoard() {
 }
 
 // Clicking a row's region label flies the map to that region's real
-// bounds (regionData's bbox, from actual council boundaries) rather than
-// just the town's own point -- delegated since rows are re-rendered
-// wholesale on every pan/zoom.
+// bounds (regionData's/evRegions' bbox, from actual council boundaries)
+// rather than just the row's own point -- delegated since rows are
+// re-rendered wholesale on every pan/zoom.
 boardEl.addEventListener("click", e => {
-  const el = e.target.closest("[data-council]");
-  if (!el) return;
-  const r = regionData.find(x => x.name === el.getAttribute("data-council"));
+  const solarEl = e.target.closest("[data-council]");
+  const evEl = e.target.closest("[data-ev-region]");
+  if (!solarEl && !evEl) return;
+  const list = solarEl ? regionData : evRegions;
+  const name = solarEl ? solarEl.getAttribute("data-council") : evEl.getAttribute("data-ev-region");
+  const r = list.find(x => x.name === name);
   if (!r || !r.bbox) return;
   const [s, w, n, e2] = r.bbox;
   map.fitBounds([[w, s], [e2, n]], { padding: 40, duration: 800 });
@@ -730,13 +787,210 @@ function attachSwipe(el) {
 attachSwipe(dashArrow);
 attachSwipe(dash);
 
-// #dash and the arrow sit below the top bar on desktop; the bar's width
-// (and so its height, since it wraps, or since the chart is open) varies
-// with content, so measure it rather than hardcode it.
+// #dash and the arrow sit below the top-left stack (dataset switch +
+// stats bar) on desktop; its width (and so its height, since it wraps,
+// or since the chart is open) varies with content, so measure it
+// rather than hardcode it.
 function syncTopbarHeight() {
-  document.documentElement.style.setProperty("--topbar-h", topbarEl.offsetHeight + "px");
+  document.documentElement.style.setProperty("--topbar-h", topWrapEl.offsetHeight + "px");
 }
-new ResizeObserver(syncTopbarHeight).observe(topbarEl);
+new ResizeObserver(syncTopbarHeight).observe(topWrapEl);
+
+/* ================= EV DASHBOARD ================= */
+/* A second dataset the map can switch to (the buttons at the top).
+   Built entirely from NZTA's Motor Vehicle Register -- current EV
+   counts and real % of the local fleet, by district (TLA) and region,
+   for five vehicle categories, plus a historic cumulative-uptake trend.
+   Districts are shown as a shaded choropleth: unlike solar, the EV
+   register has no street-level address to place a point at (only
+   district + postcode), so there's no dot to draw. Lazy-loaded on
+   first switch to EV so the default (solar) page load isn't slowed
+   down by it. */
+
+const datasetSwitchEl = document.getElementById("datasetSwitch");
+const evCategorySelectEl = document.getElementById("evCategorySelect");
+const chartLegendEl = document.getElementById("chartLegend");
+
+let evNational = null;
+let evRegions = [];
+let evTlas = [];
+let evTrends = null;
+let evCategoryNames = [];
+let evUpdated = null;
+let evLoadPromise = null;
+let evLayerReady = false;
+
+function loadEvData() {
+  if (!evLoadPromise) {
+    evLoadPromise = Promise.all([
+      fetch(EV_URL).then(r => r.json()),
+      fetch(EV_BOUNDARIES_URL).then(r => r.json()),
+    ]).then(([ev, boundaries]) => {
+      evNational = ev.national;
+      evRegions = ev.regions;
+      evTlas = ev.tlas;
+      evTrends = ev.trends;
+      evCategoryNames = ev.categories || [];
+      evUpdated = ev.updated ? new Date(ev.updated + "T00:00:00Z") : null;
+      evCategorySelectEl.innerHTML = `<option value="All">All EVs</option>` +
+        evCategoryNames.map(c => `<option value="${c}">${c}</option>`).join("");
+      addEvLayer(boundaries);
+    });
+  }
+  return evLoadPromise;
+}
+
+function addEvLayer(boundaries) {
+  const beforeId = map.getLayer("street-points") ? "street-points" : undefined;
+  map.addSource("ev-tlas", { type: "geojson", data: boundaries });
+  map.addLayer({
+    id: "ev-fill", type: "fill", source: "ev-tlas",
+    layout: { visibility: "none" },
+    paint: {
+      // % of the local fleet that's electric -- a real per-district
+      // figure (see build_ev_data), not a bucketed estimate.
+      "fill-color": [
+        "interpolate", ["linear"], ["coalesce", ["get", "pct"], 0],
+        0, "#0d2436", 0.5, "#0e7490", 2, "#22d3ee", 5, "#a5f3fc"
+      ],
+      "fill-opacity": 0.75
+    }
+  }, beforeId);
+  map.addLayer({
+    id: "ev-outline", type: "line", source: "ev-tlas",
+    layout: { visibility: "none" },
+    paint: { "line-color": "rgba(255,255,255,.35)", "line-width": 1 }
+  }, beforeId);
+
+  map.on("click", "ev-fill", e => {
+    const p = e.features[0].properties;
+    new maplibregl.Popup()
+      .setLngLat(e.lngLat)
+      .setHTML(
+        `<strong>${p.name}</strong><br><small class="muted">${p.region || ""}</small><br>` +
+        `Electric vehicles: <strong>${fmt(p.ev)}</strong>` +
+        (p.pct != null ? `<br>${(+p.pct).toFixed(1)}% of the local fleet` : "")
+      ).addTo(map);
+  });
+  map.on("mouseenter", "ev-fill", () => map.getCanvas().style.cursor = "pointer");
+  map.on("mouseleave", "ev-fill", () => map.getCanvas().style.cursor = "");
+
+  evLayerReady = true;
+}
+
+function setEvLayerVisible(visible) {
+  if (!evLayerReady) return;
+  const v = visible ? "visible" : "none";
+  map.setLayoutProperty("ev-fill", "visibility", v);
+  map.setLayoutProperty("ev-outline", "visibility", v);
+}
+
+function setSolarLayersVisible(visible) {
+  const v = visible ? "visible" : "none";
+  ["street-points", "street-labels", "spider-legs", "spider-nodes", "spider-labels"].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v);
+  });
+}
+
+// Which region the map is centred on, for EV mode -- queries the
+// actually-rendered choropleth at the viewport centre (real pixel
+// hit-testing against the drawn polygons) rather than a custom
+// point-in-polygon or bbox-overlap approximation.
+function evFocusRegion() {
+  if (!evLayerReady || !map.getZoom || map.getZoom() < 6) return { level: "national", name: "New Zealand" };
+  const hits = map.queryRenderedFeatures(map.project(map.getCenter()), { layers: ["ev-fill"] });
+  if (!hits.length) return { level: "national", name: "New Zealand" };
+  const regionName = hits[0].properties.region;
+  const data = evRegions.find(r => r.name === regionName);
+  return data ? { level: "region", name: regionName, data } : { level: "national", name: "New Zealand" };
+}
+
+function evVisibleTlas() {
+  const view = currentView();
+  return view ? evTlas.filter(t => bboxIntersects(t.bbox, view)) : evTlas;
+}
+
+function evRowHTML(t, rank) {
+  const region = t.region
+    ? `<span class="row-region" data-ev-region="${t.region}">${t.region}</span>`
+    : "";
+  const cats = evCategoryNames.map(cat => {
+    const c = (t.categories && t.categories[cat]) || { ev: 0, pct: null };
+    const pctText = c.pct != null ? `${c.pct.toFixed(1)}% of total` : "no data";
+    return `<div class="ev-cat-line"><span>Electric ${cat}</span><span class="n">${fmt(c.ev)}, ${pctText}</span></div>`;
+  }).join("");
+  return `
+    <div class="ev-row">
+      <div class="ev-row-head">
+        <span class="row-rank">${rank}</span>
+        <div class="row-body">
+          <div class="row-name">${t.name}</div>
+          <div class="row-sub">${region}</div>
+        </div>
+        <div class="ev-row-overall">
+          <span class="headline">${fmt(t.ev)} EVs</span>
+          <span class="detail">${t.pct != null ? t.pct.toFixed(1) + "% of fleet" : ""}</span>
+        </div>
+      </div>
+      <div class="ev-categories">${cats}</div>
+    </div>`;
+}
+
+function renderEvBoard() {
+  renderEvTopbar();
+  const visible = evVisibleTlas();
+
+  if (!evTlas.length) {
+    boardEl.innerHTML = `<div class="loading-note">Loading EV data…</div>`;
+    return;
+  }
+  if (!visible.length) {
+    boardEl.innerHTML = `<div class="empty-note">No districts in this view — zoom out or pan to New Zealand.</div>`;
+    return;
+  }
+  boardEl.innerHTML = visible.map((t, i) => evRowHTML(t, i + 1)).join("");
+}
+
+function renderEvTopbar() {
+  currentFocus = evFocusRegion();
+  const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
+  const segs = [`<span class="stat-seg">Electric vehicles: <strong>${fmt(stats.ev)}</strong></span>`];
+  if (stats.pct != null) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of the fleet</span>`);
+  const chartOpen = topbarEl.classList.contains("expanded");
+  let html = `<div class="topbar-toprow">`;
+  html += `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span></div>`;
+  if (evUpdated) {
+    html += `<div class="updated-line">Updated ${MONTHS3[evUpdated.getUTCMonth()]} ${evUpdated.getUTCFullYear()}</div>`;
+  }
+  html += `</div>`;
+  html += `<div class="stat-line">${segs.join("")}</div>`;
+  html += `<button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button>`;
+  topbarStatsEl.innerHTML = html;
+
+  if (chartOpen) renderFocusChart();
+}
+
+function setDataset(name) {
+  if (name === DATASET) return Promise.resolve();
+  const go = () => {
+    DATASET = name;
+    datasetSwitchEl.querySelectorAll(".dataset-btn").forEach(b => b.classList.toggle("active", b.dataset.dataset === name));
+    listCaptionEl.textContent = name === "ev" ? "Districts within map view" : "Towns within map view";
+    evCategorySelectEl.classList.toggle("hidden", name !== "ev");
+    setSolarLayersVisible(name === "solar");
+    setEvLayerVisible(name === "ev");
+    if (isChartOpen()) closeChartPanel();   // series differ between datasets -- avoid showing a stale chart
+    renderBoard();
+  };
+  if (name === "ev") return loadEvData().then(go);
+  go();
+  return Promise.resolve();
+}
+
+datasetSwitchEl.addEventListener("click", e => {
+  const btn = e.target.closest(".dataset-btn");
+  if (btn) setDataset(btn.dataset.dataset);
+});
 
 /* ================= TREND CHART ================= */
 /* Monthly install history since 2014, plus % of installs with a
@@ -812,16 +1066,83 @@ function renderChartSelection(td, value) {
   if (s) drawTrendChart(td.dates, s.installs, s.battery);
 }
 
+// EV chart: same idea as the solar one, but a single line (cumulative
+// EVs on the road, by first-registration year -- see fetch_ev_trends)
+// rather than a dual install/battery pair, and with a second dropdown
+// for which vehicle category to show.
+function drawEvChart(dates, series) {
+  const W = 700, H = 320, L = 48, R = 20, T = 14, B = 26;
+  const x0 = L, x1 = W - R, y0 = T, y1 = H - B;
+  const n = dates.length;
+  const xAt = i => x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0);
+  const maxV = Math.max(...series, 1) * 1.08;
+  const yAt = v => y1 - Math.min(1, v / maxV) * (y1 - y0);
+
+  const path = "M" + series.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" L");
+
+  let grid = "";
+  for (let f = 0; f <= 1; f += 0.25) {
+    const y = (y1 - f * (y1 - y0)).toFixed(1);
+    grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="rgba(255,255,255,.08)"/>`;
+    grid += `<text x="${x0 - 6}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="#8a96a3">${fmt(Math.round(f * maxV))}</text>`;
+  }
+  let xLabels = "";
+  const ticks = Math.min(6, n);
+  for (let t = 0; t < ticks; t++) {
+    const idx = Math.round(t / Math.max(1, ticks - 1) * (n - 1));
+    xLabels += `<text x="${xAt(idx).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9.5" fill="#8a96a3">${dates[idx]}</text>`;
+  }
+
+  chartSvgEl.innerHTML = grid + xLabels + `<path d="${path}" fill="none" stroke="#22d3ee" stroke-width="2"/>`;
+}
+
+function populateEvChartSelect(focus) {
+  let html = `<option value="national">New Zealand</option>`;
+  if (focus.level === "region") {
+    html += `<option value="region:${focus.name}" selected>${focus.name} (region)</option>`;
+    for (const t of evTlas) {
+      if (t.region === focus.name) html += `<option value="tla:${t.name}">${t.name}</option>`;
+    }
+  }
+  chartSelectEl.innerHTML = html;
+}
+
+function evTrendSeries(level, name, category) {
+  if (level === "national") return evTrends.national[category];
+  const bucket = level === "region" ? evTrends.regions[category] : evTrends.tlas[category];
+  return bucket ? bucket[name] : null;
+}
+
+function renderEvChartSelection() {
+  const [level, ...rest] = chartSelectEl.value.split(":");
+  const name = rest.join(":");
+  const category = evCategorySelectEl.value || "All";
+  const series = evTrendSeries(level, name, category);
+  if (series) drawEvChart(evTrends.dates, series);
+}
+
 async function renderFocusChart() {
+  if (DATASET === "ev") {
+    populateEvChartSelect(currentFocus);
+    renderEvChartSelection();
+    chartLegendEl.innerHTML = `<span><i class="swatch ev"></i>Electric vehicles on the road</span>`;
+    return;
+  }
   const td = await loadTrends();
   populateChartSelect(td, currentFocus);
   renderChartSelection(td, chartSelectEl.value);
+  chartLegendEl.innerHTML = `<span><i class="swatch installs"></i>Solar installs</span>` +
+    `<span><i class="swatch battery"></i>% of installs with a battery</span>`;
 }
 
 topbarStatsEl.addEventListener("click", e => {
   if (e.target.closest("#chartToggleBtn")) toggleChartPanel();
 });
-chartSelectEl.addEventListener("change", async () => renderChartSelection(await loadTrends(), chartSelectEl.value));
+chartSelectEl.addEventListener("change", async () => {
+  if (DATASET === "ev") { renderEvChartSelection(); return; }
+  renderChartSelection(await loadTrends(), chartSelectEl.value);
+});
+evCategorySelectEl.addEventListener("change", renderEvChartSelection);
 
 /* ================= LOAD ================= */
 
@@ -846,6 +1167,8 @@ chartSelectEl.addEventListener("change", async () => renderChartSelection(await 
 
     renderBoard();
     map.on("moveend", renderBoard);
+
+    if (DATASET_PARAM === "ev") await setDataset("ev");
 
     if (REGION_PARAM) {
       focusOnPlace(REGION_PARAM);

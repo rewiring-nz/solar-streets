@@ -34,8 +34,9 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add docs/streets.geojson docs/meta.json docs/trends.json \
+                  docs/ev.json docs/ev_boundaries.geojson \
                   road_cache.json sa2_areas.json regc_bounds.json town_anchors.json \
-                  previous_counts.json
+                  tla_bounds.json previous_counts.json
           if git diff --staged --quiet; then
             echo "No changes"
           else
