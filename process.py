@@ -710,10 +710,14 @@ def write_region_boundaries(region_tree, tla_region):
     build_region_tree). Solar's install/% join only exists at council
     granularity (EMI has no per-TLA figure), so this isn't a
     finer-grained number, just a finer-grained shape repeating the same
-    real council figure across every TLA within it. The label layer
-    (frontend, keyed off regionData) stays at council granularity on
-    purpose -- 67 labels repeating one of 16 numbers would just be
-    visual noise, not new information.
+    real council figure across every TLA within it. Each feature keeps
+    its own real TLA name (the "tla" property) alongside the council's
+    ("name") specifically so a click can say *which* district this
+    shape is without implying the council-wide numbers are that
+    district's own (see the click handler in docs/index.html). The
+    label layer (frontend, keyed off regionData) stays at council
+    granularity on purpose -- 67 labels repeating one of 16 numbers
+    would just be visual noise, not new information.
     """
     print("Fetching simplified TLA boundaries for the solar choropleth...")
     r = session.get(TLA_SERVICE, timeout=120, params={
@@ -735,7 +739,12 @@ def write_region_boundaries(region_tree, tla_region):
             "type": "Feature",
             "geometry": f["geometry"],
             "properties": {
-                "name": row["name"], "icps": row["icps"], "kW": row["kW"], "pct": row["pct"],
+                # "name" is the parent council (what the numbers below
+                # actually measure); "tla" is this specific shape's own
+                # real name, so a click can say *which* district this is
+                # without implying the council-wide figures are its own.
+                "name": row["name"], "tla": tla_name,
+                "icps": row["icps"], "kW": row["kW"], "pct": row["pct"],
             },
         })
 

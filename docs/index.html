@@ -841,7 +841,7 @@ function loadSolarTownsLayer() {
 function loadSolarRegionsLayer() {
   if (!solarRegionsLoadPromise) {
     solarRegionsLoadPromise = fetch(SOLAR_REGIONS_URL).then(r => r.json()).then(boundaries => {
-      map.addSource("solar-regions", { type: "geojson", data: boundaries });
+      map.addSource("solar-regions", { type: "geojson", data: boundaries, generateId: true });
       map.addLayer({
         id: "solar-regions-fill", type: "fill", source: "solar-regions",
         layout: { visibility: "none" },
@@ -850,13 +850,15 @@ function loadSolarRegionsLayer() {
             "interpolate", ["linear"], ["coalesce", ["get", "pct"], 0],
             0, "#3a2c00", 2, "#7a5c00", 4, "#ffb703", 8, "#ffe08a",
           ],
-          "fill-opacity": 0.75,
+          // Full opacity under the cursor -- a visible cue that each
+          // region is its own clickable shape, not one flat overlay.
+          "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.75],
         },
       });
       map.addLayer({
         id: "solar-regions-outline", type: "line", source: "solar-regions",
         layout: { visibility: "none" },
-        paint: { "line-color": "rgba(255,255,255,.35)", "line-width": 1 },
+        paint: { "line-color": "rgba(0,0,0,.25)", "line-width": 1 },
       });
       map.addSource("solar-region-label-points", {
         type: "geojson",
@@ -882,15 +884,44 @@ function loadSolarRegionsLayer() {
         paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0,0,0,.45)", "text-halo-width": 1 },
       });
       map.on("click", "solar-regions-fill", e => {
-        const r = regionData.find(x => x.name === e.features[0].properties.name);
+        const p = e.features[0].properties;
+        const r = regionData.find(x => x.name === p.name);
         if (!r) return;
+        // EMI's solar/%-of-ICPs join only exists at council granularity
+        // (see write_region_boundaries/process.py) -- every TLA-shaped
+        // tile within a council shares that one real council figure, so
+        // the popup names the specific district clicked (p.tla) but is
+        // explicit that the numbers below are the whole region's, not
+        // that district's own -- otherwise a small shape showing the
+        // full council total reads as a data error, not a real join.
+        const districtLine = (p.tla && p.tla !== r.name)
+          ? `<strong>${p.tla}</strong><br><span style="opacity:.7">${r.name} region</span><br>`
+          : `<strong>${r.name}</strong><br>`;
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
-          `<strong>${r.name}</strong><br>Solar installs: <strong>${fmt(r.icps)}</strong><br>${fmtMW(r.kW)} MW` +
-          (r.pct != null ? `<br>${r.pct.toFixed(1)}% of connections` : "")
+          districtLine +
+          `Solar installs: <strong>${fmt(r.icps)}</strong><br>${fmtMW(r.kW)} MW` +
+          (r.pct != null ? `<br>${r.pct.toFixed(1)}% of connections` : "") +
+          (p.tla && p.tla !== r.name ? `<br><span style="opacity:.6;font-size:.85em">Region-wide figures -- EMI has no separate district total</span>` : "")
         ).addTo(map);
       });
-      map.on("mouseenter", "solar-regions-fill", () => map.getCanvas().style.cursor = "pointer");
-      map.on("mouseleave", "solar-regions-fill", () => map.getCanvas().style.cursor = "");
+      let hoveredRegionId = null;
+      map.on("mousemove", "solar-regions-fill", e => {
+        map.getCanvas().style.cursor = "pointer";
+        const id = e.features[0].id;
+        if (id === hoveredRegionId) return;
+        if (hoveredRegionId != null) {
+          map.setFeatureState({ source: "solar-regions", id: hoveredRegionId }, { hover: false });
+        }
+        hoveredRegionId = id;
+        map.setFeatureState({ source: "solar-regions", id }, { hover: true });
+      });
+      map.on("mouseleave", "solar-regions-fill", () => {
+        map.getCanvas().style.cursor = "";
+        if (hoveredRegionId != null) {
+          map.setFeatureState({ source: "solar-regions", id: hoveredRegionId }, { hover: false });
+        }
+        hoveredRegionId = null;
+      });
     });
   }
   return solarRegionsLoadPromise;
