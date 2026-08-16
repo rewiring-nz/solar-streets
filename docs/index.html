@@ -20,8 +20,8 @@
     --red: #ff5a5a;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
-  #app { position: relative; height: 100%; width: 100%; }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
+  #app { position: relative; height: 100%; width: 100%; overflow: hidden; }
   #app.pseudo-fullscreen { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9999; }
   #map { height: 100%; width: 100%; background: #0b1622; }
 
@@ -197,6 +197,12 @@
       max-height: 55vh;
     }
     #dash.collapsed { transform: translateY(calc(100% + 8px)); }
+    /* Smaller so "Show Chart"/"Show Regions"/"Show Towns" fit on one
+       row instead of wrapping -- the topbar is only as wide as its
+       content up to (100vw - 20px), so four full-size buttons don't
+       all fit on a narrow phone. */
+    .topbar-actions { gap: 4px; }
+    .chart-toggle-btn, .map-mode-btn { padding: 3px 7px; font-size: 9.5px; }
   }
 
   .board { overflow-y: auto; flex: 1; padding: 4px 10px 10px; }
@@ -316,6 +322,7 @@ const REGION_PARAM = (urlParams.get("region") || "").trim();
 const CHART_PARAM = (urlParams.get("chart") || "").toLowerCase();
 const DASH_PARAM = (urlParams.get("dash") || "").toLowerCase();
 const DATASET_PARAM = (urlParams.get("dataset") || "").toLowerCase();
+const GESTURES_PARAM = (urlParams.get("gestures") || "").toLowerCase();
 
 // Inside an iframe (e.g. embedded in Webflow), an ordinary scroll over
 // the map would hijack the page's scroll to zoom the map instead --
@@ -323,7 +330,12 @@ const DATASET_PARAM = (urlParams.get("dataset") || "").toLowerCase();
 // require two fingers on touch), so the page scrolls normally and the
 // map only reacts on a deliberate zoom gesture. Not needed when the
 // map is opened standalone, where there's no page to scroll past.
+// ?gestures=free overrides this off even inside an iframe -- for a
+// page where the map itself IS the whole page (e.g. a fullscreen
+// embed with nothing above or below to scroll past), so a plain
+// scroll zooms immediately instead of requiring Ctrl/Cmd.
 const IN_IFRAME = window.self !== window.top;
+const GESTURES_LOCKED = IN_IFRAME && GESTURES_PARAM !== "free";
 
 /* ================= MAP ================= */
 
@@ -334,7 +346,7 @@ const map = new maplibregl.Map({
   center: [172.8, -41.0],
   zoom: 4.7,
   maxPitch: 80,
-  cooperativeGestures: IN_IFRAME,
+  cooperativeGestures: GESTURES_LOCKED,
   style: {
     version: 8,
     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",

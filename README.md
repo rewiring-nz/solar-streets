@@ -51,7 +51,9 @@ Stats NZ boundaries ────┘    (weekly, in       (static files,         
 Inside an iframe, scroll-to-zoom automatically requires Ctrl/Cmd+scroll
 instead (MapLibre's `cooperativeGestures`), so scrolling past the embed
 scrolls the host page rather than fighting the map. Opened standalone,
-it behaves as a normal map.
+it behaves as a normal map. If the embed *is* the whole page (nothing
+above or below it to scroll past), `?gestures=free` turns that lock
+back off so a plain scroll zooms immediately.
 
 Query params customise what loads, for a specific-region embed or link:
 
@@ -61,6 +63,7 @@ Query params customise what loads, for a specific-region embed or link:
 | `?region=` | any region/district/town name | Flies there on load (macron-insensitive, e.g. `Wanaka` matches `Wānaka`) |
 | `?chart=` | `open` | Opens the trend chart by default (always closed on mobile-width screens) |
 | `?dash=` | `closed` | Starts with the regions/districts list collapsed |
+| `?gestures=` | `free` | Turns off the iframe scroll-gesture lock, for a fullscreen embed with no page to scroll past |
 
 e.g. `https://YOUR-USERNAME.github.io/YOUR-REPO/?dataset=ev&region=Canterbury&chart=open`
 
