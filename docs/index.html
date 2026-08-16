@@ -24,6 +24,14 @@
   #app.pseudo-fullscreen { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9999; }
   #map { height: 100%; width: 100%; background: #0b1622; }
 
+  /* The corner attribution only needs to carry what the imagery
+     provider's terms require -- kept tiny so it doesn't compete with
+     the map itself, smaller still on mobile. The full source list
+     lives under the chart instead (see .data-sources). */
+  .maplibregl-ctrl-attrib { font-size: 10px; padding: 0 6px; }
+  .maplibregl-ctrl-attrib a { color: var(--dim); }
+  @media (max-width: 767px) { .maplibregl-ctrl-attrib { font-size: 8px; } }
+
   .maplibregl-popup-content {
     font-size: 13px; line-height: 1.5; background: var(--glass-hi); color: var(--text);
     backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 10px;
@@ -93,13 +101,17 @@
   .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
   .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; white-space: nowrap; flex: none; }
 
-  .chart-toggle-btn {
-    display: block; margin-top: 6px; padding: 4px 12px; border: none; border-radius: 7px;
-    background: var(--amber); color: #241a00; font-size: 11px; font-weight: 700;
-    letter-spacing: .2px; cursor: pointer; box-shadow: 0 0 10px rgba(255,183,3,.3);
+  .topbar-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chart-toggle-btn, .map-mode-btn {
+    padding: 4px 12px; border: none; border-radius: 7px; font-size: 11px; font-weight: 700;
+    letter-spacing: .2px; cursor: pointer;
   }
+  .chart-toggle-btn { background: var(--amber); color: #241a00; box-shadow: 0 0 10px rgba(255,183,3,.3); }
   body.dataset-ev .chart-toggle-btn { background: var(--cyan); color: #062229; box-shadow: 0 0 10px rgba(34,211,238,.3); }
   .chart-toggle-btn:hover { filter: brightness(1.08); }
+  .map-mode-btn { background: rgba(255,255,255,.08); color: var(--dim); }
+  .map-mode-btn.active { background: var(--amber); color: #241a00; box-shadow: 0 0 10px rgba(255,183,3,.3); }
+  .map-mode-btn:not(.active):hover { background: rgba(255,255,255,.16); color: var(--text); }
 
   .topbar-chart { max-height: 0; overflow: hidden; transition: max-height .25s ease; border-top: 1px solid transparent; }
   #topbar.expanded .topbar-chart { max-height: 420px; border-top-color: var(--border); }
@@ -213,6 +225,7 @@
   .ev-categories { margin: 6px 0 0; padding-left: 24px; }
   .ev-cat-line { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--dim); line-height: 1.65; white-space: nowrap; }
   .ev-cat-line .n { color: var(--text); font-weight: 600; }
+  .ev-cat-line .swatch { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; vertical-align: middle; }
 
   .empty-note { padding: 20px 16px; font-size: 12.5px; color: var(--dim); text-align: center; }
 
@@ -231,6 +244,7 @@
   .chart-legend .installs { background: var(--amber); }
   .chart-legend .battery { background: #38bdf8; }
   .chart-legend .ev { background: var(--cyan); }
+  .data-sources { font-size: 9.5px; color: var(--dim); opacity: .75; margin-top: 10px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -254,6 +268,10 @@
           <div class="chart-legend" id="chartLegend">
             <span><i class="swatch installs"></i>Solar installs</span>
             <span><i class="swatch battery"></i>% of installs with a battery</span>
+          </div>
+          <div class="data-sources">
+            Solar: EMI (Electricity Authority) · EVs: NZTA Motor Vehicle Register ·
+            Streets: OpenStreetMap contributors · Areas: Stats NZ · Towns: LINZ
           </div>
         </div>
       </div>
@@ -280,6 +298,7 @@ const META_URL = "meta.json";
 const TRENDS_URL = "trends.json";
 const EV_URL = "ev.json";
 const EV_BOUNDARIES_URL = "ev_boundaries.geojson";
+const SOLAR_REGIONS_URL = "region_boundaries.geojson";
 
 const LINZ_API_KEY = "";
 const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -320,9 +339,11 @@ const map = new maplibregl.Map({
         type: "raster",
         tiles: [usingLinz ? LINZ_TILES(LINZ_API_KEY.trim()) : ESRI_TILES],
         tileSize: 256, maxzoom: 19,
-        attribution: (usingLinz ? "Basemap © LINZ CC BY 4.0" : "Imagery © Esri")
-          + " · Solar data: EMI (Electricity Authority)"
-          + " · Street locations: © OpenStreetMap contributors · Areas: Stats NZ"
+        // Just the imagery credit here (what the tile provider's terms
+        // actually require on-screen) -- the rest of the real data
+        // sources are listed once, under the chart, rather than
+        // stacking up in this corner every time a new dataset is added.
+        attribution: usingLinz ? "Basemap © LINZ CC BY 4.0" : "Imagery © Esri"
       }
     },
     layers: [{ id: "sat", type: "raster", source: "sat" }]
@@ -554,6 +575,12 @@ let currentFocus = { level: "national", name: "New Zealand" };
 // pages, so switching is instant once the EV data's been lazy-loaded.
 let DATASET = "solar";
 
+// Solar-only: which map layer is shown -- "points" (per-street dots,
+// the default), "towns" (one aggregated dot per town), or "regions" (a
+// choropleth of the 16 councils, mirroring the EV dashboard's district
+// view). Irrelevant while DATASET === "ev".
+let SOLAR_MODE = "points";
+
 const fmt = n => n.toLocaleString();
 const fmtMW = kW => (kW / 1000).toLocaleString(undefined, { maximumFractionDigits: kW >= 10000 ? 0 : 1 });
 const MONTHS3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -678,7 +705,12 @@ function renderTopbar() {
   }
   html += `</div>`;
   html += `<div class="stat-line">${segs.join("")}</div>`;
+  html += `<div class="topbar-actions">`;
   html += `<button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button>`;
+  html += ["points", "regions", "towns"].map(mode =>
+    `<button type="button" class="map-mode-btn${SOLAR_MODE === mode ? " active" : ""}" data-mode="${mode}">Show ${mode[0].toUpperCase()}${mode.slice(1)}</button>`
+  ).join("");
+  html += `</div>`;
   topbarStatsEl.innerHTML = html;
 
   if (chartOpen) renderFocusChart();
@@ -711,6 +743,7 @@ function rowHTML(t, rank) {
 
 function renderBoard() {
   if (DATASET === "ev") { renderEvBoard(); return; }
+  if (SOLAR_MODE === "regions") { renderSolarRegionBoard(); return; }
   renderTopbar();
   const visible = visibleTowns();
 
@@ -741,6 +774,174 @@ boardEl.addEventListener("click", e => {
   const [s, w, n, e2] = r.bbox;
   map.fitBounds([[w, s], [e2, n]], { padding: 40, duration: 800 });
 });
+
+/* ================= SOLAR MAP MODES (points / towns / regions) ================= */
+/* "Regions" mirrors the EV dashboard's district choropleth almost
+   exactly (real council polygons, one label per region via a point
+   source, click popup) -- just recoloured amber and fed from
+   regionData/region_boundaries.geojson instead of evRegions/
+   ev_boundaries.geojson. "Towns" is a lighter touch: one aggregated
+   dot per town instead of per street, built client-side from townData
+   (already loaded), no extra fetch needed. */
+
+let solarTownsLayerReady = false;
+let solarRegionsLoadPromise = null;
+
+function ensureSolarTownsLayer() {
+  if (solarTownsLayerReady) return;
+  map.addSource("solar-towns", {
+    type: "geojson",
+    data: {
+      type: "FeatureCollection",
+      features: townData.map(t => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [t.lng, t.lat] },
+        properties: { name: t.name, icps: t.icps, kW: t.kW },
+      })),
+    },
+  });
+  map.addLayer({
+    id: "solar-town-points", type: "circle", source: "solar-towns",
+    layout: { visibility: "none" },
+    paint: {
+      "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 5, 10, 14, 30, 26],
+      "circle-color": DOT_COLOR, "circle-opacity": .85,
+      "circle-stroke-width": 1.5, "circle-stroke-color": "rgba(0,0,0,.85)",
+    },
+  });
+  map.on("click", "solar-town-points", e => {
+    const p = e.features[0].properties;
+    new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
+      `<strong>${p.name}</strong><br>Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW`
+    ).addTo(map);
+  });
+  map.on("mouseenter", "solar-town-points", () => map.getCanvas().style.cursor = "pointer");
+  map.on("mouseleave", "solar-town-points", () => map.getCanvas().style.cursor = "");
+  solarTownsLayerReady = true;
+}
+
+function loadSolarRegionsLayer() {
+  if (!solarRegionsLoadPromise) {
+    solarRegionsLoadPromise = fetch(SOLAR_REGIONS_URL).then(r => r.json()).then(boundaries => {
+      map.addSource("solar-regions", { type: "geojson", data: boundaries });
+      map.addLayer({
+        id: "solar-regions-fill", type: "fill", source: "solar-regions",
+        layout: { visibility: "none" },
+        paint: {
+          "fill-color": [
+            "interpolate", ["linear"], ["coalesce", ["get", "pct"], 0],
+            0, "#3a2c00", 2, "#7a5c00", 4, "#ffb703", 8, "#ffe08a",
+          ],
+          "fill-opacity": 0.75,
+        },
+      });
+      map.addLayer({
+        id: "solar-regions-outline", type: "line", source: "solar-regions",
+        layout: { visibility: "none" },
+        paint: { "line-color": "rgba(255,255,255,.35)", "line-width": 1 },
+      });
+      map.addSource("solar-region-label-points", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: regionData.filter(r => r.lat != null).map(r => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [r.lng, r.lat] },
+            properties: { pct: r.pct },
+          })),
+        },
+      });
+      map.addLayer({
+        id: "solar-region-labels", type: "symbol", source: "solar-region-label-points",
+        layout: {
+          visibility: "none",
+          "text-field": [
+            "case", ["==", ["get", "pct"], null], "",
+            ["concat", ["number-format", ["get", "pct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
+          ],
+          "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": false,
+        },
+        paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0,0,0,.45)", "text-halo-width": 1 },
+      });
+      map.on("click", "solar-regions-fill", e => {
+        const r = regionData.find(x => x.name === e.features[0].properties.name);
+        if (!r) return;
+        new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
+          `<strong>${r.name}</strong><br>Solar installs: <strong>${fmt(r.icps)}</strong><br>${fmtMW(r.kW)} MW` +
+          (r.pct != null ? `<br>${r.pct.toFixed(1)}% of connections` : "")
+        ).addTo(map);
+      });
+      map.on("mouseenter", "solar-regions-fill", () => map.getCanvas().style.cursor = "pointer");
+      map.on("mouseleave", "solar-regions-fill", () => map.getCanvas().style.cursor = "");
+    });
+  }
+  return solarRegionsLoadPromise;
+}
+
+// Shows exactly the layers for one solar mode (or none, when the EV
+// dataset is active) -- mode === null hides all of them.
+function applySolarLayers(mode) {
+  const v = m => m === mode ? "visible" : "none";
+  ["street-points", "street-labels", "spider-legs", "spider-nodes", "spider-labels"].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("points"));
+  });
+  if (map.getLayer("solar-town-points")) map.setLayoutProperty("solar-town-points", "visibility", v("towns"));
+  ["solar-regions-fill", "solar-regions-outline", "solar-region-labels"].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("regions"));
+  });
+}
+
+function setSolarMode(mode) {
+  if (mode === SOLAR_MODE) return;
+  const go = () => {
+    SOLAR_MODE = mode;
+    listCaptionEl.textContent = mode === "regions" ? "Regions within map view" : "Towns within map view";
+    applySolarLayers(mode);
+    renderBoard();
+  };
+  if (mode === "towns") { ensureSolarTownsLayer(); go(); }
+  else if (mode === "regions") { loadSolarRegionsLayer().then(go); }
+  else go();
+}
+
+function visibleRegions() {
+  const view = currentView();
+  return view ? regionData.filter(r => bboxIntersects(r.bbox, view)) : regionData;
+}
+
+function solarRegionRowHTML(r, rank) {
+  return `
+    <div class="row-main">
+      <span class="row-rank">${rank}</span>
+      <div class="row-body">
+        <div class="row-name">${r.name}</div>
+      </div>
+      <div class="row-metric">
+        <span class="headline">${fmt(r.icps)} installs</span>
+        <span class="detail">${fmtMW(r.kW)} MW${r.pct != null ? ` · ${r.pct.toFixed(1)}%` : ""}</span>
+      </div>
+    </div>`;
+}
+
+function renderSolarRegionBoard() {
+  renderTopbar();
+  const visible = visibleRegions().slice().sort((a, b) => b.icps - a.icps);
+
+  if (!regionData.length) {
+    boardEl.innerHTML = `<div class="loading-note">No region data in this build yet.</div>`;
+    return;
+  }
+  if (!visible.length) {
+    boardEl.innerHTML = `<div class="empty-note">No regions in this view — zoom out or pan to New Zealand.</div>`;
+    return;
+  }
+  boardEl.innerHTML = visible.map((r, i) => solarRegionRowHTML(r, i + 1)).join("");
+}
+
+// The chart-toggle-btn / map-mode-btn delegation lives on topbarStatsEl
+// itself further down (with the trend-chart wiring); the mode buttons'
+// own click routing is added there too so both concerns share one
+// listener rather than two competing ones on the same element.
 
 // The regions list and the trend chart share the top-left corner of the
 // screen, so only one is ever open at a time: opening one while the
@@ -909,7 +1110,8 @@ function addEvLayer(boundaries) {
     const catLines = EV_CHART_ORDER.map(cat => {
       const c = (t.categories && t.categories[cat]) || {};
       const pctText = c.pct != null ? `${c.pct.toFixed(1)}%` : "no data";
-      return `<div class="ev-cat-line"><span>Electric ${cat}</span><span class="n">${fmt(c.ev || 0)}, ${pctText} of total</span></div>`;
+      const color = EV_CATEGORY_COLORS[cat] || "#888";
+      return `<div class="ev-cat-line"><span><i class="swatch" style="background:${color}"></i>Electric ${cat}</span><span class="n">${fmt(c.ev || 0)}, ${pctText} of total</span></div>`;
     }).join("");
     new maplibregl.Popup({ maxWidth: "260px" })
       .setLngLat(e.lngLat)
@@ -932,13 +1134,6 @@ function setEvLayerVisible(visible) {
   map.setLayoutProperty("ev-fill", "visibility", v);
   map.setLayoutProperty("ev-outline", "visibility", v);
   map.setLayoutProperty("ev-labels", "visibility", v);
-}
-
-function setSolarLayersVisible(visible) {
-  const v = visible ? "visible" : "none";
-  ["street-points", "street-labels", "spider-legs", "spider-nodes", "spider-labels"].forEach(id => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v);
-  });
 }
 
 // Which region the map is centred on, for EV mode -- queries the
@@ -966,7 +1161,8 @@ function evRowHTML(t, rank) {
   const cats = evCategoryNames.map(cat => {
     const c = (t.categories && t.categories[cat]) || { ev: 0, pct: null };
     const pctText = c.pct != null ? `${c.pct.toFixed(1)}% of total` : "no data";
-    return `<div class="ev-cat-line"><span>Electric ${cat}</span><span class="n">${fmt(c.ev)}, ${pctText}</span></div>`;
+    const color = EV_CATEGORY_COLORS[cat] || "#888";
+    return `<div class="ev-cat-line"><span><i class="swatch" style="background:${color}"></i>Electric ${cat}</span><span class="n">${fmt(c.ev)}, ${pctText}</span></div>`;
   }).join("");
   return `
     <div class="ev-row">
@@ -1013,7 +1209,7 @@ function renderEvTopbar() {
   }
   html += `</div>`;
   html += `<div class="stat-line">${segs.join("")}</div>`;
-  html += `<button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button>`;
+  html += `<div class="topbar-actions"><button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button></div>`;
   topbarStatsEl.innerHTML = html;
 
   if (chartOpen) renderFocusChart();
@@ -1025,13 +1221,22 @@ function setDataset(name) {
     DATASET = name;
     document.body.classList.toggle("dataset-ev", name === "ev");   // swaps the shared yellow accents to blue
     datasetSwitchEl.querySelectorAll(".dataset-btn").forEach(b => b.classList.toggle("active", b.dataset.dataset === name));
-    listCaptionEl.textContent = name === "ev" ? "Districts within map view" : "Towns within map view";
-    setSolarLayersVisible(name === "solar");
+    if (name === "ev") {
+      listCaptionEl.textContent = "Districts within map view";
+      applySolarLayers(null);
+    } else {
+      // Returning to solar restores whichever map mode was last picked
+      // (points/towns/regions), rather than always resetting to points.
+      listCaptionEl.textContent = SOLAR_MODE === "regions" ? "Regions within map view" : "Towns within map view";
+      applySolarLayers(SOLAR_MODE);
+    }
     setEvLayerVisible(name === "ev");
     if (isChartOpen()) closeChartPanel();   // series differ between datasets -- avoid showing a stale chart
     renderBoard();
   };
   if (name === "ev") return loadEvData().then(go);
+  if (name === "solar" && SOLAR_MODE === "regions") return loadSolarRegionsLayer().then(go);
+  if (name === "solar" && SOLAR_MODE === "towns") ensureSolarTownsLayer();
   go();
   return Promise.resolve();
 }
@@ -1222,7 +1427,9 @@ async function renderFocusChart() {
 }
 
 topbarStatsEl.addEventListener("click", e => {
-  if (e.target.closest("#chartToggleBtn")) toggleChartPanel();
+  if (e.target.closest("#chartToggleBtn")) { toggleChartPanel(); return; }
+  const modeBtn = e.target.closest(".map-mode-btn");
+  if (modeBtn) setSolarMode(modeBtn.dataset.mode);
 });
 chartSelectEl.addEventListener("change", async () => {
   if (DATASET === "ev") { renderEvChartSelection(); return; }

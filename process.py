@@ -145,6 +145,7 @@ SA2_CACHE = "sa2_areas.json"        # {sa2: [name, s, w, n, e]}   -- committed
 OUT_GEOJSON = "docs/streets.geojson"
 OUT_META = "docs/meta.json"
 OUT_TRENDS = "docs/trends.json"
+OUT_REGION_BOUNDARIES = "docs/region_boundaries.geojson"
 
 # EMI's "Installed distributed generation trends" report (GUEHMT) --
 # monthly ICP-count history since 2014, exportable as CSV per fuel type
@@ -587,6 +588,59 @@ def write_ev_boundaries(ev_tla_rows):
     save(OUT_EV_BOUNDARIES, {"type": "FeatureCollection", "features": features})
 
 
+def write_region_boundaries(region_tree):
+    """docs/region_boundaries.geojson -- regional council polygons for
+    solar's "Regions" map mode, tagged with each region's real
+    installs/MW/% (see build_region_tree). Same visually-simplified
+    fetch as write_ev_boundaries -- fine for a filled map layer, not
+    point-in-polygon.
+    """
+    print("Fetching simplified regional council boundaries for the solar choropleth...")
+    r = session.get(REGC_SERVICE, timeout=120, params={
+        "where": "1=1", "outFields": "REGC_name",
+        "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.005,
+        "f": "geojson",
+    })
+    r.raise_for_status()
+    geo = r.json()
+
+    by_name = {row["name"]: row for row in region_tree}
+    features = []
+    for f in geo["features"]:
+        name = f["properties"].get("REGC_name", "")
+        if name.endswith(" Region"):
+            name = name[:-len(" Region")]
+        row = by_name.get(name)
+        if not row:
+            continue
+        features.append({
+            "type": "Feature",
+            "geometry": f["geometry"],
+            "properties": {
+                "name": name, "icps": row["icps"], "kW": row["kW"], "pct": row["pct"],
+            },
+        })
+
+    save(OUT_REGION_BOUNDARIES, {"type": "FeatureCollection", "features": features})
+
+
+def _representative_point(coords, is_multi):
+    """A single representative point for a (possibly fragmented)
+    polygon -- the centroid of its largest ring, so a convoluted
+    coastline (many small islands/inlets, e.g. Marlborough Sounds)
+    still gets exactly one sensible anchor point instead of one per
+    fragment. Used for region assignment (council_of_point needs a
+    point, not a whole polygon) and as the single deliberate label
+    anchor for choropleth map layers -- placing a symbol layer directly
+    on a polygon source puts one label per *ring*, which spams a
+    fragmented coastline with dozens of duplicate labels for one area.
+    """
+    ring = max((poly[0] for poly in (coords if is_multi else [coords])), key=len)
+    lat = sum(p[1] for p in ring) / len(ring)
+    lng = sum(p[0] for p in ring) / len(ring)
+    return lat, lng
+
+
 def assign_tla_regions(tlas, councils):
     """Which region each TLA belongs to -- derived geometrically (real
     point-in-polygon against council boundaries, same function used for
@@ -595,23 +649,14 @@ def assign_tla_regions(tlas, councils):
     on. Verified against all 67 real TLAs; TLA_REGION_OVERRIDES covers
     the one genuine exception (a TLA whose territory itself straddles
     two regions).
-    Also returns one representative point per TLA (the same centroid
-    used for the region test) -- needed as a single, deliberate label
-    anchor for the frontend's choropleth: a symbol layer placed directly
-    on the polygon source puts one label per *ring*, and a coastline as
-    convoluted as Marlborough Sounds' splits into dozens of separate
-    small rings (islands, inlets), which spammed the map with dozens of
-    duplicate "0.8%" labels for the one district.
+
+    Also returns each TLA's representative point (see
+    _representative_point) -- the frontend's EV choropleth label layer.
     """
     result = {}
     centroids = {}
     for name, t in tlas.items():
-        ring = max(
-            (poly[0] for poly in (t["coords"] if t["multi"] else [t["coords"]])),
-            key=len,
-        )
-        lat = sum(p[1] for p in ring) / len(ring)
-        lng = sum(p[0] for p in ring) / len(ring)
+        lat, lng = _representative_point(t["coords"], t["multi"])
         centroids[name] = (lat, lng)
         if name in TLA_REGION_OVERRIDES:
             result[name] = TLA_REGION_OVERRIDES[name]
@@ -627,10 +672,11 @@ def build_region_tree(networks, total_icps, council_bounds):
     fetch_total_icps). The council grouping on top is a display choice
     (NETWORK_TO_COUNCIL), never a fabricated number.
 
-    This isn't shown as a list in the dashboard (see build_towns for
-    that) -- it only powers the "National"/"within map view" stat
-    aggregates, which need a real total-ICP denominator that only
-    exists at council granularity.
+    Powers the "National"/"within map view" stat aggregates (which need
+    a real total-ICP denominator that only exists at council
+    granularity), and -- via lat/lng, the same representative-point
+    idea used for the EV choropleth's labels -- the solar dashboard's
+    own "Regions" map mode.
     """
     councils = {}
     # Union with total_icps: a network can have real connections but zero
@@ -648,13 +694,17 @@ def build_region_tree(networks, total_icps, council_bounds):
 
     tree = []
     for council, acc in councils.items():
+        bounds = council_bounds.get(council)
+        lat, lng = _representative_point(bounds["coords"], bounds["multi"]) if bounds else (None, None)
         tree.append({
             "name": council,
             "icps": acc["icps"],
             "kW": round(acc["kW"], 1),
             "totalIcps": acc["totalIcps"],
             "pct": round(acc["icps"] / acc["totalIcps"] * 100, 2) if acc["totalIcps"] else 0,
-            "bbox": council_bounds.get(council, {}).get("bbox"),
+            "bbox": bounds.get("bbox") if bounds else None,
+            "lat": round(lat, 4) if lat is not None else None,
+            "lng": round(lng, 4) if lng is not None else None,
         })
     tree.sort(key=lambda r: r["pct"], reverse=True)
     return tree
@@ -1294,6 +1344,12 @@ def main():
     council_pct = {r["name"]: r["pct"] for r in region_tree}
     for t in towns:
         t["councilPct"] = council_pct.get(t["council"], 0)
+
+    if region_tree:
+        try:
+            write_region_boundaries(region_tree)
+        except Exception as exc:                       # noqa: BLE001
+            print(f"Region boundaries unavailable ({exc}) -- solar's Regions map mode will be omitted")
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
     save("previous_counts.json",
