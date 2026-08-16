@@ -299,6 +299,7 @@ const TRENDS_URL = "trends.json";
 const EV_URL = "ev.json";
 const EV_BOUNDARIES_URL = "ev_boundaries.geojson";
 const SOLAR_REGIONS_URL = "region_boundaries.geojson";
+const TOWN_BOUNDARIES_URL = "town_boundaries.geojson";
 
 const LINZ_API_KEY = "";
 const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -780,44 +781,42 @@ boardEl.addEventListener("click", e => {
    exactly (real council polygons, one label per region via a point
    source, click popup) -- just recoloured amber and fed from
    regionData/region_boundaries.geojson instead of evRegions/
-   ev_boundaries.geojson. "Towns" is a lighter touch: one aggregated
-   dot per town instead of per street, built client-side from townData
-   (already loaded), no extra fetch needed. */
+   ev_boundaries.geojson. "Towns" shows each town's real footprint (a
+   LINZ locality union, see write_town_boundaries in process.py) as a
+   border rather than a dot -- fetched from town_boundaries.geojson. */
 
-let solarTownsLayerReady = false;
+let solarTownsLoadPromise = null;
 let solarRegionsLoadPromise = null;
 
-function ensureSolarTownsLayer() {
-  if (solarTownsLayerReady) return;
-  map.addSource("solar-towns", {
-    type: "geojson",
-    data: {
-      type: "FeatureCollection",
-      features: townData.map(t => ({
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [t.lng, t.lat] },
-        properties: { name: t.name, icps: t.icps, kW: t.kW },
-      })),
-    },
-  });
-  map.addLayer({
-    id: "solar-town-points", type: "circle", source: "solar-towns",
-    layout: { visibility: "none" },
-    paint: {
-      "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 5, 10, 14, 30, 26],
-      "circle-color": DOT_COLOR, "circle-opacity": .85,
-      "circle-stroke-width": 1.5, "circle-stroke-color": "rgba(0,0,0,.85)",
-    },
-  });
-  map.on("click", "solar-town-points", e => {
-    const p = e.features[0].properties;
-    new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
-      `<strong>${p.name}</strong><br>Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW`
-    ).addTo(map);
-  });
-  map.on("mouseenter", "solar-town-points", () => map.getCanvas().style.cursor = "pointer");
-  map.on("mouseleave", "solar-town-points", () => map.getCanvas().style.cursor = "");
-  solarTownsLayerReady = true;
+// Real town footprints (LINZ locality union, see write_town_boundaries in
+// process.py) rather than dots -- one shape per town, so "Towns" mode reads
+// as actual borders instead of an approximated point size.
+function loadSolarTownsLayer() {
+  if (!solarTownsLoadPromise) {
+    solarTownsLoadPromise = fetch(TOWN_BOUNDARIES_URL).then(r => r.json()).then(boundaries => {
+      map.addSource("solar-town-boundaries", { type: "geojson", data: boundaries });
+      map.addLayer({
+        id: "solar-town-boundaries-fill", type: "fill", source: "solar-town-boundaries",
+        layout: { visibility: "none" },
+        paint: { "fill-color": DOT_COLOR, "fill-opacity": .18 },
+      });
+      map.addLayer({
+        id: "solar-town-boundaries-outline", type: "line", source: "solar-town-boundaries",
+        layout: { visibility: "none" },
+        paint: { "line-color": DOT_COLOR, "line-width": 2 },
+      });
+      map.on("click", "solar-town-boundaries-fill", e => {
+        const p = e.features[0].properties;
+        new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
+          `<strong>${p.name}</strong><br>Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW` +
+          (p.councilPct != null ? `<br>${p.council} region: ${(+p.councilPct).toFixed(1)}%` : "")
+        ).addTo(map);
+      });
+      map.on("mouseenter", "solar-town-boundaries-fill", () => map.getCanvas().style.cursor = "pointer");
+      map.on("mouseleave", "solar-town-boundaries-fill", () => map.getCanvas().style.cursor = "");
+    });
+  }
+  return solarTownsLoadPromise;
 }
 
 function loadSolarRegionsLayer() {
@@ -885,7 +884,9 @@ function applySolarLayers(mode) {
   ["street-points", "street-labels", "spider-legs", "spider-nodes", "spider-labels"].forEach(id => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("points"));
   });
-  if (map.getLayer("solar-town-points")) map.setLayoutProperty("solar-town-points", "visibility", v("towns"));
+  ["solar-town-boundaries-fill", "solar-town-boundaries-outline"].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("towns"));
+  });
   ["solar-regions-fill", "solar-regions-outline", "solar-region-labels"].forEach(id => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("regions"));
   });
@@ -899,7 +900,7 @@ function setSolarMode(mode) {
     applySolarLayers(mode);
     renderBoard();
   };
-  if (mode === "towns") { ensureSolarTownsLayer(); go(); }
+  if (mode === "towns") { loadSolarTownsLayer().then(go); }
   else if (mode === "regions") { loadSolarRegionsLayer().then(go); }
   else go();
 }
@@ -1242,7 +1243,7 @@ function setDataset(name) {
   };
   if (name === "ev") return loadEvData().then(go);
   if (name === "solar" && SOLAR_MODE === "regions") return loadSolarRegionsLayer().then(go);
-  if (name === "solar" && SOLAR_MODE === "towns") ensureSolarTownsLayer();
+  if (name === "solar" && SOLAR_MODE === "towns") return loadSolarTownsLayer().then(go);
   go();
   return Promise.resolve();
 }

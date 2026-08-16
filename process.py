@@ -146,6 +146,7 @@ OUT_GEOJSON = "docs/streets.geojson"
 OUT_META = "docs/meta.json"
 OUT_TRENDS = "docs/trends.json"
 OUT_REGION_BOUNDARIES = "docs/region_boundaries.geojson"
+OUT_TOWN_BOUNDARIES = "docs/town_boundaries.geojson"
 
 # EMI's "Installed distributed generation trends" report (GUEHMT) --
 # monthly ICP-count history since 2014, exportable as CSV per fuel type
@@ -588,36 +589,41 @@ def write_ev_boundaries(ev_tla_rows):
     save(OUT_EV_BOUNDARIES, {"type": "FeatureCollection", "features": features})
 
 
-def write_region_boundaries(region_tree):
-    """docs/region_boundaries.geojson -- regional council polygons for
-    solar's "Regions" map mode, tagged with each region's real
-    installs/MW/% (see build_region_tree). Same visually-simplified
-    fetch as write_ev_boundaries -- fine for a filled map layer, not
-    point-in-polygon.
+def write_region_boundaries(region_tree, tla_region):
+    """docs/region_boundaries.geojson -- for solar's "Regions" map mode.
+
+    Drawn at TLA (district) granularity -- the same simplified shapes
+    the EV choropleth uses, so the two visually match -- but each TLA is
+    coloured by its *parent council's* real installs/MW/% (see
+    build_region_tree). Solar's install/% join only exists at council
+    granularity (EMI has no per-TLA figure), so this isn't a
+    finer-grained number, just a finer-grained shape repeating the same
+    real council figure across every TLA within it. The label layer
+    (frontend, keyed off regionData) stays at council granularity on
+    purpose -- 67 labels repeating one of 16 numbers would just be
+    visual noise, not new information.
     """
-    print("Fetching simplified regional council boundaries for the solar choropleth...")
-    r = session.get(REGC_SERVICE, timeout=120, params={
-        "where": "1=1", "outFields": "REGC_name",
+    print("Fetching simplified TLA boundaries for the solar choropleth...")
+    r = session.get(TLA_SERVICE, timeout=120, params={
+        "where": "1=1", "outFields": "TA_name_ascii",
         "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.005,
         "f": "geojson",
     })
     r.raise_for_status()
     geo = r.json()
 
-    by_name = {row["name"]: row for row in region_tree}
+    by_council = {row["name"]: row for row in region_tree}
     features = []
     for f in geo["features"]:
-        name = f["properties"].get("REGC_name", "")
-        if name.endswith(" Region"):
-            name = name[:-len(" Region")]
-        row = by_name.get(name)
+        tla_name = f["properties"].get("TA_name_ascii", "")
+        row = by_council.get(tla_region.get(tla_name))
         if not row:
             continue
         features.append({
             "type": "Feature",
             "geometry": f["geometry"],
             "properties": {
-                "name": name, "icps": row["icps"], "kW": row["kW"], "pct": row["pct"],
+                "name": row["name"], "icps": row["icps"], "kW": row["kW"], "pct": row["pct"],
             },
         })
 
@@ -752,6 +758,73 @@ def fetch_town_anchors():
     anchors = {name: pt for name, (pop, pt) in best.items()}
     save(TOWN_ANCHORS_CACHE, anchors)
     return anchors
+
+
+def write_town_boundaries(towns):
+    """docs/town_boundaries.geojson -- a real boundary per town, for
+    solar's "Towns" map mode (border lines rather than dots). Built by
+    merging LINZ's own locality polygons within each major_name
+    grouping -- the same field fetch_town_anchors already groups by for
+    its anchor point -- into one shape via shapely, a real union rather
+    than an approximation (e.g. a convex hull, which would bulge over
+    empty land for any spread-out town). A town's footprint can extend
+    well beyond its built-up area for locality groups with surrounding
+    rural land -- that's the real LINZ grouping, the same catchment
+    build_towns' nearest-anchor install assignment already implicitly
+    uses, not an artefact of this merge.
+
+    Needs shapely (not used anywhere else in this file) for the union
+    itself; degrades gracefully (see main()) if it's not installed.
+    """
+    from shapely.geometry import shape, mapping
+    from shapely.ops import unary_union
+
+    print("Fetching LINZ locality polygons for town boundaries...")
+    groups = {}   # major_name -> [shapely geometry, ...]
+    offset = 0
+    while True:
+        r = session.get(TOWN_ANCHORS_SERVICE, timeout=180, params={
+            "where": "1=1", "outFields": "major_name",
+            "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.002,
+            "f": "geojson", "resultOffset": offset, "resultRecordCount": 2000,
+        })
+        r.raise_for_status()
+        feats = r.json().get("features", [])
+        if not feats:
+            break
+        for f in feats:
+            name = f["properties"].get("major_name")
+            geom = f.get("geometry")
+            if not name or not geom:
+                continue
+            # buffer(0) repairs the minor self-intersections
+            # maxAllowableOffset's simplification sometimes introduces --
+            # a standard fix, not a precision compromise: unary_union
+            # below refuses to run on invalid geometry otherwise.
+            groups.setdefault(name, []).append(shape(geom).buffer(0))
+        offset += len(feats)
+
+    by_name = {t["name"]: t for t in towns}
+    features = []
+    for name, polys in groups.items():
+        row = by_name.get(name)
+        if not row:
+            continue
+        try:
+            merged = unary_union(polys)
+        except Exception as exc:                       # noqa: BLE001
+            print(f"  ! Couldn't merge locality boundary for {name}: {exc}")
+            continue
+        features.append({
+            "type": "Feature",
+            "geometry": mapping(merged),
+            "properties": {
+                "name": name, "council": row["council"],
+                "icps": row["icps"], "kW": row["kW"], "councilPct": row.get("councilPct"),
+            },
+        })
+
+    save(OUT_TOWN_BOUNDARIES, {"type": "FeatureCollection", "features": features})
 
 
 def _fetch_guehmt(fuel_type, region_type):
@@ -1255,6 +1328,16 @@ def main():
         print("No council boundaries -- can't batch-geocode; aborting")
         sys.exit(1)
 
+    # TLA boundaries/region-assignment are foundational to both the EV
+    # dashboard and solar's Regions map mode -- fetched once, here, so
+    # neither feature's availability depends on the other's.
+    try:
+        tlas = fetch_territorial_authorities()
+        tla_region, tla_centroids = assign_tla_regions(tlas, council_bounds)
+    except Exception as exc:                       # noqa: BLE001
+        print(f"TLA boundaries unavailable ({exc}) -- EV dashboard and solar's Regions mode will be omitted")
+        tlas, tla_region, tla_centroids = {}, {}, {}
+
     try:
         town_anchors = fetch_town_anchors()
     except Exception as exc:                       # noqa: BLE001
@@ -1275,27 +1358,26 @@ def main():
     except Exception as exc:                       # noqa: BLE001
         print(f"Trend history unavailable ({exc}) -- charts will be omitted")
 
-    try:
-        tlas = fetch_territorial_authorities()
-        tla_region, tla_centroids = assign_tla_regions(tlas, council_bounds)
-        tla_names = {name.upper(): name for name in tlas}
-        overall_ev, overall_total, ev_categories = fetch_ev_snapshot(tla_names)
-        ev_years, ev_trend_series = fetch_ev_trends(tla_names)
-        ev_national, ev_regions, ev_tlas, ev_trends = build_ev_data(
-            tlas, tla_region, tla_centroids, council_bounds,
-            overall_ev, overall_total, ev_categories, ev_years, ev_trend_series,
-        )
-        save(OUT_EV, {
-            "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-            "categories": [name for name, _ in EV_CATEGORIES],
-            "national": ev_national,
-            "regions": ev_regions,
-            "tlas": ev_tlas,
-            "trends": ev_trends,
-        })
-        write_ev_boundaries(ev_tlas)
-    except Exception as exc:                       # noqa: BLE001
-        print(f"EV data unavailable ({exc}) -- EV dashboard will be omitted")
+    if tlas:
+        try:
+            tla_names = {name.upper(): name for name in tlas}
+            overall_ev, overall_total, ev_categories = fetch_ev_snapshot(tla_names)
+            ev_years, ev_trend_series = fetch_ev_trends(tla_names)
+            ev_national, ev_regions, ev_tlas, ev_trends = build_ev_data(
+                tlas, tla_region, tla_centroids, council_bounds,
+                overall_ev, overall_total, ev_categories, ev_years, ev_trend_series,
+            )
+            save(OUT_EV, {
+                "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                "categories": [name for name, _ in EV_CATEGORIES],
+                "national": ev_national,
+                "regions": ev_regions,
+                "tlas": ev_tlas,
+                "trends": ev_trends,
+            })
+            write_ev_boundaries(ev_tlas)
+        except Exception as exc:                       # noqa: BLE001
+            print(f"EV data unavailable ({exc}) -- EV dashboard will be omitted")
 
     region_tree = build_region_tree(networks, total_icps, council_bounds) if networks else []
     national_total = sum(total_icps.values())
@@ -1345,11 +1427,17 @@ def main():
     for t in towns:
         t["councilPct"] = council_pct.get(t["council"], 0)
 
-    if region_tree:
+    if region_tree and tla_region:
         try:
-            write_region_boundaries(region_tree)
+            write_region_boundaries(region_tree, tla_region)
         except Exception as exc:                       # noqa: BLE001
             print(f"Region boundaries unavailable ({exc}) -- solar's Regions map mode will be omitted")
+
+    if towns:
+        try:
+            write_town_boundaries(towns)
+        except Exception as exc:                       # noqa: BLE001
+            print(f"Town boundaries unavailable ({exc}) -- solar's Towns map mode will fall back to dots")
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
     save("previous_counts.json",
