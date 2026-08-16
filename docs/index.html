@@ -168,6 +168,8 @@
   .row-body { flex: 1; min-width: 0; }
   .row-name { font-size: 12.5px; font-weight: 600; line-height: 1.3; }
   .row-sub { font-size: 10.5px; color: var(--dim); line-height: 1.3; }
+  .row-region { cursor: pointer; }
+  .row-region:hover { color: var(--text); text-decoration: underline; }
   .row-metric { flex: none; text-align: right; }
   .row-metric .headline { font-size: 13.5px; font-weight: 700; color: var(--amber); text-shadow: 0 0 10px rgba(255,183,3,.4); white-space: nowrap; }
   .row-metric .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
@@ -390,6 +392,15 @@ function addLayers(data) {
     paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,.75)", "text-halo-width": 1.3 }
   });
 
+  // Below this zoom, dots that appear to overlap on screen are usually
+  // spread across a whole region in reality -- they're only crowded
+  // because the whole country is squeezed into a few hundred pixels.
+  // Spiderfying that (which happened for literally hundreds of points at
+  // once) produced a giant, useless starburst. Zoom in instead; spiderfy
+  // is only meaningful once "near on screen" also means "near on the
+  // ground", which this zoom level roughly marks.
+  const SPIDERFY_MIN_ZOOM = 9;
+
   map.on("click", e => {
     const nodes = map.queryRenderedFeatures(e.point, { layers: ["spider-nodes"] });
     if (nodes.length) { showPopup(nodes[0]); return; }
@@ -399,7 +410,15 @@ function addLayers(data) {
       [[e.point.x - R, e.point.y - R], [e.point.x + R, e.point.y + R]],
       { layers: ["street-points"] });
 
-    if (hits.length > 1) { unspiderfy(); spiderfy(hits, hits[0].geometry.coordinates); return; }
+    if (hits.length > 1) {
+      unspiderfy();
+      if (map.getZoom() < SPIDERFY_MIN_ZOOM) {
+        map.easeTo({ center: e.lngLat, zoom: Math.min(map.getZoom() + 3, SPIDERFY_MIN_ZOOM + 1) });
+      } else {
+        spiderfy(hits, hits[0].geometry.coordinates);
+      }
+      return;
+    }
     if (hits.length === 1) { showPopup(hits[0]); return; }
     unspiderfy();
   });
@@ -492,9 +511,13 @@ function rowHTML(t, rank) {
   // councilPct is the *region's* real % of ICPs (EMI has no total-ICP
   // figure at town granularity to compute an honest town-specific one) --
   // labelled "region" so it's never read as this town's own adoption rate.
-  const region = (t.councilPct != null)
+  // Clickable (if we know the region's bounds) to fly the map there.
+  const label = (t.councilPct != null)
     ? `${t.council} region: ${t.councilPct.toFixed(1)}%`
     : t.council;
+  const region = t.council
+    ? `<span class="row-region" data-council="${t.council}">${label}</span>`
+    : label;
   return `
     <div class="row-main">
       <span class="row-rank">${rank}</span>
@@ -524,6 +547,19 @@ function renderBoard() {
 
   boardEl.innerHTML = visible.map((t, i) => rowHTML(t, i + 1)).join("");
 }
+
+// Clicking a row's region label flies the map to that region's real
+// bounds (regionData's bbox, from actual council boundaries) rather than
+// just the town's own point -- delegated since rows are re-rendered
+// wholesale on every pan/zoom.
+boardEl.addEventListener("click", e => {
+  const el = e.target.closest("[data-council]");
+  if (!el) return;
+  const r = regionData.find(x => x.name === el.getAttribute("data-council"));
+  if (!r || !r.bbox) return;
+  const [s, w, n, e2] = r.bbox;
+  map.fitBounds([[w, s], [e2, n]], { padding: 40, duration: 800 });
+});
 
 // The regions list and the trend chart share the top-left corner of the
 // screen, so only one is ever open at a time: opening one while the
