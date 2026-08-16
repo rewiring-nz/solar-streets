@@ -54,9 +54,13 @@
   #topbarStats { padding: 6px 11px; cursor: pointer; }
   .topbar-label {
     font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
-    color: var(--dim); display: flex; align-items: center; gap: 5px;
+    color: var(--dim); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
   }
-  .topbar-label .chev { font-size: 9px; transition: transform .2s ease; }
+  .topbar-label .topbar-region {
+    font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: normal;
+    color: var(--amber); text-shadow: 0 0 8px rgba(255,183,3,.35);
+  }
+  .topbar-label .chev { font-size: 9px; transition: transform .2s ease; margin-left: auto; }
   #topbar.expanded .topbar-label .chev { transform: rotate(180deg); }
   .stat-line {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 0;
@@ -65,10 +69,6 @@
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
   .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
-  .topbar-region {
-    font-size: 11.5px; font-weight: 700; color: var(--amber);
-    text-shadow: 0 0 8px rgba(255,183,3,.35); margin-top: 2px;
-  }
   .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; margin-top: 3px; }
 
   .topbar-chart { max-height: 0; overflow: hidden; transition: max-height .25s ease; border-top: 1px solid transparent; }
@@ -478,9 +478,8 @@ function renderTopbar() {
   const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
   segs.push(`<span class="stat-seg"><strong>${fmtMW(stats.kW)}</strong> MW</span>`);
   if (stats.pct) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of connections</span>`);
-  let html = `<div class="topbar-label">Region in view <span class="chev">▾</span></div>`;
+  let html = `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span><span class="chev">▾</span></div>`;
   html += `<div class="stat-line">${segs.join("")}</div>`;
-  html += `<div class="topbar-region">${currentFocus.name}</div>`;
   if (metaUpdated) {
     html += `<div class="updated-line">Updated ${MONTHS3[metaUpdated.getUTCMonth()]} ${metaUpdated.getUTCFullYear()}</div>`;
   }
