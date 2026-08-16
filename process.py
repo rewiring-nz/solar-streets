@@ -595,20 +595,29 @@ def assign_tla_regions(tlas, councils):
     on. Verified against all 67 real TLAs; TLA_REGION_OVERRIDES covers
     the one genuine exception (a TLA whose territory itself straddles
     two regions).
+    Also returns one representative point per TLA (the same centroid
+    used for the region test) -- needed as a single, deliberate label
+    anchor for the frontend's choropleth: a symbol layer placed directly
+    on the polygon source puts one label per *ring*, and a coastline as
+    convoluted as Marlborough Sounds' splits into dozens of separate
+    small rings (islands, inlets), which spammed the map with dozens of
+    duplicate "0.8%" labels for the one district.
     """
     result = {}
+    centroids = {}
     for name, t in tlas.items():
-        if name in TLA_REGION_OVERRIDES:
-            result[name] = TLA_REGION_OVERRIDES[name]
-            continue
         ring = max(
             (poly[0] for poly in (t["coords"] if t["multi"] else [t["coords"]])),
             key=len,
         )
         lat = sum(p[1] for p in ring) / len(ring)
         lng = sum(p[0] for p in ring) / len(ring)
+        centroids[name] = (lat, lng)
+        if name in TLA_REGION_OVERRIDES:
+            result[name] = TLA_REGION_OVERRIDES[name]
+            continue
         result[name] = council_of_point(lat, lng, councils)
-    return result
+    return result, centroids
 
 
 def build_region_tree(networks, total_icps, council_bounds):
@@ -861,7 +870,7 @@ def fetch_ev_trends(tla_names):
     return years, series
 
 
-def build_ev_data(tlas, tla_region, council_bounds, overall_ev, overall_total, categories, years, trend_series):
+def build_ev_data(tlas, tla_region, tla_centroids, council_bounds, overall_ev, overall_total, categories, years, trend_series):
     """Assemble docs/ev.json: national + per-region + per-TLA snapshots
     (counts and real % of the local fleet, overall and per category),
     plus cumulative yearly trend lines at the same three granularities.
@@ -881,10 +890,14 @@ def build_ev_data(tlas, tla_region, council_bounds, overall_ev, overall_total, c
             c_ev = categories[cat_name]["ev"].get(name, 0)
             c_total = categories[cat_name]["total"].get(name, 0)
             cat_out[cat_name] = {"ev": c_ev, "total": c_total, "pct": pct(c_ev, c_total)}
+        lat, lng = tla_centroids.get(name, (None, None))
         tla_rows.append({
             "name": name, "region": region,
             "ev": ev, "total": total, "pct": pct(ev, total),
-            "bbox": bounds["bbox"], "categories": cat_out,
+            "bbox": bounds["bbox"],
+            "lat": round(lat, 4) if lat is not None else None,
+            "lng": round(lng, 4) if lng is not None else None,
+            "categories": cat_out,
         })
     tla_rows.sort(key=lambda r: r["ev"], reverse=True)
 
@@ -1214,12 +1227,12 @@ def main():
 
     try:
         tlas = fetch_territorial_authorities()
-        tla_region = assign_tla_regions(tlas, council_bounds)
+        tla_region, tla_centroids = assign_tla_regions(tlas, council_bounds)
         tla_names = {name.upper(): name for name in tlas}
         overall_ev, overall_total, ev_categories = fetch_ev_snapshot(tla_names)
         ev_years, ev_trend_series = fetch_ev_trends(tla_names)
         ev_national, ev_regions, ev_tlas, ev_trends = build_ev_data(
-            tlas, tla_region, council_bounds,
+            tlas, tla_region, tla_centroids, council_bounds,
             overall_ev, overall_total, ev_categories, ev_years, ev_trend_series,
         )
         save(OUT_EV, {
