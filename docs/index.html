@@ -813,16 +813,22 @@ let solarRegionsLoadPromise = null;
 function loadSolarTownsLayer() {
   if (!solarTownsLoadPromise) {
     solarTownsLoadPromise = fetch(TOWN_BOUNDARIES_URL).then(r => r.json()).then(boundaries => {
-      map.addSource("solar-town-boundaries", { type: "geojson", data: boundaries });
+      map.addSource("solar-town-boundaries", { type: "geojson", data: boundaries, generateId: true });
       map.addLayer({
         id: "solar-town-boundaries-fill", type: "fill", source: "solar-town-boundaries",
         layout: { visibility: "none" },
-        paint: { "fill-color": DOT_COLOR, "fill-opacity": .18 },
+        paint: {
+          "fill-color": DOT_COLOR,
+          // Full opacity under the cursor -- same hover cue as solar's
+          // Regions mode -- scaled up from the much lighter base
+          // opacity a border-focused fill needs.
+          "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], .5, .18],
+        },
       });
       map.addLayer({
         id: "solar-town-boundaries-outline", type: "line", source: "solar-town-boundaries",
         layout: { visibility: "none" },
-        paint: { "line-color": DOT_COLOR, "line-width": 2 },
+        paint: { "line-color": "rgba(0,0,0,.25)", "line-width": 1 },
       });
       map.on("click", "solar-town-boundaries-fill", e => {
         const p = e.features[0].properties;
@@ -831,8 +837,20 @@ function loadSolarTownsLayer() {
           (p.councilPct != null ? `<br>${p.council} region: ${(+p.councilPct).toFixed(1)}%` : "")
         ).addTo(map);
       });
-      map.on("mouseenter", "solar-town-boundaries-fill", () => map.getCanvas().style.cursor = "pointer");
-      map.on("mouseleave", "solar-town-boundaries-fill", () => map.getCanvas().style.cursor = "");
+      let hoveredTownId = null;
+      map.on("mousemove", "solar-town-boundaries-fill", e => {
+        map.getCanvas().style.cursor = "pointer";
+        const id = e.features[0].id;
+        if (id === hoveredTownId) return;
+        if (hoveredTownId != null) map.setFeatureState({ source: "solar-town-boundaries", id: hoveredTownId }, { hover: false });
+        hoveredTownId = id;
+        map.setFeatureState({ source: "solar-town-boundaries", id }, { hover: true });
+      });
+      map.on("mouseleave", "solar-town-boundaries-fill", () => {
+        map.getCanvas().style.cursor = "";
+        if (hoveredTownId != null) map.setFeatureState({ source: "solar-town-boundaries", id: hoveredTownId }, { hover: false });
+        hoveredTownId = null;
+      });
     });
   }
   return solarTownsLoadPromise;
@@ -884,7 +902,7 @@ function loadSolarRegionsLayer() {
           visibility: "none",
           "text-field": [
             "case", ["==", ["get", "estPct"], null], "",
-            ["concat", "~", ["number-format", ["get", "estPct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
+            ["concat", ["number-format", ["get", "estPct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
           ],
           "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": true,
         },
