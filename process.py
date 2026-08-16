@@ -1689,6 +1689,20 @@ def main():
             if council:
                 by_council.setdefault(council, []).append(network)
         trends["networksByCouncil"] = by_council
+        # Real current-snapshot numbers per network (not just its trend
+        # series) -- the same real EMI join build_region_tree uses at
+        # council granularity (see fetch_total_icps), just not rolled
+        # up. Lets the frontend show real installs/kW/% for a single
+        # network picked from the chart dropdown, not only its parent
+        # council's totals.
+        trends["networkSnapshot"] = {
+            name: {
+                "icps": row["icps"], "kW": row["kW"],
+                "totalIcps": total_icps.get(name),
+                "pct": round(row["icps"] / total_icps[name] * 100, 2) if total_icps.get(name) else None,
+            }
+            for name, row in networks.items()
+        }
         save(OUT_TRENDS, trends)
     except Exception as exc:                       # noqa: BLE001
         print(f"Trend history unavailable ({exc}) -- charts will be omitted")

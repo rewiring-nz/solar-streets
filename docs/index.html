@@ -711,9 +711,13 @@ function focusOnPlace(term) {
   }
 }
 
-function renderTopbar() {
-  if (DATASET === "ev") { renderEvTopbar(); return; }
-  currentFocus = focusRegion();
+// Renders the topbar purely from whatever currentFocus already is --
+// doesn't touch currentFocus itself. Shared by the map-driven
+// auto-detect path (renderTopbar(), below) and the chart dropdown
+// (which sets currentFocus to exactly what was picked) so the topbar
+// stats and the chart can never disagree about which region they're
+// showing.
+function renderTopbarStats() {
   const stats = currentFocus.level === "national" ? metaNational : currentFocus.data;
   const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
   segs.push(`<span class="stat-seg"><strong>${fmtMW(stats.kW)}</strong> MW</span>`);
@@ -733,8 +737,13 @@ function renderTopbar() {
   ).join("");
   html += `</div>`;
   topbarStatsEl.innerHTML = html;
+}
 
-  if (chartOpen) renderFocusChart();
+function renderTopbar() {
+  if (DATASET === "ev") { renderEvTopbar(); return; }
+  currentFocus = focusRegion();
+  renderTopbarStats();
+  if (topbarEl.classList.contains("expanded")) renderFocusChart();
 }
 
 function rowHTML(t, rank) {
@@ -1291,8 +1300,8 @@ function renderEvBoard() {
   boardEl.innerHTML = visible.map((t, i) => evRowHTML(t, i + 1)).join("");
 }
 
-function renderEvTopbar() {
-  currentFocus = evFocusRegion();
+// See renderTopbarStats() -- same idea, pure render from currentFocus.
+function renderEvTopbarStats() {
   const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
   const segs = [`<span class="stat-seg">Electric vehicles: <strong>${fmt(stats.ev)}</strong></span>`];
   if (stats.pct != null) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of the fleet</span>`);
@@ -1306,8 +1315,12 @@ function renderEvTopbar() {
   html += `<div class="stat-line">${segs.join("")}</div>`;
   html += `<div class="topbar-actions"><button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button></div>`;
   topbarStatsEl.innerHTML = html;
+}
 
-  if (chartOpen) renderFocusChart();
+function renderEvTopbar() {
+  currentFocus = evFocusRegion();
+  renderEvTopbarStats();
+  if (topbarEl.classList.contains("expanded")) renderFocusChart();
 }
 
 function setDataset(name) {
@@ -1398,14 +1411,38 @@ function drawTrendChart(dates, installs, battery) {
 }
 
 function populateChartSelect(td, focus) {
-  let html = `<option value="national">New Zealand</option>`;
-  if (focus.level === "council") {
+  let html = `<option value="national"${focus.level === "national" ? " selected" : ""}>New Zealand</option>`;
+  if (focus.level === "national") {
+    // Zoomed out to the whole country -- offer every region to jump
+    // into directly, rather than only "New Zealand" with nothing else
+    // to pick (see the change handler for the fly-to-region behaviour).
+    for (const r of regionData) {
+      html += `<option value="council:${r.name}">${r.name} (region)</option>`;
+    }
+  } else if (focus.level === "council") {
     html += `<option value="council:${focus.name}" selected>${focus.name} (region)</option>`;
     for (const net of (td.networksByCouncil[focus.name] || [])) {
       html += `<option value="network:${net}">${net.split(" (")[0]} (network)</option>`;
     }
   }
   chartSelectEl.innerHTML = html;
+}
+
+// Builds a currentFocus-shaped object for whatever the chart dropdown
+// just picked, using the same real per-level data the map-driven
+// focusRegion() draws on (plus, for a single network, the real
+// current-snapshot EMI publishes at that granularity -- see
+// networkSnapshot/fetch_trends in process.py) -- so picking an item
+// here updates the topbar with real numbers, never a placeholder.
+function solarFocusFor(level, name, td) {
+  if (level === "council") {
+    const data = regionData.find(r => r.name === name);
+    if (data) return { level: "council", name, data };
+  } else if (level === "network") {
+    const snap = td.networkSnapshot && td.networkSnapshot[name];
+    if (snap) return { level: "network", name: name.split(" (")[0], data: snap };
+  }
+  return { level: "national", name: "New Zealand" };
 }
 
 function renderChartSelection(td, value) {
@@ -1464,14 +1501,31 @@ function drawEvStackedChart(dates, seriesByCategory) {
 }
 
 function populateEvChartSelect(focus) {
-  let html = `<option value="national">New Zealand</option>`;
-  if (focus.level === "region") {
+  let html = `<option value="national"${focus.level === "national" ? " selected" : ""}>New Zealand</option>`;
+  if (focus.level === "national") {
+    for (const r of evRegions) {
+      html += `<option value="region:${r.name}">${r.name} (region)</option>`;
+    }
+  } else if (focus.level === "region") {
     html += `<option value="region:${focus.name}" selected>${focus.name} (region)</option>`;
     for (const t of evTlas) {
       if (t.region === focus.name) html += `<option value="tla:${t.name}">${t.name}</option>`;
     }
   }
   chartSelectEl.innerHTML = html;
+}
+
+// See solarFocusFor() -- same idea, for the EV dropdown's real per-
+// level data (evRegions/evTlas already carry full real snapshots).
+function evFocusFor(level, name) {
+  if (level === "region") {
+    const data = evRegions.find(r => r.name === name);
+    if (data) return { level: "region", name, data };
+  } else if (level === "tla") {
+    const data = evTlas.find(t => t.name === name);
+    if (data) return { level: "tla", name, data };
+  }
+  return { level: "national", name: "New Zealand" };
 }
 
 function evTrendSeries(level, name, category) {
@@ -1527,8 +1581,32 @@ topbarStatsEl.addEventListener("click", e => {
   if (modeBtn) setSolarMode(modeBtn.dataset.mode);
 });
 chartSelectEl.addEventListener("change", async () => {
-  if (DATASET === "ev") { renderEvChartSelection(); return; }
-  renderChartSelection(await loadTrends(), chartSelectEl.value);
+  const [level, ...rest] = chartSelectEl.value.split(":");
+  const name = rest.join(":");
+  const wasNational = currentFocus.level === "national";
+
+  // Sets currentFocus (and re-renders the topbar from it) but does NOT
+  // repopulate the dropdown -- that would stomp the selection the user
+  // just made. Only the map-driven auto-detect path (renderTopbar/
+  // renderEvTopbar) repopulates it, when the viewport itself changes.
+  if (DATASET === "ev") {
+    currentFocus = evFocusFor(level, name);
+    renderEvTopbarStats();
+    renderEvChartSelection();
+  } else {
+    const td = await loadTrends();
+    currentFocus = solarFocusFor(level, name, td);
+    renderTopbarStats();
+    renderChartSelection(td, chartSelectEl.value);
+  }
+
+  // Picking a specific region while zoomed out to the whole country
+  // flies there too -- otherwise there'd be nothing on screen to
+  // explain why the topbar/chart just changed.
+  if (wasNational && currentFocus.level !== "national" && currentFocus.data && currentFocus.data.bbox) {
+    const [s, w, n, e] = currentFocus.data.bbox;
+    map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 800 });
+  }
 });
 
 /* ================= LOAD ================= */
