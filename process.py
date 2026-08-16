@@ -875,6 +875,36 @@ def main():
     features, missing = build(records, cache, areas, previous)
 
     towns = build_towns(features, town_anchors, council_bounds)
+
+    # region_tree's installs/kW come from EMI's network-operator join,
+    # which mismatches the real council polygon for a handful of small
+    # embedded networks -- "Nelson (Nelson Electricity)" covers only a
+    # few blocks, while "Tasman (Network Tasman)" actually serves most
+    # of Nelson city (see NETWORK_TO_COUNCIL). towns are placed by real
+    # geography instead (council_of_point), so summing them per council
+    # gives the true figure -- e.g. Nelson's real installs, not its tiny
+    # embedded network's. Overriding here keeps every council's stats
+    # consistent with the town rows shown underneath it.
+    geo_by_council = {}
+    for t in towns:
+        if not t["council"]:
+            continue
+        acc = geo_by_council.setdefault(t["council"], {"icps": 0, "kW": 0.0})
+        acc["icps"] += t["icps"]; acc["kW"] += t["kW"]
+    for r in region_tree:
+        geo = geo_by_council.get(r["name"])
+        if not geo:
+            continue
+        r["icps"] = geo["icps"]
+        r["kW"] = round(geo["kW"], 1)
+        # The % denominator is still the network's total ICPs, which for
+        # these same mismatched networks can be smaller than the real
+        # (geographic) install count just replaced above -- a logical
+        # impossibility that's the tell the denominator doesn't cover
+        # the real area. Omit rather than show a nonsense/misleading %.
+        if r["totalIcps"] and r["icps"] > r["totalIcps"]:
+            r["pct"] = None
+
     # Each town's parent council's real % of ICPs, attached as labelled
     # regional context -- not a town-specific figure (see build_towns).
     council_pct = {r["name"]: r["pct"] for r in region_tree}
