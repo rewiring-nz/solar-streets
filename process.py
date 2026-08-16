@@ -201,14 +201,23 @@ OUT_EV_BOUNDARIES = "docs/ev_boundaries.geojson"
 
 # Vehicle categories for the EV dashboard, drawn straight from the MVR's
 # own VEHICLE_TYPE/BODY_TYPE fields (verified live against real data),
-# not guessed from make/model. "Trucks" folds in vans, since the MVR's
-# own VEHICLE_TYPE bucket ("GOODS VAN/TRUCK/UTILITY") already lumps
-# them and there's no separate BODY_TYPE for "van" fleet trucks.
+# not guessed from make/model. Vans are real BODY_TYPE values
+# ("LIGHT VAN"/"HEAVY VAN") that show up under *both* the
+# "PASSENGER CAR/VAN" and "GOODS VAN/TRUCK/UTILITY" VEHICLE_TYPE
+# buckets -- a real quirk of NZ's vehicle classification (e.g. a
+# passenger-configured Hyundai Staria vs a goods-configured Toyota
+# HiAce), not a data error -- so Cars excludes them explicitly to
+# avoid double-counting the same vehicle in two categories.
+# Motorbikes covers MOPED and MOTORCYCLE; ATV (quad bikes) is left
+# out even though the MVR tags it BODY_TYPE="MOTORCYCLE" too, since
+# it isn't what "motorbike" means in common usage.
 EV_CATEGORIES = [
-    ("Cars", "VEHICLE_TYPE = 'PASSENGER CAR/VAN'"),
+    ("Cars", "VEHICLE_TYPE = 'PASSENGER CAR/VAN' AND BODY_TYPE NOT IN ('LIGHT VAN','HEAVY VAN')"),
     ("Utes", "BODY_TYPE = 'UTILITY'"),
+    ("Vans", "BODY_TYPE IN ('LIGHT VAN','HEAVY VAN')"),
+    ("Motorbikes", "VEHICLE_TYPE IN ('MOTORCYCLE','MOPED')"),
     ("Trucks", "BODY_TYPE IN ('FLAT-DECK TRUCK','ARTICULATED TRUCK','OTHER TRUCK',"
-               "'CAB AND CHASSIS ONLY','HEAVY VAN','LIGHT VAN')"),
+               "'CAB AND CHASSIS ONLY')"),
     ("Buses", "VEHICLE_TYPE = 'BUS'"),
     ("Tractors", "VEHICLE_TYPE = 'TRACTOR'"),
 ]

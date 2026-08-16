@@ -1097,9 +1097,10 @@ const chartLegendEl = document.getElementById("chartLegend");
 // Fixed stacking order (largest category at the base) and a colour per
 // category for the chart's stacked areas, the map choropleth legend
 // swatches, and anywhere else the categories need telling apart.
-const EV_CHART_ORDER = ["Cars", "Utes", "Buses", "Trucks", "Tractors"];
+const EV_CHART_ORDER = ["Cars", "Utes", "Vans", "Motorbikes", "Buses", "Trucks", "Tractors"];
 const EV_CATEGORY_COLORS = {
-  Cars: "#3b82f6", Utes: "#a855f7", Buses: "#f97316", Trucks: "#eab308", Tractors: "#ef4444",
+  Cars: "#3b82f6", Utes: "#a855f7", Vans: "#14b8a6", Motorbikes: "#ec4899",
+  Buses: "#f97316", Trucks: "#eab308", Tractors: "#ef4444",
 };
 
 let evNational = null;
