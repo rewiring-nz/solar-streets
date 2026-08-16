@@ -242,6 +242,33 @@ ABBREV = {
     "MT": "MOUNT", "SH": "STATE HIGHWAY",
 }
 
+# EMI's PhysicalAddressStreet always carries a formal street-type suffix
+# (postal-address convention); OSM's own `name` tag sometimes doesn't --
+# common for private roads, rural accessways and paddock tracks, e.g. a
+# real Queenstown road is EMI "O'LEARYS PADDOCK ROAD" but OSM just
+# "O'Learys Paddock". _strip_street_type() lets geocode() retry a lookup
+# with the trailing suffix removed -- fallback only (see geocode()),
+# never in place of an exact match, so it can't merge two distinctly
+# named real streets that happen to share everything but the suffix.
+STREET_TYPE_WORDS = set(ABBREV.values()) | {
+    "ROAD", "STREET", "LANE", "PLACE", "DRIVE", "CRESCENT", "TERRACE",
+    "COURT", "AVENUE", "WAY", "CLOSE", "GROVE", "RISE", "PARADE",
+    "HIGHWAY", "TRACK", "LOOP", "RIDGE", "ESPLANADE", "QUAY", "SQUARE",
+    "ROW", "WALK", "BEND", "CIRCLE", "CIRCUIT", "MEWS",
+}
+
+
+def _strip_street_type(norm):
+    """'O LEARYS PADDOCK ROAD' -> 'O LEARYS PADDOCK', or None if the
+    normalised name doesn't end in a recognised street-type word (or
+    would be empty without it -- a bare "ROAD" shouldn't fall back to
+    "").
+    """
+    words = norm.split()
+    if len(words) > 1 and words[-1] in STREET_TYPE_WORDS:
+        return " ".join(words[:-1])
+    return None
+
 
 def normalise(name):
     """EMI writes 'QUEEN ST', OSM writes 'Queen Street'.
@@ -701,24 +728,32 @@ def write_ev_boundaries(ev_tla_rows):
     save(OUT_EV_BOUNDARIES, {"type": "FeatureCollection", "features": features})
 
 
-def write_region_boundaries(region_tree, tla_region):
+def write_region_boundaries(region_tree, tla_region, towns, sa1_dwellings, anzsic_ratios):
     """docs/region_boundaries.geojson -- for solar's "Regions" map mode.
 
     Drawn at TLA (district) granularity -- the same simplified shapes
-    the EV choropleth uses, so the two visually match -- but each TLA is
-    coloured by its *parent council's* real installs/MW/% (see
-    build_region_tree). Solar's install/% join only exists at council
-    granularity (EMI has no per-TLA figure), so this isn't a
-    finer-grained number, just a finer-grained shape repeating the same
-    real council figure across every TLA within it. Each feature keeps
-    its own real TLA name (the "tla" property) alongside the council's
-    ("name") specifically so a click can say *which* district this
-    shape is without implying the council-wide numbers are that
-    district's own (see the click handler in docs/index.html). The
-    label layer (frontend, keyed off regionData) stays at council
-    granularity on purpose -- 67 labels repeating one of 16 numbers
-    would just be visual noise, not new information.
+    the EV choropleth uses. The choropleth's fill colour still comes
+    from the *parent council's* real installs/MW/% (see
+    build_region_tree) -- EMI's solar/%-of-ICPs join only exists at
+    council granularity, so there's no real per-TLA figure to colour
+    each shape by individually.
+
+    But installs/MW themselves don't need EMI's join at all -- towns
+    already carry real, geographically-placed install/kW figures (see
+    build_towns), so summing the towns that fall inside each TLA's real
+    boundary (point-in-polygon, not the council-wide total) gives every
+    TLA its own genuine install/MW count. And for a district-level %,
+    this reuses the same estimate _estimate_town_pcts builds for towns:
+    real Census dwellings inside this exact TLA boundary, projected to
+    the current year, scaled by the *parent council's* real
+    residential/business ICP mix (EMI has no ANZSIC breakdown finer
+    than council either) -- surfaced as "estPct", clearly an estimate,
+    never confused with the real council-level "pct" that drives the
+    colour.
     """
+    from shapely.geometry import Point, mapping, shape
+    from shapely.strtree import STRtree
+
     print("Fetching simplified TLA boundaries for the solar choropleth...")
     r = session.get(TLA_SERVICE, timeout=120, params={
         "where": "1=1", "outFields": "TA_name_ascii",
@@ -729,22 +764,70 @@ def write_region_boundaries(region_tree, tla_region):
     geo = r.json()
 
     by_council = {row["name"]: row for row in region_tree}
-    features = []
+    names, geoms, council_of = [], [], {}
     for f in geo["features"]:
         tla_name = f["properties"].get("TA_name_ascii", "")
-        row = by_council.get(tla_region.get(tla_name))
-        if not row:
+        council_name = tla_region.get(tla_name)
+        if council_name not in by_council:
             continue
+        names.append(tla_name)
+        geoms.append(shape(f["geometry"]).buffer(0))
+        council_of[tla_name] = council_name
+
+    tree = STRtree(geoms)
+
+    def nearest_index(lng, lat):
+        pt = Point(lng, lat)
+        idx = tree.query(pt, predicate="intersects")
+        if len(idx):
+            return int(idx[0])
+        return int(tree.nearest(pt))   # simplified boundary, tiny coastal gaps
+
+    # Real installs/kW per TLA, from towns' already-real geographic data.
+    tla_solar = [[0, 0.0] for _ in names]
+    for t in towns:
+        i = nearest_index(t["lng"], t["lat"])
+        tla_solar[i][0] += t["icps"]
+        tla_solar[i][1] += t["kW"]
+
+    # Real Census dwellings inside each TLA's exact boundary, for estPct.
+    tla_dwell = [[0, 0] for _ in names]
+    for lat, lng, d18, d23 in sa1_dwellings:
+        i = nearest_index(lng, lat)
+        tla_dwell[i][0] += d18
+        tla_dwell[i][1] += d23
+
+    all_d18 = sum(v[0] for v in tla_dwell)
+    all_d23 = sum(v[1] for v in tla_dwell)
+    fallback_cagr = (all_d23 / all_d18) ** (1 / 5) - 1 if all_d18 else 0.0
+    years_ahead = max(datetime.now(timezone.utc).year - 2023, 0)
+
+    features = []
+    for i, tla_name in enumerate(names):
+        council_name = council_of[tla_name]
+        row = by_council[council_name]
+        icps, kW = tla_solar[i]
+        d18, d23 = tla_dwell[i]
+        est_pct = None
+        if d23 >= 30:   # below this, the growth-rate projection is mostly noise
+            cagr = (d23 / d18) ** (1 / 5) - 1 if d18 else fallback_cagr
+            cagr = max(-0.05, min(0.15, cagr))
+            est_dwellings = d23 * (1 + cagr) ** years_ahead
+            ratio = anzsic_ratios.get(council_name)
+            if ratio and est_dwellings > 0:
+                est_total = est_dwellings * ratio
+                if est_total >= icps:   # impossible otherwise -- omit, don't mislead
+                    est_pct = round(icps / est_total * 100, 1)
         features.append({
             "type": "Feature",
-            "geometry": f["geometry"],
+            "geometry": mapping(geoms[i]),
             "properties": {
-                # "name" is the parent council (what the numbers below
-                # actually measure); "tla" is this specific shape's own
-                # real name, so a click can say *which* district this is
-                # without implying the council-wide figures are its own.
-                "name": row["name"], "tla": tla_name,
-                "icps": row["icps"], "kW": row["kW"], "pct": row["pct"],
+                # "name" is the parent council (what "pct"/the fill
+                # colour measure); "tla" is this shape's own real name
+                # with its own real icps/kW and estimated estPct.
+                "name": council_name, "tla": tla_name,
+                "icps": icps, "kW": round(kW, 1), "pct": row["pct"],
+                "estPct": est_pct,
             },
         })
 
@@ -1423,6 +1506,14 @@ def geocode(records, areas, council_bounds):
     bbox* -- the same containment check the old per-SA2 design relied on,
     just done locally instead of via a separate network call, so multiple
     same-named streets in different towns still resolve correctly.
+
+    A name with zero candidates falls back to a second lookup with its
+    trailing street-type word stripped (see _strip_street_type) -- OSM
+    sometimes tags a private/rural road without the generic suffix EMI's
+    postal-address data always includes (e.g. EMI "O'Learys Paddock
+    Road" vs OSM "O'Learys Paddock"). Only tried when the exact name
+    found nothing at all, so it can't misroute a real "Queen Street" -
+    style match.
     """
     codes_by_council = {}
     for code in {code for (code, _) in records}:
@@ -1465,6 +1556,17 @@ def geocode(records, areas, council_bounds):
             for name in names_by_code.get(code, ()):
                 pts = [(lng, lat) for lng, lat in by_name.get(name, ())
                        if w <= lng <= e and s <= lat <= n]
+                if not pts:
+                    # Exact name has no candidate in this SA2 at all --
+                    # try again without a trailing street-type word
+                    # (see _strip_street_type) before giving up. Only
+                    # reached when the exact match found literally
+                    # nothing, so a real "Queen Street" is never at risk
+                    # of being pulled toward an unrelated "Queen".
+                    stripped = _strip_street_type(name)
+                    if stripped:
+                        pts = [(lng, lat) for lng, lat in by_name.get(stripped, ())
+                               if w <= lng <= e and s <= lat <= n]
                 if pts:
                     local[name] = [round(sum(p[0] for p in pts) / len(pts), 5),
                                     round(sum(p[1] for p in pts) / len(pts), 5)]
@@ -1646,23 +1748,27 @@ def main():
     for t in towns:
         t["councilPct"] = council_pct.get(t["council"], 0)
 
+    # Census dwellings / ANZSIC ratio: fetched once here and shared by
+    # both write_region_boundaries (TLA-level estPct) and
+    # write_town_boundaries (town-level estPct) rather than twice.
+    try:
+        sa1_dwellings = fetch_sa1_dwellings()
+    except Exception as exc:                       # noqa: BLE001
+        print(f"Census dwelling data unavailable ({exc}) -- district/town % estimates will be omitted")
+        sa1_dwellings = []
+    try:
+        anzsic_ratios = fetch_anzsic_ratios()
+    except Exception as exc:                       # noqa: BLE001
+        print(f"ANZSIC ICP breakdown unavailable ({exc}) -- district/town % estimates will be omitted")
+        anzsic_ratios = {}
+
     if region_tree and tla_region:
         try:
-            write_region_boundaries(region_tree, tla_region)
+            write_region_boundaries(region_tree, tla_region, towns, sa1_dwellings, anzsic_ratios)
         except Exception as exc:                       # noqa: BLE001
             print(f"Region boundaries unavailable ({exc}) -- solar's Regions map mode will be omitted")
 
     if towns:
-        try:
-            sa1_dwellings = fetch_sa1_dwellings()
-        except Exception as exc:                       # noqa: BLE001
-            print(f"Census dwelling data unavailable ({exc}) -- town % estimates will be omitted")
-            sa1_dwellings = []
-        try:
-            anzsic_ratios = fetch_anzsic_ratios()
-        except Exception as exc:                       # noqa: BLE001
-            print(f"ANZSIC ICP breakdown unavailable ({exc}) -- town % estimates will be omitted")
-            anzsic_ratios = {}
         try:
             write_town_boundaries(towns, town_anchors, sa1_dwellings, anzsic_ratios)
         except Exception as exc:                       # noqa: BLE001

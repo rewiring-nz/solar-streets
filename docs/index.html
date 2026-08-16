@@ -887,21 +887,19 @@ function loadSolarRegionsLayer() {
         const p = e.features[0].properties;
         const r = regionData.find(x => x.name === p.name);
         if (!r) return;
-        // EMI's solar/%-of-ICPs join only exists at council granularity
-        // (see write_region_boundaries/process.py) -- every TLA-shaped
-        // tile within a council shares that one real council figure, so
-        // the popup names the specific district clicked (p.tla) but is
-        // explicit that the numbers below are the whole region's, not
-        // that district's own -- otherwise a small shape showing the
-        // full council total reads as a data error, not a real join.
+        // p.icps/p.kW are this TLA's own real numbers -- towns' already-
+        // real geographic install data, summed inside this exact TLA
+        // boundary (see write_region_boundaries/process.py), not the
+        // council total. p.estPct is a modelled estimate (same
+        // methodology as the Towns mode -- see estBadge); r.pct is the
+        // real council-wide % shown for context underneath.
         const districtLine = (p.tla && p.tla !== r.name)
           ? `<strong>${p.tla}</strong><br><span style="opacity:.7">${r.name} region</span><br>`
           : `<strong>${r.name}</strong><br>`;
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
           districtLine +
-          `Solar installs: <strong>${fmt(r.icps)}</strong><br>${fmtMW(r.kW)} MW` +
-          (r.pct != null ? `<br>${r.pct.toFixed(1)}% of connections` : "") +
-          (p.tla && p.tla !== r.name ? `<br><span style="opacity:.6;font-size:.85em">Region-wide figures -- EMI has no separate district total</span>` : "")
+          `Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW${estBadge(p.estPct != null ? +p.estPct : null)}` +
+          (r.pct != null ? `<br><span style="opacity:.6;font-size:.85em">${r.name} region: ${r.pct.toFixed(1)}% of connections</span>` : "")
         ).addTo(map);
       });
       let hoveredRegionId = null;
@@ -1108,7 +1106,7 @@ function loadEvData() {
 
 function addEvLayer(boundaries) {
   const beforeId = map.getLayer("street-points") ? "street-points" : undefined;
-  map.addSource("ev-tlas", { type: "geojson", data: boundaries });
+  map.addSource("ev-tlas", { type: "geojson", data: boundaries, generateId: true });
   map.addLayer({
     id: "ev-fill", type: "fill", source: "ev-tlas",
     layout: { visibility: "none" },
@@ -1119,13 +1117,15 @@ function addEvLayer(boundaries) {
         "interpolate", ["linear"], ["coalesce", ["get", "pct"], 0],
         0, "#0d2436", 0.5, "#0e7490", 2, "#22d3ee", 5, "#a5f3fc"
       ],
-      "fill-opacity": 0.75
+      // Full opacity under the cursor -- a visible cue that each
+      // district is its own clickable shape, not one flat overlay.
+      "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], 1, 0.75],
     }
   }, beforeId);
   map.addLayer({
     id: "ev-outline", type: "line", source: "ev-tlas",
     layout: { visibility: "none" },
-    paint: { "line-color": "rgba(255,255,255,.35)", "line-width": 1 }
+    paint: { "line-color": "rgba(0,0,0,.25)", "line-width": 1 }
   }, beforeId);
   // Labels are their own point source (one Point per TLA, at the same
   // centroid used server-side for the region assignment), not placed
@@ -1179,8 +1179,20 @@ function addEvLayer(boundaries) {
         `<div class="ev-categories" style="padding-left:0;margin-top:6px">${catLines}</div>`
       ).addTo(map);
   });
-  map.on("mouseenter", "ev-fill", () => map.getCanvas().style.cursor = "pointer");
-  map.on("mouseleave", "ev-fill", () => map.getCanvas().style.cursor = "");
+  let hoveredEvId = null;
+  map.on("mousemove", "ev-fill", e => {
+    map.getCanvas().style.cursor = "pointer";
+    const id = e.features[0].id;
+    if (id === hoveredEvId) return;
+    if (hoveredEvId != null) map.setFeatureState({ source: "ev-tlas", id: hoveredEvId }, { hover: false });
+    hoveredEvId = id;
+    map.setFeatureState({ source: "ev-tlas", id }, { hover: true });
+  });
+  map.on("mouseleave", "ev-fill", () => {
+    map.getCanvas().style.cursor = "";
+    if (hoveredEvId != null) map.setFeatureState({ source: "ev-tlas", id: hoveredEvId }, { hover: false });
+    hoveredEvId = null;
+  });
 
   evLayerReady = true;
 }
