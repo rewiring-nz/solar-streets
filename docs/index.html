@@ -959,8 +959,14 @@ function setDashHidden(hidden) {
 setDashHidden(DASH_PARAM === "closed");   // default open, unless ?dash=closed
 
 function isChartOpen() { return topbarEl.classList.contains("expanded"); }
-function closeChartPanel() { topbarEl.classList.remove("expanded"); }
-function openChartPanel() { topbarEl.classList.add("expanded"); renderFocusChart(); }
+// renderTopbar() (not renderFocusChart() directly) so the "Show
+// Chart"/"Hide Chart" button's own label -- regenerated fresh every
+// render, not a persistent element -- gets resynced immediately.
+// Without this, the label only caught up whenever a map pan happened
+// to trigger a natural re-render, so clicking twice in a row before
+// any pan left it stuck on the stale label from the first click.
+function closeChartPanel() { topbarEl.classList.remove("expanded"); renderTopbar(); }
+function openChartPanel() { topbarEl.classList.add("expanded"); renderTopbar(); }
 function openRegionsPanel() { setDashHidden(false); }
 function closeRegionsPanel() { setDashHidden(true); }
 
