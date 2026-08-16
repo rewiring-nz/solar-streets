@@ -34,24 +34,46 @@
   .err { color: #f87171; font-weight: 600; }
 
   /* ============ Top stats bar ============ */
-  /* Compact, non-interactive -- sized to its content, not the screen. */
+  /* Compact by default, sized to its content -- grows to fit a chart
+     when expanded. Click the stats area to expand/collapse downward. */
   #topbar {
     position: absolute; z-index: 7; top: 10px; left: 10px;
     background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid var(--border); border-radius: 10px; color: var(--text);
-    padding: 6px 11px;
     width: max-content; max-width: calc(100vw - 20px);
     box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    transition: width .22s ease;
   }
+  /* Chart panel width: roomy on desktop, growing proportionally as the
+     window narrows, full-width on tablet/mobile. */
+  #topbar.expanded { width: min(33vw, 720px); }
+  @media (max-width: 1100px) { #topbar.expanded { width: 50vw; } }
+  @media (max-width: 767px)  { #topbar.expanded { width: calc(100vw - 20px); } }
+
+  #topbarStats { padding: 6px 11px; cursor: pointer; }
+  .topbar-label {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+    color: var(--dim); display: flex; align-items: center; gap: 5px;
+  }
+  .topbar-label .chev { font-size: 9px; transition: transform .2s ease; }
+  #topbar.expanded .topbar-label .chev { transform: rotate(180deg); }
   .stat-line {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 0;
-    font-size: 12px; color: var(--dim); line-height: 1.5;
+    font-size: 12px; color: var(--dim); line-height: 1.5; margin-top: 2px;
   }
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
   .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
-  .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; margin-top: 1px; }
+  .topbar-region {
+    font-size: 11.5px; font-weight: 700; color: var(--amber);
+    text-shadow: 0 0 8px rgba(255,183,3,.35); margin-top: 2px;
+  }
+  .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; margin-top: 3px; }
+
+  .topbar-chart { max-height: 0; overflow: hidden; transition: max-height .25s ease; border-top: 1px solid transparent; }
+  #topbar.expanded .topbar-chart { max-height: 420px; border-top-color: var(--border); }
+  .topbar-chart-inner { padding: 10px 14px 14px; }
 
   .list-caption {
     padding: 8px 16px 4px; font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
@@ -68,30 +90,40 @@
     }
   }
 
-  /* ============ Edge arrow (open/close the town list) ============ */
+  /* ============ Edge arrow (open/close the regions list) ============ */
   .edge-arrow {
     position: absolute; z-index: 8; cursor: pointer;
     background: var(--glass-hi); border: 1px solid var(--border); color: var(--text);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    display: flex; align-items: center; justify-content: center;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
     box-shadow: 0 4px 14px rgba(0,0,0,.4);
     transition: left .28s ease, bottom .28s ease, background .15s;
   }
   .edge-arrow:hover { background: rgba(255,255,255,.14); }
   .edge-arrow .glyph { display: inline-block; font-size: 13px; transition: transform .28s ease; }
+  .edge-arrow .arrow-label {
+    font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+    color: var(--dim);
+  }
+  /* Desktop: tab sits on the left edge, so the label reads top-to-bottom
+     alongside it. Mobile: tab sits on the bottom edge, so the label
+     reads normally, next to the glyph instead of above/below it. */
   @media (min-width: 768px) {
     .edge-arrow {
-      top: calc(var(--topbar-h, 46px) + 28px); left: 0; width: 26px; height: 46px;
+      top: calc(var(--topbar-h, 46px) + 28px); left: 0; width: 26px; height: 96px; padding: 8px 0;
       border-radius: 0 10px 10px 0; border-left: none;
+      flex-direction: column;
     }
     .edge-arrow.open { left: 260px; }
     .edge-arrow .glyph { transform: rotate(0deg); }
     .edge-arrow.open .glyph { transform: rotate(180deg); }
+    .edge-arrow .arrow-label { writing-mode: vertical-rl; text-orientation: mixed; }
   }
   @media (max-width: 767px) {
     .edge-arrow {
-      left: 50%; margin-left: -23px; bottom: 0; width: 46px; height: 24px;
+      left: 50%; margin-left: -46px; bottom: 0; width: 92px; height: 32px; padding: 0 12px;
       border-radius: 10px 10px 0 0; border-bottom: none;
+      flex-direction: row;
     }
     .edge-arrow.open { bottom: 55vh; }
     .edge-arrow .glyph { transform: rotate(-90deg); }
@@ -143,6 +175,18 @@
   .empty-note { padding: 20px 16px; font-size: 12.5px; color: var(--dim); text-align: center; }
 
   .loading-note { padding: 16px; font-size: 12.5px; color: var(--dim); }
+
+  /* ============ Trend chart (inline, inside the top bar) ============ */
+  .chart-select {
+    background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: 5px 8px; font-size: 12px; max-width: 100%;
+  }
+  .chart-svg-wrap { width: 100%; margin-top: 8px; }
+  .chart-svg-wrap svg { width: 100%; height: auto; display: block; }
+  .chart-legend { display: flex; gap: 16px; font-size: 11.5px; color: var(--dim); margin-top: 4px; }
+  .chart-legend .swatch { display: inline-block; width: 10px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+  .chart-legend .installs { background: var(--amber); }
+  .chart-legend .battery { background: #38bdf8; }
 </style>
 </head>
 <body>
@@ -150,10 +194,25 @@
   <div id="map"></div>
 
   <div id="topbar">
-    <div class="stat-line"><span class="stat-seg">Loading…</span></div>
+    <div id="topbarStats">
+      <div class="stat-line"><span class="stat-seg">Loading…</span></div>
+    </div>
+    <div id="topbarChart" class="topbar-chart">
+      <div class="topbar-chart-inner">
+        <select id="chartSelect" class="chart-select"></select>
+        <div class="chart-svg-wrap"><svg id="chartSvg" viewBox="0 0 700 320"></svg></div>
+        <div class="chart-legend">
+          <span><i class="swatch installs"></i>Solar installs</span>
+          <span><i class="swatch battery"></i>% of installs with a battery</span>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <button id="dashArrow" class="edge-arrow" title="Show/hide towns"><span class="glyph">▶</span></button>
+  <button id="dashArrow" class="edge-arrow" title="Show/hide regions">
+    <span class="glyph">▶</span>
+    <span class="arrow-label">Regions</span>
+  </button>
 
   <div id="dash">
     <div class="grabber"></div>
@@ -167,6 +226,7 @@
 
 const DATA_URL = "streets.geojson";
 const META_URL = "meta.json";
+const TRENDS_URL = "trends.json";
 
 const LINZ_API_KEY = "";
 const ESRI_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
@@ -354,13 +414,16 @@ function addLayers(data) {
 /* ================= DASHBOARD ================= */
 
 const dash = document.getElementById("dash");
-const topbar = document.getElementById("topbar");
+const topbarEl = document.getElementById("topbar");
+const topbarStatsEl = document.getElementById("topbarStats");
 const dashArrow = document.getElementById("dashArrow");
 const boardEl = document.getElementById("board");
 
-let regionData = [];   // council-level, real %/totalIcps -- powers the topbar stat only
+let regionData = [];   // council-level, real %/totalIcps
 let townData = [];     // flat town list, as built by process.py -- powers the list
+let metaNational = null;
 let metaUpdated = null;
+let currentFocus = { level: "national", name: "New Zealand" };
 
 const fmt = n => n.toLocaleString();
 const fmtMW = kW => (kW / 1000).toLocaleString(undefined, { maximumFractionDigits: kW >= 10000 ? 0 : 1 });
@@ -380,16 +443,27 @@ function currentView() {
   return (map.isStyleLoaded && map.style) ? map.getBounds() : null;
 }
 
-// Council-level totals for whatever's in view -- the only granularity
-// with a real total-ICP denominator, so it's the only honest source for
-// the "% of connections" figure.
-function inViewStats() {
+// Which single region the map is "on": New Zealand while zoomed out
+// close to the national view, otherwise whichever council covers the
+// most of the current viewport (by overlap area, latitude-corrected --
+// councils are bboxes here, not exact polygons, but this is only
+// deciding which real region's numbers to show, not computing them).
+function focusRegion() {
   const view = currentView();
-  const list = view ? regionData.filter(r => bboxIntersects(r.bbox, view)) : regionData;
-  const icps = list.reduce((s, r) => s + r.icps, 0);
-  const kW = list.reduce((s, r) => s + r.kW, 0);
-  const totalIcps = list.reduce((s, r) => s + r.totalIcps, 0);
-  return { icps, kW, pct: totalIcps ? icps / totalIcps * 100 : 0 };
+  if (!view || !map.getZoom || map.getZoom() < 6) return { level: "national", name: "New Zealand" };
+
+  const coslat = Math.cos((view.getNorth() + view.getSouth()) / 2 * Math.PI / 180);
+  let best = null, bestArea = 0;
+  for (const r of regionData) {
+    if (!r.bbox) continue;
+    const [s, w, n, e] = r.bbox;
+    const ow = Math.min(e, view.getEast()) - Math.max(w, view.getWest());
+    const oh = Math.min(n, view.getNorth()) - Math.max(s, view.getSouth());
+    if (ow <= 0 || oh <= 0) continue;
+    const area = ow * coslat * oh;
+    if (area > bestArea) { bestArea = area; best = r; }
+  }
+  return best ? { level: "council", name: best.name, data: best } : { level: "national", name: "New Zealand" };
 }
 
 function visibleTowns() {
@@ -399,15 +473,20 @@ function visibleTowns() {
 }
 
 function renderTopbar() {
-  const s = inViewStats();
-  const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(s.icps)}</strong></span>`];
-  segs.push(`<span class="stat-seg"><strong>${fmtMW(s.kW)}</strong> MW</span>`);
-  if (s.pct) segs.push(`<span class="stat-seg"><strong>${s.pct.toFixed(1)}%</strong> of connections</span>`);
-  let html = `<div class="stat-line">${segs.join("")}</div>`;
+  currentFocus = focusRegion();
+  const stats = currentFocus.level === "national" ? metaNational : currentFocus.data;
+  const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
+  segs.push(`<span class="stat-seg"><strong>${fmtMW(stats.kW)}</strong> MW</span>`);
+  if (stats.pct) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of connections</span>`);
+  let html = `<div class="topbar-label">Region in view <span class="chev">▾</span></div>`;
+  html += `<div class="stat-line">${segs.join("")}</div>`;
+  html += `<div class="topbar-region">${currentFocus.name}</div>`;
   if (metaUpdated) {
     html += `<div class="updated-line">Updated ${MONTHS3[metaUpdated.getUTCMonth()]} ${metaUpdated.getUTCFullYear()}</div>`;
   }
-  topbar.innerHTML = html;
+  topbarStatsEl.innerHTML = html;
+
+  if (topbarEl.classList.contains("expanded")) renderFocusChart();
 }
 
 function rowHTML(t, rank) {
@@ -447,15 +526,38 @@ function renderBoard() {
   boardEl.innerHTML = visible.map((t, i) => rowHTML(t, i + 1)).join("");
 }
 
+// The regions list and the trend chart share the top-left corner of the
+// screen, so only one is ever open at a time: opening one while the
+// other is open animates the first closed, then opens the second once
+// that close transition has finished (see PANEL_ANIM_MS).
+const PANEL_ANIM_MS = 300;
+
 let dashHidden = false;
 function setDashHidden(hidden) {
   dashHidden = hidden;
   dash.classList.toggle("collapsed", hidden);
   dashArrow.classList.toggle("open", !hidden);
-  dashArrow.title = hidden ? "Show towns" : "Hide towns";
+  dashArrow.title = hidden ? "Show regions" : "Hide regions";
 }
-dashArrow.addEventListener("click", () => setDashHidden(!dashHidden));
 setDashHidden(false);   // sync the arrow's glyph/title to the initial (open) state
+
+function isChartOpen() { return topbarEl.classList.contains("expanded"); }
+function closeChartPanel() { topbarEl.classList.remove("expanded"); }
+function openChartPanel() { topbarEl.classList.add("expanded"); renderFocusChart(); }
+function openRegionsPanel() { setDashHidden(false); }
+function closeRegionsPanel() { setDashHidden(true); }
+
+function toggleChartPanel() {
+  if (isChartOpen()) { closeChartPanel(); return; }
+  if (!dashHidden) { closeRegionsPanel(); setTimeout(openChartPanel, PANEL_ANIM_MS); }
+  else { openChartPanel(); }
+}
+function toggleRegionsPanel() {
+  if (!dashHidden) { closeRegionsPanel(); return; }
+  if (isChartOpen()) { closeChartPanel(); setTimeout(openRegionsPanel, PANEL_ANIM_MS); }
+  else { openRegionsPanel(); }
+}
+dashArrow.addEventListener("click", toggleRegionsPanel);
 
 // Swipe to open (on the arrow) or close (on the panel) -- mobile only.
 function attachSwipe(el) {
@@ -464,8 +566,8 @@ function attachSwipe(el) {
   el.addEventListener("touchend", e => {
     if (startY == null || window.innerWidth >= 768) return;
     const dy = e.changedTouches[0].clientY - startY;
-    if (dy < -30) setDashHidden(false);
-    else if (dy > 30) setDashHidden(true);
+    if (dy < -30 && dashHidden) toggleRegionsPanel();
+    else if (dy > 30 && !dashHidden) closeRegionsPanel();
     startY = null;
   }, { passive: true });
 }
@@ -473,11 +575,95 @@ attachSwipe(dashArrow);
 attachSwipe(dash);
 
 // #dash and the arrow sit below the top bar on desktop; the bar's width
-// (and so its height, since it wraps) varies with content, so measure it.
+// (and so its height, since it wraps, or since the chart is open) varies
+// with content, so measure it rather than hardcode it.
 function syncTopbarHeight() {
-  document.documentElement.style.setProperty("--topbar-h", topbar.offsetHeight + "px");
+  document.documentElement.style.setProperty("--topbar-h", topbarEl.offsetHeight + "px");
 }
-new ResizeObserver(syncTopbarHeight).observe(topbar);
+new ResizeObserver(syncTopbarHeight).observe(topbarEl);
+
+/* ================= TREND CHART ================= */
+/* Monthly install history since 2014, plus % of installs with a
+   battery, at national/council/network-region granularity. Real EMI
+   figures (same "Installed distributed generation trends" report the
+   rest of the page draws a snapshot from) -- loaded lazily, only when
+   the chart is actually opened, so it doesn't weigh down the initial
+   load. Clicking the stats area expands it inline, showing whatever
+   region is currently "in view" (see focusRegion). */
+
+const chartSelectEl = document.getElementById("chartSelect");
+const chartSvgEl = document.getElementById("chartSvg");
+let trendsPromise = null;
+
+function loadTrends() {
+  if (!trendsPromise) trendsPromise = fetch(TRENDS_URL).then(r => r.json());
+  return trendsPromise;
+}
+
+function trendSeries(td, level, name) {
+  if (level === "national") return td.national;
+  if (level === "council") return td.councils[name];
+  return td.networks[name];
+}
+
+function drawTrendChart(dates, installs, battery) {
+  const W = 700, H = 320, L = 48, R = 44, T = 14, B = 26;
+  const x0 = L, x1 = W - R, y0 = T, y1 = H - B;
+  const n = dates.length;
+  const xAt = i => x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0);
+  const maxInstalls = Math.max(...installs, 1) * 1.08;
+  const yInst = v => y1 - Math.min(1, v / maxInstalls) * (y1 - y0);
+  const yPct = v => y1 - Math.min(1, v / 100) * (y1 - y0);
+  const pct = installs.map((v, i) => v ? battery[i] / v * 100 : 0);
+
+  const path = (series, yFn) => "M" + series.map((v, i) => `${xAt(i).toFixed(1)},${yFn(v).toFixed(1)}`).join(" L");
+
+  let grid = "";
+  for (let f = 0; f <= 1; f += 0.25) {
+    const y = (y1 - f * (y1 - y0)).toFixed(1);
+    grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="rgba(255,255,255,.08)"/>`;
+    grid += `<text x="${x0 - 6}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="#8a96a3">${fmt(Math.round(f * maxInstalls))}</text>`;
+    grid += `<text x="${x1 + 6}" y="${+y + 3}" text-anchor="start" font-size="9.5" fill="#38bdf8">${Math.round(f * 100)}%</text>`;
+  }
+
+  let xLabels = "";
+  const ticks = Math.min(6, n);
+  for (let t = 0; t < ticks; t++) {
+    const idx = Math.round(t / Math.max(1, ticks - 1) * (n - 1));
+    xLabels += `<text x="${xAt(idx).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9.5" fill="#8a96a3">${dates[idx].slice(0, 4)}</text>`;
+  }
+
+  chartSvgEl.innerHTML = grid + xLabels +
+    `<path d="${path(installs, yInst)}" fill="none" stroke="#ffb703" stroke-width="2"/>` +
+    `<path d="${path(pct, yPct)}" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-dasharray="4,3"/>`;
+}
+
+function populateChartSelect(td, focus) {
+  let html = `<option value="national">New Zealand</option>`;
+  if (focus.level === "council") {
+    html += `<option value="council:${focus.name}" selected>${focus.name} (region)</option>`;
+    for (const net of (td.networksByCouncil[focus.name] || [])) {
+      html += `<option value="network:${net}">${net.split(" (")[0]} (network)</option>`;
+    }
+  }
+  chartSelectEl.innerHTML = html;
+}
+
+function renderChartSelection(td, value) {
+  const [level, ...rest] = value.split(":");
+  const name = rest.join(":");
+  const s = level === "national" ? td.national : trendSeries(td, level, name);
+  if (s) drawTrendChart(td.dates, s.installs, s.battery);
+}
+
+async function renderFocusChart() {
+  const td = await loadTrends();
+  populateChartSelect(td, currentFocus);
+  renderChartSelection(td, chartSelectEl.value);
+}
+
+topbarStatsEl.addEventListener("click", toggleChartPanel);
+chartSelectEl.addEventListener("change", async () => renderChartSelection(await loadTrends(), chartSelectEl.value));
 
 /* ================= LOAD ================= */
 
@@ -496,12 +682,14 @@ new ResizeObserver(syncTopbarHeight).observe(topbar);
 
     regionData = (meta && meta.regions) || [];
     townData = (meta && meta.towns) || [];
+    const nat = meta && meta.national;
+    metaNational = nat ? { icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0 } : { icps: 0, kW: 0, pct: 0 };
     metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
 
     renderBoard();
     map.on("moveend", renderBoard);
   } catch (err) {
-    topbar.innerHTML = `<div class="stat-line"><span class="stat-seg err">Couldn't load the data</span></div>` +
+    topbarStatsEl.innerHTML = `<div class="stat-line"><span class="stat-seg err">Couldn't load the data</span></div>` +
       `<div class="stat-line"><span class="stat-seg muted">${err.message}</span></div>`;
     boardEl.innerHTML = `<div class="empty-note">Run the Update solar data workflow to build it.</div>`;
   }

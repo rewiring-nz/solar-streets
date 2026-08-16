@@ -144,6 +144,13 @@ ROAD_CACHE = "road_cache.json"      # {sa2: {street: [lng, lat]}} -- committed
 SA2_CACHE = "sa2_areas.json"        # {sa2: [name, s, w, n, e]}   -- committed
 OUT_GEOJSON = "docs/streets.geojson"
 OUT_META = "docs/meta.json"
+OUT_TRENDS = "docs/trends.json"
+
+# EMI's "Installed distributed generation trends" report (GUEHMT) --
+# monthly ICP-count history since 2014, exportable as CSV per fuel type
+# and region granularity, keyless. Same report the rest of this pipeline
+# is a snapshot of; this pulls the time series instead.
+GUEHMT_URL = "https://www.emi.ea.govt.nz/Retail/Download/DataReport/CSV/GUEHMT"
 
 SUPPRESSED = 2       # EMI's "3 or less" counted as this many
 
@@ -535,6 +542,77 @@ def fetch_town_anchors():
     return anchors
 
 
+def _fetch_guehmt(fuel_type, region_type):
+    """One fuel-type/region-granularity slice of the GUEHMT report:
+    {region name: {date: ICP count}}.
+    """
+    r = session.get(GUEHMT_URL, timeout=180, params={
+        "DateFrom": "20130901",
+        "DateTo": datetime.now(timezone.utc).strftime("%Y%m%d"),
+        "FuelType": fuel_type, "RegionType": region_type, "_rsdr": "ALL",
+    })
+    r.raise_for_status()
+    text = r.content.decode("utf-8-sig", errors="replace")
+    lines = text.splitlines()
+    start = next((i for i, ln in enumerate(lines) if ln.startswith("Month end,")), None)
+    if start is None:
+        raise RuntimeError("GUEHMT CSV format changed -- no 'Month end,' header found")
+
+    import csv
+    import io
+
+    by_region = {}
+    for row in csv.DictReader(io.StringIO("\n".join(lines[start:]))):
+        name = row.get("Region name")
+        date = row.get("Month end")   # DD/MM/YYYY
+        if not name or not date:
+            continue
+        try:
+            icps = int(float(row["ICP count"]))
+        except (TypeError, ValueError):
+            continue
+        d, m, y = date.split("/")
+        by_region.setdefault(name, {})[f"{y}-{m}-{d}"] = icps
+    return by_region
+
+
+def fetch_trends():
+    """Monthly solar-install history since 2014, at council and network-
+    reporting-region granularity, alongside how many of those installs
+    also have a battery -- real EMI figures, the time-series view of the
+    same "Installed distributed generation trends" report the rest of
+    this pipeline draws a single snapshot from.
+    """
+    print("Fetching historical install trends from EMI...")
+    council_all = _fetch_guehmt("solar_all", "REG_COUNCIL")
+    council_batt = _fetch_guehmt("solarplusbattery", "REG_COUNCIL")
+    network_all = _fetch_guehmt("solar_all", "NWK_REPORTING_REGION_DIST")
+    network_batt = _fetch_guehmt("solarplusbattery", "NWK_REPORTING_REGION_DIST")
+
+    dates = sorted({d for series in council_all.values() for d in series}
+                    | {d for series in network_all.values() for d in series})
+
+    def series_for(all_map, batt_map):
+        out = {}
+        for name in all_map:
+            out[name] = {
+                "installs": [all_map[name].get(d, 0) for d in dates],
+                "battery": [batt_map.get(name, {}).get(d, 0) for d in dates],
+            }
+        return out
+
+    councils = series_for(council_all, council_batt)
+    networks = series_for(network_all, network_batt)
+
+    # National = sum of councils, rather than a 5th/6th fetch.
+    national = {
+        "installs": [sum(c["installs"][i] for c in councils.values()) for i in range(len(dates))],
+        "battery": [sum(c["battery"][i] for c in councils.values()) for i in range(len(dates))],
+    }
+
+    return {"dates": dates, "national": national, "councils": councils, "networks": networks}
+
+
 def build_towns(features, town_anchors, council_bounds):
     """Group placed streets into real towns (nearest named-locality
     centre) -- e.g. "Wanaka" and "Queenstown" as separate entries -- each
@@ -770,6 +848,20 @@ def main():
     except Exception as exc:                       # noqa: BLE001
         print(f"Town names unavailable ({exc}) -- town-level grouping will be omitted")
         town_anchors = {}
+
+    try:
+        trends = fetch_trends()
+        # So the frontend can offer "drill into a network region within
+        # this council" without a separate lookup.
+        by_council = {}
+        for network in trends["networks"]:
+            council = NETWORK_TO_COUNCIL.get(network)
+            if council:
+                by_council.setdefault(council, []).append(network)
+        trends["networksByCouncil"] = by_council
+        save(OUT_TRENDS, trends)
+    except Exception as exc:                       # noqa: BLE001
+        print(f"Trend history unavailable ({exc}) -- charts will be omitted")
 
     region_tree = build_region_tree(networks, total_icps, council_bounds) if networks else []
     national_total = sum(total_icps.values())
