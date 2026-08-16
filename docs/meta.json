@@ -322,7 +322,7 @@
   {
    "name": "Palmerston North",
    "council": "Manawat\u016b-Whanganui",
-   "icps": 1082,
+   "icps": 1086,
    "kW": 2555.9,
    "lat": -40.3649,
    "lng": 175.6328,
@@ -376,7 +376,7 @@
   {
    "name": "Whang\u0101rei",
    "council": "Northland",
-   "icps": 841,
+   "icps": 843,
    "kW": 2936.3,
    "lat": -35.6874,
    "lng": 174.2612,
@@ -860,6 +860,15 @@
    "councilPct": 3.81
   },
   {
+   "name": "H\u0101wera",
+   "council": "Taranaki",
+   "icps": 283,
+   "kW": 1000.7,
+   "lat": -39.5811,
+   "lng": 174.3012,
+   "councilPct": 4.5
+  },
+  {
    "name": "Hira",
    "council": "Nelson",
    "icps": 283,
@@ -869,13 +878,13 @@
    "councilPct": 0.0
   },
   {
-   "name": "H\u0101wera",
-   "council": "Taranaki",
-   "icps": 281,
-   "kW": 1000.7,
-   "lat": -39.5811,
-   "lng": 174.3012,
-   "councilPct": 4.5
+   "name": "Levin",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 275,
+   "kW": 402.2,
+   "lat": -40.6286,
+   "lng": 175.3177,
+   "councilPct": 3.46
   },
   {
    "name": "Morrinsville",
@@ -894,15 +903,6 @@
    "lat": -35.6968,
    "lng": 174.4144,
    "councilPct": 6.47
-  },
-  {
-   "name": "Levin",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 267,
-   "kW": 336.3,
-   "lat": -40.6286,
-   "lng": 175.3177,
-   "councilPct": 3.46
   },
   {
    "name": "Lake H\u0101wea",
@@ -1481,15 +1481,6 @@
    "councilPct": 3.46
   },
   {
-   "name": "Awanui",
-   "council": "Northland",
-   "icps": 120,
-   "kW": 312.2,
-   "lat": -35.0454,
-   "lng": 173.2465,
-   "councilPct": 6.47
-  },
-  {
    "name": "\u014ckaihau",
    "council": "Northland",
    "icps": 120,
@@ -1650,6 +1641,15 @@
    "lat": -41.1105,
    "lng": 175.3194,
    "councilPct": 3.33
+  },
+  {
+   "name": "Awanui",
+   "council": "Northland",
+   "icps": 102,
+   "kW": 255.6,
+   "lat": -35.0454,
+   "lng": 173.2465,
+   "councilPct": 6.47
   },
   {
    "name": "Riverhead",
@@ -1931,15 +1931,6 @@
    "councilPct": 2.45
   },
   {
-   "name": "\u014chau",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 76,
-   "kW": 228.1,
-   "lat": -40.6542,
-   "lng": 175.2167,
-   "councilPct": 3.46
-  },
-  {
    "name": "Wallacetown",
    "council": "Southland",
    "icps": 76,
@@ -1965,6 +1956,15 @@
    "lat": -37.8576,
    "lng": 176.1775,
    "councilPct": 4.99
+  },
+  {
+   "name": "\u014cpunake",
+   "council": "Taranaki",
+   "icps": 75,
+   "kW": 320.9,
+   "lat": -39.4132,
+   "lng": 173.9052,
+   "councilPct": 4.5
   },
   {
    "name": "Tangiteroria",
@@ -2001,15 +2001,6 @@
    "lat": -38.3419,
    "lng": 175.1402,
    "councilPct": 3.81
-  },
-  {
-   "name": "\u014cpunake",
-   "council": "Taranaki",
-   "icps": 71,
-   "kW": 320.9,
-   "lat": -39.4132,
-   "lng": 173.9052,
-   "councilPct": 4.5
   },
   {
    "name": "Raumati South",
@@ -2063,6 +2054,15 @@
    "kW": 296.8,
    "lat": -40.34,
    "lng": 175.5103,
+   "councilPct": 3.46
+  },
+  {
+   "name": "\u014chau",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 68,
+   "kW": 162.2,
+   "lat": -40.6542,
+   "lng": 175.2167,
    "councilPct": 3.46
   },
   {
