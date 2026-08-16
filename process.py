@@ -818,16 +818,21 @@ def write_region_boundaries(region_tree, tla_region, towns, sa1_dwellings, anzsi
                 est_total = est_dwellings * ratio
                 if est_total >= icps:   # impossible otherwise -- omit, don't mislead
                     est_pct = round(icps / est_total * 100, 1)
+        geom_dict = mapping(geoms[i])
+        lat, lng = _representative_point(geom_dict["coordinates"], geom_dict["type"] == "MultiPolygon")
         features.append({
             "type": "Feature",
-            "geometry": mapping(geoms[i]),
+            "geometry": geom_dict,
             "properties": {
                 # "name" is the parent council (what "pct"/the fill
                 # colour measure); "tla" is this shape's own real name
                 # with its own real icps/kW and estimated estPct.
+                # lat/lng is this shape's single representative point
+                # (frontend label anchor -- see _representative_point).
                 "name": council_name, "tla": tla_name,
                 "icps": icps, "kW": round(kW, 1), "pct": row["pct"],
                 "estPct": est_pct,
+                "lat": round(lat, 4), "lng": round(lng, 4),
             },
         })
 

@@ -860,14 +860,21 @@ function loadSolarRegionsLayer() {
         layout: { visibility: "none" },
         paint: { "line-color": "rgba(0,0,0,.25)", "line-width": 1 },
       });
+      // One label per TLA (district), not per council -- now that each
+      // shape carries its own real installs/MW and estimated estPct
+      // (see write_region_boundaries/process.py), a district-level label
+      // is real distinct information, not 67 repeats of one of 16
+      // numbers. lat/lng is each feature's own server-computed
+      // representative point (_representative_point), same fix as the
+      // duplicate-label bug this file's history already covers.
       map.addSource("solar-region-label-points", {
         type: "geojson",
         data: {
           type: "FeatureCollection",
-          features: regionData.filter(r => r.lat != null).map(r => ({
+          features: boundaries.features.filter(f => f.properties.lat != null).map(f => ({
             type: "Feature",
-            geometry: { type: "Point", coordinates: [r.lng, r.lat] },
-            properties: { pct: r.pct },
+            geometry: { type: "Point", coordinates: [f.properties.lng, f.properties.lat] },
+            properties: { estPct: f.properties.estPct },
           })),
         },
       });
@@ -876,8 +883,8 @@ function loadSolarRegionsLayer() {
         layout: {
           visibility: "none",
           "text-field": [
-            "case", ["==", ["get", "pct"], null], "",
-            ["concat", ["number-format", ["get", "pct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
+            "case", ["==", ["get", "estPct"], null], "",
+            ["concat", "~", ["number-format", ["get", "estPct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
           ],
           "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": true,
         },
