@@ -1,11 +1,11 @@
 {
  "updated": "2026-08-16",
  "streets": 29840,
- "streetsTotal": 36963,
+ "streetsTotal": 36964,
  "matchRate": 80.7,
  "national": {
-  "icps": 90160,
-  "kW": 1199941.7,
+  "icps": 90163,
+  "kW": 1199987.8,
   "totalIcps": 2362334,
   "pct": 3.82
  },
@@ -102,7 +102,7 @@
   },
   {
    "name": "Canterbury",
-   "icps": 14109,
+   "icps": 14111,
    "kW": 43963.7,
    "totalIcps": 349875,
    "pct": 4.51,
@@ -117,8 +117,8 @@
   },
   {
    "name": "Taranaki",
-   "icps": 2627,
-   "kW": 8743.9,
+   "icps": 2628,
+   "kW": 8772.7,
    "totalIcps": 61435,
    "pct": 4.5,
    "bbox": [
@@ -193,7 +193,7 @@
   {
    "name": "Auckland",
    "icps": 16234,
-   "kW": 46328.3,
+   "kW": 45602.5,
    "totalIcps": 708213,
    "pct": 2.45,
    "bbox": [
@@ -256,7 +256,7 @@
    "name": "Auckland",
    "council": "Auckland",
    "icps": 4144,
-   "kW": 9599.8,
+   "kW": 8874.0,
    "lat": -36.9769,
    "lng": 174.8554,
    "councilPct": 2.45,
@@ -444,8 +444,8 @@
   {
    "name": "New Plymouth",
    "council": "Taranaki",
-   "icps": 829,
-   "kW": 2845.3,
+   "icps": 832,
+   "kW": 2874.1,
    "lat": -39.031,
    "lng": 174.1533,
    "councilPct": 4.5,
@@ -564,7 +564,7 @@
   {
    "name": "Governors Bay",
    "council": "Canterbury",
-   "icps": 670,
+   "icps": 672,
    "kW": 2123.8,
    "lat": -43.6179,
    "lng": 172.6434,
@@ -962,16 +962,6 @@
    "estPct": 5.4
   },
   {
-   "name": "H\u0101wera",
-   "council": "Taranaki",
-   "icps": 283,
-   "kW": 1000.7,
-   "lat": -39.5811,
-   "lng": 174.3012,
-   "councilPct": 4.5,
-   "estPct": 4.4
-  },
-  {
    "name": "Hira",
    "council": "Nelson",
    "icps": 283,
@@ -979,6 +969,16 @@
    "lat": -41.2132,
    "lng": 173.4024,
    "councilPct": null
+  },
+  {
+   "name": "H\u0101wera",
+   "council": "Taranaki",
+   "icps": 281,
+   "kW": 1000.7,
+   "lat": -39.5811,
+   "lng": 174.3012,
+   "councilPct": 4.5,
+   "estPct": 4.4
   },
   {
    "name": "Levin",
