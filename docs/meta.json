@@ -1,6 +1,6 @@
 {
  "updated": "2026-08-16",
- "streets": 29839,
+ "streets": 29840,
  "streetsTotal": 36963,
  "matchRate": 80.7,
  "national": {
@@ -117,7 +117,7 @@
   },
   {
    "name": "Taranaki",
-   "icps": 2625,
+   "icps": 2627,
    "kW": 8743.9,
    "totalIcps": 61435,
    "pct": 4.5,
@@ -962,6 +962,16 @@
    "estPct": 5.4
   },
   {
+   "name": "H\u0101wera",
+   "council": "Taranaki",
+   "icps": 283,
+   "kW": 1000.7,
+   "lat": -39.5811,
+   "lng": 174.3012,
+   "councilPct": 4.5,
+   "estPct": 4.4
+  },
+  {
    "name": "Hira",
    "council": "Nelson",
    "icps": 283,
@@ -969,16 +979,6 @@
    "lat": -41.2132,
    "lng": 173.4024,
    "councilPct": null
-  },
-  {
-   "name": "H\u0101wera",
-   "council": "Taranaki",
-   "icps": 281,
-   "kW": 1000.7,
-   "lat": -39.5811,
-   "lng": 174.3012,
-   "councilPct": 4.5,
-   "estPct": 4.4
   },
   {
    "name": "Levin",
