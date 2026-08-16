@@ -21,6 +21,7 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
   #app { position: relative; height: 100%; width: 100%; }
+  #app.pseudo-fullscreen { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9999; }
   #map { height: 100%; width: 100%; background: #0b1622; }
 
   .maplibregl-popup-content {
@@ -47,11 +48,12 @@
   }
   /* Chart panel width: roomy on desktop, growing proportionally as the
      window narrows, full-width on tablet/mobile. */
-  #topbar.expanded { width: min(33vw, 720px); }
+  #topbar.expanded { width: min(42vw, 720px); }
   @media (max-width: 1100px) { #topbar.expanded { width: 50vw; } }
   @media (max-width: 767px)  { #topbar.expanded { width: calc(100vw - 20px); } }
 
-  #topbarStats { padding: 6px 11px; cursor: pointer; }
+  #topbarStats { padding: 6px 11px; }
+  .topbar-toprow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .topbar-label {
     font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
     color: var(--dim); display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap;
@@ -60,8 +62,6 @@
     font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: normal;
     color: var(--amber); text-shadow: 0 0 8px rgba(255,183,3,.35);
   }
-  .topbar-label .chev { font-size: 9px; transition: transform .2s ease; margin-left: auto; }
-  #topbar.expanded .topbar-label .chev { transform: rotate(180deg); }
   .stat-line {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 0;
     font-size: 12px; color: var(--dim); line-height: 1.5; margin-top: 2px;
@@ -69,7 +69,14 @@
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
   .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
-  .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; margin-top: 3px; }
+  .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; white-space: nowrap; flex: none; }
+
+  .chart-toggle-btn {
+    display: block; margin-top: 6px; padding: 4px 12px; border: none; border-radius: 7px;
+    background: var(--amber); color: #241a00; font-size: 11px; font-weight: 700;
+    letter-spacing: .2px; cursor: pointer; box-shadow: 0 0 10px rgba(255,183,3,.3);
+  }
+  .chart-toggle-btn:hover { filter: brightness(1.08); }
 
   .topbar-chart { max-height: 0; overflow: hidden; transition: max-height .25s ease; border-top: 1px solid transparent; }
   #topbar.expanded .topbar-chart { max-height: 420px; border-top-color: var(--border); }
@@ -236,6 +243,20 @@ const LINZ_TILES = k => `https://basemaps.linz.govt.nz/v1/tiles/aerial/WebMercat
 const AWS_DEM = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
 const TERRAIN_EXAGGERATION = 1.4;
 
+// Embed-friendly URL params, e.g. ?region=Wanaka&chart=open&dash=closed
+const urlParams = new URLSearchParams(location.search);
+const REGION_PARAM = (urlParams.get("region") || "").trim();
+const CHART_PARAM = (urlParams.get("chart") || "").toLowerCase();
+const DASH_PARAM = (urlParams.get("dash") || "").toLowerCase();
+
+// Inside an iframe (e.g. embedded in Webflow), an ordinary scroll over
+// the map would hijack the page's scroll to zoom the map instead --
+// cooperativeGestures makes scroll-zoom require Ctrl/Cmd (and pan
+// require two fingers on touch), so the page scrolls normally and the
+// map only reacts on a deliberate zoom gesture. Not needed when the
+// map is opened standalone, where there's no page to scroll past.
+const IN_IFRAME = window.self !== window.top;
+
 /* ================= MAP ================= */
 
 const usingLinz = LINZ_API_KEY.trim().length > 0;
@@ -245,6 +266,7 @@ const map = new maplibregl.Map({
   center: [172.8, -41.0],
   zoom: 4.7,
   maxPitch: 80,
+  cooperativeGestures: IN_IFRAME,
   style: {
     version: 8,
     glyphs: "https://demotiles.maplibre.org/font/{fontstack}/{range}.pbf",
@@ -263,7 +285,42 @@ const map = new maplibregl.Map({
 });
 
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), "bottom-right");
-map.addControl(new maplibregl.FullscreenControl({ container: document.getElementById("app") }), "top-right");
+
+// iOS Safari has no Fullscreen API for arbitrary elements (only
+// <video>), so MapLibre's own FullscreenControl silently no-ops there
+// -- the button shows but does nothing. Fake it with a fixed-position
+// overlay instead on browsers that lack real support; everywhere else,
+// use the native control as normal. Styled to match maplibre's own
+// control (same icon classes) so it looks identical either way.
+const appEl = document.getElementById("app");
+if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
+  map.addControl(new maplibregl.FullscreenControl({ container: appEl }), "top-right");
+} else {
+  class PseudoFullscreenControl {
+    onAdd(mapInstance) {
+      this._container = document.createElement("div");
+      this._container.className = "maplibregl-ctrl maplibregl-ctrl-group";
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "maplibregl-ctrl-fullscreen";
+      btn.setAttribute("aria-label", "Toggle fullscreen");
+      const icon = document.createElement("span");
+      icon.className = "maplibregl-ctrl-icon";
+      icon.setAttribute("aria-hidden", "true");
+      btn.appendChild(icon);
+      btn.addEventListener("click", () => {
+        const on = appEl.classList.toggle("pseudo-fullscreen");
+        btn.classList.toggle("maplibregl-ctrl-fullscreen", !on);
+        btn.classList.toggle("maplibregl-ctrl-shrink", on);
+        setTimeout(() => mapInstance.resize(), 50);
+      });
+      this._container.appendChild(btn);
+      return this._container;
+    }
+    onRemove() { this._container.remove(); }
+  }
+  map.addControl(new PseudoFullscreenControl(), "top-right");
+}
 
 const mapReady = new Promise(r => map.loaded() ? r() : map.once("load", r));
 
@@ -463,26 +520,46 @@ function currentView() {
 }
 
 // Which single region the map is "on": New Zealand while zoomed out
-// close to the national view, otherwise whichever council covers the
-// most of the current viewport (by overlap area, latitude-corrected --
-// councils are bboxes here, not exact polygons, but this is only
-// deciding which real region's numbers to show, not computing them).
+// close to the national view, otherwise whichever council has the most
+// installs among towns currently in view -- grounded in the same real
+// point-in-polygon assignment used to place towns (council_of_point in
+// process.py), not a bounding-box guess. A council's bbox is just its
+// min/max lat/lng, so an irregular region reaches further than its real
+// shape -- Canterbury's bbox stretches into the Alps and overlaps the
+// West Coast's, so the old area-overlap approach picked Canterbury even
+// while looking straight at the West Coast's actual coastline.
 function focusRegion() {
   const view = currentView();
   if (!view || !map.getZoom || map.getZoom() < 6) return { level: "national", name: "New Zealand" };
 
-  const coslat = Math.cos((view.getNorth() + view.getSouth()) / 2 * Math.PI / 180);
-  let best = null, bestArea = 0;
-  for (const r of regionData) {
-    if (!r.bbox) continue;
-    const [s, w, n, e] = r.bbox;
-    const ow = Math.min(e, view.getEast()) - Math.max(w, view.getWest());
-    const oh = Math.min(n, view.getNorth()) - Math.max(s, view.getSouth());
-    if (ow <= 0 || oh <= 0) continue;
-    const area = ow * coslat * oh;
-    if (area > bestArea) { bestArea = area; best = r; }
+  const visible = townData.filter(t => pointInView(t.lat, t.lng, view));
+  const byCouncil = {};
+  for (const t of visible) {
+    if (!t.council) continue;
+    byCouncil[t.council] = (byCouncil[t.council] || 0) + t.icps;
   }
-  return best ? { level: "council", name: best.name, data: best } : { level: "national", name: "New Zealand" };
+  let bestCouncil = null, bestIcps = 0;
+  for (const [council, icps] of Object.entries(byCouncil)) {
+    if (icps > bestIcps) { bestIcps = icps; bestCouncil = council; }
+  }
+
+  if (!bestCouncil) {
+    // No towns in view (e.g. a remote valley) -- fall back to whichever
+    // town is nearest the viewport centre, same idea as build_towns'
+    // nearest-anchor assignment, rather than guessing from a bbox.
+    const center = view.getCenter();
+    const coslat = Math.cos(center.lat * Math.PI / 180);
+    let bestD = Infinity;
+    for (const t of townData) {
+      const dx = (t.lng - center.lng) * coslat, dy = t.lat - center.lat;
+      const d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; bestCouncil = t.council; }
+    }
+  }
+
+  if (!bestCouncil) return { level: "national", name: "New Zealand" };
+  const data = regionData.find(r => r.name === bestCouncil);
+  return data ? { level: "council", name: bestCouncil, data } : { level: "national", name: "New Zealand" };
 }
 
 function visibleTowns() {
@@ -491,20 +568,64 @@ function visibleTowns() {
   return list;   // already sorted by installs at build time
 }
 
+// Free-text lookup for the ?region= embed param -- matches a region
+// (council) name or a town name, whichever is the closer match, so an
+// embedder can type "Canterbury" or "Wanaka" without needing to know
+// which kind of place it is. Exact match wins outright; otherwise
+// prefix, then substring, each tier checking regions before towns
+// (regions are the broader, more likely intent behind a short query).
+// townData is already sorted by installs, so a substring tier that
+// matches several towns naturally prefers the more prominent one.
+function findPlace(term) {
+  // Diacritic-insensitive (NFD strip) so "Wanaka" matches "Wānaka" --
+  // NZ place names commonly carry macrons that an embedder typing a URL
+  // param is unlikely to reproduce exactly.
+  const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const q = norm(term);
+  if (!q) return null;
+  const tiers = [
+    s => norm(s) === q,
+    s => norm(s).startsWith(q),
+    s => norm(s).includes(q),
+  ];
+  for (const test of tiers) {
+    const region = regionData.find(r => test(r.name));
+    if (region) return { type: "region", data: region };
+    const town = townData.find(t => test(t.name));
+    if (town) return { type: "town", data: town };
+  }
+  return null;
+}
+
+function focusOnPlace(term) {
+  const match = findPlace(term);
+  if (!match) { console.warn(`?region=${term} -- no matching region or town found`); return; }
+  if (match.type === "region" && match.data.bbox) {
+    const [s, w, n, e] = match.data.bbox;
+    map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 0 });
+  } else {
+    map.jumpTo({ center: [match.data.lng, match.data.lat], zoom: 12 });
+  }
+}
+
 function renderTopbar() {
   currentFocus = focusRegion();
   const stats = currentFocus.level === "national" ? metaNational : currentFocus.data;
   const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
   segs.push(`<span class="stat-seg"><strong>${fmtMW(stats.kW)}</strong> MW</span>`);
   if (stats.pct) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of connections</span>`);
-  let html = `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span><span class="chev">▾</span></div>`;
-  html += `<div class="stat-line">${segs.join("")}</div>`;
+  const chartOpen = topbarEl.classList.contains("expanded");
+  let html = `<div class="topbar-toprow">`;
+  html += `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span></div>`;
   if (metaUpdated) {
     html += `<div class="updated-line">Updated ${MONTHS3[metaUpdated.getUTCMonth()]} ${metaUpdated.getUTCFullYear()}</div>`;
   }
+  html += `</div>`;
+  html += `<div class="stat-line">${segs.join("")}</div>`;
+  html += `<button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button>`;
   topbarStatsEl.innerHTML = html;
 
-  if (topbarEl.classList.contains("expanded")) renderFocusChart();
+  if (chartOpen) renderFocusChart();
 }
 
 function rowHTML(t, rank) {
@@ -574,7 +695,7 @@ function setDashHidden(hidden) {
   dashArrow.classList.toggle("open", !hidden);
   dashArrow.title = hidden ? "Show regions" : "Hide regions";
 }
-setDashHidden(false);   // sync the arrow's glyph/title to the initial (open) state
+setDashHidden(DASH_PARAM === "closed");   // default open, unless ?dash=closed
 
 function isChartOpen() { return topbarEl.classList.contains("expanded"); }
 function closeChartPanel() { topbarEl.classList.remove("expanded"); }
@@ -697,7 +818,9 @@ async function renderFocusChart() {
   renderChartSelection(td, chartSelectEl.value);
 }
 
-topbarStatsEl.addEventListener("click", toggleChartPanel);
+topbarStatsEl.addEventListener("click", e => {
+  if (e.target.closest("#chartToggleBtn")) toggleChartPanel();
+});
 chartSelectEl.addEventListener("change", async () => renderChartSelection(await loadTrends(), chartSelectEl.value));
 
 /* ================= LOAD ================= */
@@ -723,6 +846,21 @@ chartSelectEl.addEventListener("change", async () => renderChartSelection(await 
 
     renderBoard();
     map.on("moveend", renderBoard);
+
+    if (REGION_PARAM) {
+      focusOnPlace(REGION_PARAM);
+      renderBoard();   // re-sync immediately rather than wait on moveend
+    }
+
+    // ?chart=open -- forced closed on mobile regardless, where the
+    // chart would eat most of a typically-short embed's screen space.
+    // Opening it also closes the regions panel, same as a manual click
+    // would (see toggleChartPanel): the two share the same corner.
+    if (CHART_PARAM === "open" && window.innerWidth >= 768) {
+      setDashHidden(true);
+      topbarEl.classList.add("expanded");
+      renderFocusChart();
+    }
   } catch (err) {
     topbarStatsEl.innerHTML = `<div class="stat-line"><span class="stat-seg err">Couldn't load the data</span></div>` +
       `<div class="stat-line"><span class="stat-seg muted">${err.message}</span></div>`;
