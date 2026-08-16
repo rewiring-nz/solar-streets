@@ -411,12 +411,18 @@ function renderTopbar() {
 }
 
 function rowHTML(t, rank) {
+  // councilPct is the *region's* real % of ICPs (EMI has no total-ICP
+  // figure at town granularity to compute an honest town-specific one) --
+  // labelled "region" so it's never read as this town's own adoption rate.
+  const region = (t.councilPct != null)
+    ? `${t.council} region: ${t.councilPct.toFixed(1)}%`
+    : t.council;
   return `
     <div class="row-main">
       <span class="row-rank">${rank}</span>
       <div class="row-body">
         <div class="row-name">${t.name}</div>
-        <div class="row-sub">${t.council}</div>
+        <div class="row-sub">${region}</div>
       </div>
       <div class="row-metric">
         <span class="headline">${fmt(t.icps)} installs</span>

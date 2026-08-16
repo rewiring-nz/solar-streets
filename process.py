@@ -783,6 +783,11 @@ def main():
     features, missing = build(records, cache, areas, previous)
 
     towns = build_towns(features, town_anchors, council_bounds)
+    # Each town's parent council's real % of ICPs, attached as labelled
+    # regional context -- not a town-specific figure (see build_towns).
+    council_pct = {r["name"]: r["pct"] for r in region_tree}
+    for t in towns:
+        t["councilPct"] = council_pct.get(t["council"], 0)
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
     save("previous_counts.json",
