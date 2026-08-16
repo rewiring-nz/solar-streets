@@ -54,6 +54,7 @@
     white-space: nowrap; transition: background .15s, color .15s;
   }
   .dataset-btn.active { background: var(--amber); color: #241a00; }
+  .dataset-btn[data-dataset="ev"].active { background: var(--cyan); color: #062229; }
   .dataset-btn:not(.active):hover { color: var(--text); }
 
   /* Compact by default, sized to its content -- grows to fit a chart
@@ -82,6 +83,7 @@
     font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: normal;
     color: var(--amber); text-shadow: 0 0 8px rgba(255,183,3,.35);
   }
+  body.dataset-ev .topbar-label .topbar-region { color: var(--cyan); text-shadow: 0 0 8px rgba(34,211,238,.35); }
   .stat-line {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 0;
     font-size: 12px; color: var(--dim); line-height: 1.5; margin-top: 2px;
@@ -96,6 +98,7 @@
     background: var(--amber); color: #241a00; font-size: 11px; font-weight: 700;
     letter-spacing: .2px; cursor: pointer; box-shadow: 0 0 10px rgba(255,183,3,.3);
   }
+  body.dataset-ev .chart-toggle-btn { background: var(--cyan); color: #062229; box-shadow: 0 0 10px rgba(34,211,238,.3); }
   .chart-toggle-btn:hover { filter: brightness(1.08); }
 
   .topbar-chart { max-height: 0; overflow: hidden; transition: max-height .25s ease; border-top: 1px solid transparent; }
@@ -141,7 +144,7 @@
       border-radius: 0 10px 10px 0; border-left: none;
       flex-direction: column;
     }
-    .edge-arrow.open { left: 260px; }
+    .edge-arrow.open { left: 340px; }
     .edge-arrow .glyph { transform: rotate(0deg); }
     .edge-arrow.open .glyph { transform: rotate(180deg); }
     .edge-arrow .arrow-label { writing-mode: vertical-rl; text-orientation: mixed; }
@@ -169,10 +172,10 @@
   /* Desktop: left sidebar, below the top bar */
   @media (min-width: 768px) {
     #dash {
-      top: calc(var(--topbar-h, 46px) + 18px); left: 14px; bottom: 14px; width: 260px;
+      top: calc(var(--topbar-h, 46px) + 18px); left: 14px; bottom: 14px; width: 340px;
       border-radius: 16px;
     }
-    #dash.collapsed { transform: translateX(-282px); }
+    #dash.collapsed { transform: translateX(-362px); }
   }
   /* Mobile: bottom sheet */
   @media (max-width: 767px) {
@@ -208,7 +211,7 @@
   .ev-row-overall .headline { font-size: 13.5px; font-weight: 700; color: var(--cyan); text-shadow: 0 0 10px rgba(34,211,238,.4); white-space: nowrap; }
   .ev-row-overall .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
   .ev-categories { margin: 6px 0 0; padding-left: 24px; }
-  .ev-cat-line { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--dim); line-height: 1.65; }
+  .ev-cat-line { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--dim); line-height: 1.65; white-space: nowrap; }
   .ev-cat-line .n { color: var(--text); font-weight: 600; }
 
   .empty-note { padding: 20px 16px; font-size: 12.5px; color: var(--dim); text-align: center; }
@@ -222,8 +225,9 @@
   }
   .chart-svg-wrap { width: 100%; margin-top: 8px; }
   .chart-svg-wrap svg { width: 100%; height: auto; display: block; }
-  .chart-legend { display: flex; gap: 16px; font-size: 11.5px; color: var(--dim); margin-top: 4px; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11.5px; color: var(--dim); margin-top: 4px; }
   .chart-legend .swatch { display: inline-block; width: 10px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
+  .chart-legend strong { color: var(--text); }
   .chart-legend .installs { background: var(--amber); }
   .chart-legend .battery { background: #38bdf8; }
   .chart-legend .ev { background: var(--cyan); }
@@ -246,7 +250,6 @@
       <div id="topbarChart" class="topbar-chart">
         <div class="topbar-chart-inner">
           <select id="chartSelect" class="chart-select"></select>
-          <select id="evCategorySelect" class="chart-select hidden"></select>
           <div class="chart-svg-wrap"><svg id="chartSvg" viewBox="0 0 700 320"></svg></div>
           <div class="chart-legend" id="chartLegend">
             <span><i class="swatch installs"></i>Solar installs</span>
@@ -808,8 +811,15 @@ new ResizeObserver(syncTopbarHeight).observe(topWrapEl);
    down by it. */
 
 const datasetSwitchEl = document.getElementById("datasetSwitch");
-const evCategorySelectEl = document.getElementById("evCategorySelect");
 const chartLegendEl = document.getElementById("chartLegend");
+
+// Fixed stacking order (largest category at the base) and a colour per
+// category for the chart's stacked areas, the map choropleth legend
+// swatches, and anywhere else the categories need telling apart.
+const EV_CHART_ORDER = ["Cars", "Trucks", "Buses", "Utes", "Tractors"];
+const EV_CATEGORY_COLORS = {
+  Cars: "#22d3ee", Trucks: "#0e7490", Buses: "#38bdf8", Utes: "#a5f3fc", Tractors: "#f97316",
+};
 
 let evNational = null;
 let evRegions = [];
@@ -832,8 +842,6 @@ function loadEvData() {
       evTrends = ev.trends;
       evCategoryNames = ev.categories || [];
       evUpdated = ev.updated ? new Date(ev.updated + "T00:00:00Z") : null;
-      evCategorySelectEl.innerHTML = `<option value="All">All EVs</option>` +
-        evCategoryNames.map(c => `<option value="${c}">${c}</option>`).join("");
       addEvLayer(boundaries);
     });
   }
@@ -861,6 +869,18 @@ function addEvLayer(boundaries) {
     layout: { visibility: "none" },
     paint: { "line-color": "rgba(255,255,255,.35)", "line-width": 1 }
   }, beforeId);
+  map.addLayer({
+    id: "ev-labels", type: "symbol", source: "ev-tlas",
+    layout: {
+      visibility: "none",
+      "text-field": [
+        "case", ["==", ["get", "pct"], null], "",
+        ["concat", ["number-format", ["get", "pct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
+      ],
+      "text-font": ["Noto Sans Regular"], "text-size": 12, "text-allow-overlap": false
+    },
+    paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,.75)", "text-halo-width": 1.3 }
+  }, beforeId);
 
   map.on("click", "ev-fill", e => {
     const p = e.features[0].properties;
@@ -883,6 +903,7 @@ function setEvLayerVisible(visible) {
   const v = visible ? "visible" : "none";
   map.setLayoutProperty("ev-fill", "visibility", v);
   map.setLayoutProperty("ev-outline", "visibility", v);
+  map.setLayoutProperty("ev-labels", "visibility", v);
 }
 
 function setSolarLayersVisible(visible) {
@@ -974,9 +995,9 @@ function setDataset(name) {
   if (name === DATASET) return Promise.resolve();
   const go = () => {
     DATASET = name;
+    document.body.classList.toggle("dataset-ev", name === "ev");   // swaps the shared yellow accents to blue
     datasetSwitchEl.querySelectorAll(".dataset-btn").forEach(b => b.classList.toggle("active", b.dataset.dataset === name));
     listCaptionEl.textContent = name === "ev" ? "Districts within map view" : "Towns within map view";
-    evCategorySelectEl.classList.toggle("hidden", name !== "ev");
     setSolarLayersVisible(name === "solar");
     setEvLayerVisible(name === "ev");
     if (isChartOpen()) closeChartPanel();   // series differ between datasets -- avoid showing a stale chart
@@ -1066,19 +1087,29 @@ function renderChartSelection(td, value) {
   if (s) drawTrendChart(td.dates, s.installs, s.battery);
 }
 
-// EV chart: same idea as the solar one, but a single line (cumulative
-// EVs on the road, by first-registration year -- see fetch_ev_trends)
-// rather than a dual install/battery pair, and with a second dropdown
-// for which vehicle category to show.
-function drawEvChart(dates, series) {
+// EV chart: a stacked area, one band per vehicle category (cumulative
+// EVs on the road, by first-registration year -- see fetch_ev_trends),
+// rather than a single line -- every category is always shown at once,
+// so there's no separate category picker the way solar has installs vs
+// battery. Cars dominate the real fleet by two orders of magnitude, so
+// the smaller categories necessarily read as thin bands -- that's the
+// real shape of the data, not a rendering fault.
+function drawEvStackedChart(dates, seriesByCategory) {
   const W = 700, H = 320, L = 48, R = 20, T = 14, B = 26;
   const x0 = L, x1 = W - R, y0 = T, y1 = H - B;
   const n = dates.length;
   const xAt = i => x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0);
-  const maxV = Math.max(...series, 1) * 1.08;
-  const yAt = v => y1 - Math.min(1, v / maxV) * (y1 - y0);
 
-  const path = "M" + series.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(" L");
+  const bands = [];
+  let running = new Array(n).fill(0);
+  for (const cat of EV_CHART_ORDER) {
+    const series = seriesByCategory[cat] || new Array(n).fill(0);
+    const bottom = running;
+    running = bottom.map((v, i) => v + (series[i] || 0));
+    bands.push({ cat, bottom, top: running });
+  }
+  const maxV = Math.max(...running, 1) * 1.08;
+  const yAt = v => y1 - Math.min(1, v / maxV) * (y1 - y0);
 
   let grid = "";
   for (let f = 0; f <= 1; f += 0.25) {
@@ -1093,7 +1124,15 @@ function drawEvChart(dates, series) {
     xLabels += `<text x="${xAt(idx).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9.5" fill="#8a96a3">${dates[idx]}</text>`;
   }
 
-  chartSvgEl.innerHTML = grid + xLabels + `<path d="${path}" fill="none" stroke="#22d3ee" stroke-width="2"/>`;
+  const areas = bands.map(b => {
+    const top = b.top.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`);
+    const bot = b.bottom.map((v, i) => `${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).reverse();
+    const d = "M" + top.join(" L") + " L" + bot.join(" L") + " Z";
+    const color = EV_CATEGORY_COLORS[b.cat] || "#888";
+    return `<path d="${d}" fill="${color}" fill-opacity="0.88" stroke="${color}" stroke-width="1"/>`;
+  }).join("");
+
+  chartSvgEl.innerHTML = grid + xLabels + areas;
 }
 
 function populateEvChartSelect(focus) {
@@ -1113,19 +1152,38 @@ function evTrendSeries(level, name, category) {
   return bucket ? bucket[name] : null;
 }
 
+function evSnapshotFor(level, name) {
+  if (level === "national") return evNational;
+  const list = level === "region" ? evRegions : evTlas;
+  return list.find(x => x.name === name) || null;
+}
+
+// The legend doubles as the "% uptake per vehicle type" breakdown for
+// whichever region/district is currently selected in the chart -- same
+// real per-category % already shown in the district list rows, just
+// for the chart's current selection instead of every visible district.
+function renderEvChartLegend(level, name) {
+  const snap = evSnapshotFor(level, name);
+  chartLegendEl.innerHTML = EV_CHART_ORDER.map(cat => {
+    const c = (snap && snap.categories && snap.categories[cat]) || {};
+    const pctText = c.pct != null ? `${c.pct.toFixed(1)}%` : "no data";
+    return `<span><i class="swatch" style="background:${EV_CATEGORY_COLORS[cat]}"></i>${cat}: <strong>${pctText}</strong></span>`;
+  }).join("");
+}
+
 function renderEvChartSelection() {
   const [level, ...rest] = chartSelectEl.value.split(":");
   const name = rest.join(":");
-  const category = evCategorySelectEl.value || "All";
-  const series = evTrendSeries(level, name, category);
-  if (series) drawEvChart(evTrends.dates, series);
+  const seriesByCategory = {};
+  for (const cat of EV_CHART_ORDER) seriesByCategory[cat] = evTrendSeries(level, name, cat);
+  drawEvStackedChart(evTrends.dates, seriesByCategory);
+  renderEvChartLegend(level, name);
 }
 
 async function renderFocusChart() {
   if (DATASET === "ev") {
     populateEvChartSelect(currentFocus);
     renderEvChartSelection();
-    chartLegendEl.innerHTML = `<span><i class="swatch ev"></i>Electric vehicles on the road</span>`;
     return;
   }
   const td = await loadTrends();
@@ -1142,7 +1200,6 @@ chartSelectEl.addEventListener("change", async () => {
   if (DATASET === "ev") { renderEvChartSelection(); return; }
   renderChartSelection(await loadTrends(), chartSelectEl.value);
 });
-evCategorySelectEl.addEventListener("change", renderEvChartSelection);
 
 /* ================= LOAD ================= */
 
