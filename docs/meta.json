@@ -64,8 +64,8 @@
   },
   {
    "name": "Bay of Plenty",
-   "icps": 6924,
-   "kW": 24941.6,
+   "icps": 6940,
+   "kW": 25061.9,
    "totalIcps": 152712,
    "pct": 4.99,
    "bbox": [
@@ -439,7 +439,7 @@
   {
    "name": "Te Puna",
    "council": "Bay of Plenty",
-   "icps": 759,
+   "icps": 761,
    "kW": 2394.1,
    "lat": -37.6794,
    "lng": 176.0718,
@@ -752,15 +752,6 @@
    "councilPct": 4.5
   },
   {
-   "name": "Whakat\u0101ne",
-   "council": "Bay of Plenty",
-   "icps": 344,
-   "kW": 1167.9,
-   "lat": -37.9744,
-   "lng": 176.9913,
-   "councilPct": 4.99
-  },
-  {
    "name": "Raumati Beach",
    "council": "Wellington",
    "icps": 344,
@@ -768,6 +759,15 @@
    "lat": -40.9184,
    "lng": 174.9871,
    "councilPct": 3.33
+  },
+  {
+   "name": "Whakat\u0101ne",
+   "council": "Bay of Plenty",
+   "icps": 342,
+   "kW": 1167.9,
+   "lat": -37.9744,
+   "lng": 176.9913,
+   "councilPct": 4.99
   },
   {
    "name": "Silverdale",
@@ -844,7 +844,7 @@
   {
    "name": "\u014cmokoroa",
    "council": "Bay of Plenty",
-   "icps": 288,
+   "icps": 290,
    "kW": 1552.2,
    "lat": -37.6494,
    "lng": 176.0287,
@@ -961,7 +961,7 @@
   {
    "name": "Hamurana",
    "council": "Bay of Plenty",
-   "icps": 244,
+   "icps": 242,
    "kW": 1057.7,
    "lat": -38.0101,
    "lng": 176.1792,
@@ -1348,7 +1348,7 @@
   {
    "name": "Waihi Beach",
    "council": "Bay of Plenty",
-   "icps": 142,
+   "icps": 140,
    "kW": 503.8,
    "lat": -37.4129,
    "lng": 175.9266,
@@ -1589,6 +1589,15 @@
    "councilPct": 2.45
   },
   {
+   "name": "\u014chope",
+   "council": "Bay of Plenty",
+   "icps": 112,
+   "kW": 459.2,
+   "lat": -37.9767,
+   "lng": 177.0754,
+   "councilPct": 4.99
+  },
+  {
    "name": "Dairy Flat",
    "council": "Auckland",
    "icps": 107,
@@ -1704,15 +1713,6 @@
    "lat": -45.3497,
    "lng": 167.881,
    "councilPct": 1.87
-  },
-  {
-   "name": "\u014chope",
-   "council": "Bay of Plenty",
-   "icps": 95,
-   "kW": 353.5,
-   "lat": -37.9767,
-   "lng": 177.0754,
-   "councilPct": 4.99
   },
   {
    "name": "Pirongia",
@@ -2786,15 +2786,6 @@
    "councilPct": 3.81
   },
   {
-   "name": "Waiotahe Valley",
-   "council": "Bay of Plenty",
-   "icps": 39,
-   "kW": 57.7,
-   "lat": -38.0483,
-   "lng": 177.1383,
-   "councilPct": 4.99
-  },
-  {
    "name": "Manut\u016bk\u0113",
    "council": "Gisborne",
    "icps": 39,
@@ -2874,6 +2865,15 @@
    "lat": -37.2465,
    "lng": 175.2439,
    "councilPct": 3.81
+  },
+  {
+   "name": "Waiotahe Valley",
+   "council": "Bay of Plenty",
+   "icps": 37,
+   "kW": 57.7,
+   "lat": -38.0483,
+   "lng": 177.1383,
+   "councilPct": 4.99
   },
   {
    "name": "Paek\u0101k\u0101riki",
@@ -3263,6 +3263,15 @@
    "councilPct": 4.65
   },
   {
+   "name": "Murupara",
+   "council": "Bay of Plenty",
+   "icps": 27,
+   "kW": 66.3,
+   "lat": -38.4532,
+   "lng": 176.7077,
+   "councilPct": 4.99
+  },
+  {
    "name": "St. Arnaud",
    "council": "Tasman",
    "icps": 27,
@@ -3360,15 +3369,6 @@
    "lat": -46.1986,
    "lng": 168.8391,
    "councilPct": 1.87
-  },
-  {
-   "name": "Murupara",
-   "council": "Bay of Plenty",
-   "icps": 25,
-   "kW": 66.3,
-   "lat": -38.4532,
-   "lng": 176.7077,
-   "councilPct": 4.99
   },
   {
    "name": "Okuku",
@@ -3497,15 +3497,6 @@
    "councilPct": 4.99
   },
   {
-   "name": "Waimana",
-   "council": "Bay of Plenty",
-   "icps": 22,
-   "kW": 34.5,
-   "lat": -38.1253,
-   "lng": 177.0642,
-   "councilPct": 4.99
-  },
-  {
    "name": "Ruatoria",
    "council": "Gisborne",
    "icps": 22,
@@ -3594,6 +3585,15 @@
    "lat": -44.7578,
    "lng": 170.3896,
    "councilPct": 4.51
+  },
+  {
+   "name": "T\u0101neatua",
+   "council": "Bay of Plenty",
+   "icps": 21,
+   "kW": 25.0,
+   "lat": -38.0731,
+   "lng": 176.9644,
+   "councilPct": 4.99
   },
   {
    "name": "Kahur\u0101naki",
@@ -3938,15 +3938,6 @@
    "councilPct": 3.81
   },
   {
-   "name": "T\u0101neatua",
-   "council": "Bay of Plenty",
-   "icps": 16,
-   "kW": 0.0,
-   "lat": -38.0731,
-   "lng": 176.9644,
-   "councilPct": 4.99
-  },
-  {
    "name": "Kaimiro",
    "council": "Taranaki",
    "icps": 16,
@@ -4145,6 +4136,15 @@
    "councilPct": 3.81
   },
   {
+   "name": "Waimana",
+   "council": "Bay of Plenty",
+   "icps": 14,
+   "kW": 0.0,
+   "lat": -38.1253,
+   "lng": 177.0642,
+   "councilPct": 4.99
+  },
+  {
    "name": "Te Kaha",
    "council": "Bay of Plenty",
    "icps": 14,
@@ -4260,6 +4260,15 @@
    "lat": -38.9744,
    "lng": 175.9276,
    "councilPct": 3.81
+  },
+  {
+   "name": "Nukuhou",
+   "council": "Bay of Plenty",
+   "icps": 12,
+   "kW": 24.1,
+   "lat": -38.1291,
+   "lng": 177.1305,
+   "councilPct": 4.99
   },
   {
    "name": "Tokomaru Bay",
@@ -4530,15 +4539,6 @@
    "lat": -38.6925,
    "lng": 174.7662,
    "councilPct": 3.81
-  },
-  {
-   "name": "Nukuhou",
-   "council": "Bay of Plenty",
-   "icps": 8,
-   "kW": 0.0,
-   "lat": -38.1291,
-   "lng": 177.1305,
-   "councilPct": 4.99
   },
   {
    "name": "Te Araroa",
