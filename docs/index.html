@@ -620,41 +620,30 @@ function currentView() {
 }
 
 // Which single region the map is "on": New Zealand while zoomed out
-// close to the national view, otherwise whichever council has the most
-// installs among towns currently in view -- grounded in the same real
-// point-in-polygon assignment used to place towns (council_of_point in
-// process.py), not a bounding-box guess. A council's bbox is just its
-// min/max lat/lng, so an irregular region reaches further than its real
-// shape -- Canterbury's bbox stretches into the Alps and overlaps the
-// West Coast's, so the old area-overlap approach picked Canterbury even
-// while looking straight at the West Coast's actual coastline.
+// close to the national view, otherwise whichever council the town
+// *nearest the viewport centre* belongs to -- grounded in the same
+// real point-in-polygon assignment used to place towns
+// (council_of_point in process.py), not a bounding-box guess, and
+// answers "what's in the middle of the map" directly rather than
+// summing installs across everything visible. That sum used to pick
+// the region with the most total installs among visible towns, which
+// could be a big region only just peeking into a corner of the view,
+// outvoting the region actually centred on screen -- e.g. panning to
+// a Waikato/Auckland border town could jump to "Auckland" the moment
+// Hamilton's install count entered the viewport, even dead-centred on
+// the smaller town. Distance-to-centre has no such bias.
 function focusRegion() {
   const view = currentView();
   if (!view || !map.getZoom || map.getZoom() < 6) return { level: "national", name: "New Zealand" };
 
-  const visible = townData.filter(t => pointInView(t.lat, t.lng, view));
-  const byCouncil = {};
-  for (const t of visible) {
+  const center = view.getCenter();
+  const coslat = Math.cos(center.lat * Math.PI / 180);
+  let bestCouncil = null, bestD = Infinity;
+  for (const t of townData) {
     if (!t.council) continue;
-    byCouncil[t.council] = (byCouncil[t.council] || 0) + t.icps;
-  }
-  let bestCouncil = null, bestIcps = 0;
-  for (const [council, icps] of Object.entries(byCouncil)) {
-    if (icps > bestIcps) { bestIcps = icps; bestCouncil = council; }
-  }
-
-  if (!bestCouncil) {
-    // No towns in view (e.g. a remote valley) -- fall back to whichever
-    // town is nearest the viewport centre, same idea as build_towns'
-    // nearest-anchor assignment, rather than guessing from a bbox.
-    const center = view.getCenter();
-    const coslat = Math.cos(center.lat * Math.PI / 180);
-    let bestD = Infinity;
-    for (const t of townData) {
-      const dx = (t.lng - center.lng) * coslat, dy = t.lat - center.lat;
-      const d = dx * dx + dy * dy;
-      if (d < bestD) { bestD = d; bestCouncil = t.council; }
-    }
+    const dx = (t.lng - center.lng) * coslat, dy = t.lat - center.lat;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) { bestD = d; bestCouncil = t.council; }
   }
 
   if (!bestCouncil) return { level: "national", name: "New Zealand" };
