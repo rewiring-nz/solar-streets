@@ -510,10 +510,33 @@ def read_streets(text):
         if seg == "All":
             rec["icps"] = n
             rec["est"] = suppressed
-            try:
-                rec["kW"] = float(row.get("GenerationCapacityKilowattsSum") or 0)
-            except ValueError:
-                pass
+            raw_sum = (row.get("GenerationCapacityKilowattsSum") or "").strip()
+            if raw_sum:
+                try:
+                    rec["kW"] = float(raw_sum)
+                except ValueError:
+                    pass
+            else:
+                # EMI blanks the exact Sum for small-cell-suppressed rows
+                # (privacy: "3 or less" ICPs) -- but still publishes a
+                # real per-ICP Avg for that same row, since an average
+                # alone doesn't identify a household the way an exact
+                # count/sum pair could. Verified live: every one of the
+                # 6,569 non-suppressed rows has a real Sum (never blank),
+                # consistently ~= Avg * ICPs, while all 30,490 suppressed
+                # rows have a blank Sum but a real Avg -- so avg * this
+                # row's own (nominal, SUPPRESSED-constant) icps count is
+                # a real, grounded estimate, not a guess. Before this
+                # fix, every suppressed row's kW silently defaulted to a
+                # flatly wrong 0.0 -- 82% of all street records
+                # nationally, dragging every kW total that sums over
+                # them (region/town/national MW figures) well below the
+                # real number.
+                try:
+                    avg = float(row.get("GenerationCapacityKilowattsAvg") or 0)
+                    rec["kW"] = avg * n
+                except ValueError:
+                    pass
         elif seg == "Res":
             rec["res"] = n
         elif seg == "Bus":
@@ -613,10 +636,25 @@ def fetch_anzsic_ratios():
         council_totals[council] = council_totals.get(council, 0) + n
         council_res[council] = council_res.get(council, 0) + residential.get(region, 0)
 
-    return {
+    ratios = {
         c: council_totals[c] / council_res[c]
         for c in council_totals if council_res.get(c)
     }
+    # National blend across every network, as a fallback for a council
+    # whose own ratio is unrepresentative rather than simply missing --
+    # concretely "Nelson": its *network* footprint (Nelson Electricity)
+    # covers only a few blocks, while the real town's installs are
+    # mostly served by Network Tasman (see NETWORK_TO_COUNCIL), so
+    # Nelson's own ratio is built from a tiny, skewed sample. Applied to
+    # Nelson's real (much larger) dwelling count, that ratio produced an
+    # estimated total *smaller* than Nelson's real install count already
+    # observed -- the same "impossible" guard _estimate_town_pcts uses
+    # elsewhere -- which silently dropped Nelson's estimate entirely.
+    # Verified live: this is exactly why Nelson showed no estPct.
+    total_res = sum(residential.values())
+    if total_res:
+        ratios["__national__"] = sum(totals.values()) / total_res
+    return ratios
 
 
 def fetch_sa1_dwellings():
@@ -907,6 +945,7 @@ def write_region_boundaries(region_tree, tla_region, towns, sa1_dwellings, anzsi
     all_d23 = sum(v[1] for v in tla_dwell)
     fallback_cagr = (all_d23 / all_d18) ** (1 / 5) - 1 if all_d18 else 0.0
     years_ahead = max(datetime.now(timezone.utc).year - 2023, 0)
+    national_ratio = anzsic_ratios.get("__national__")
 
     features = []
     for i, tla_name in enumerate(names):
@@ -919,11 +958,17 @@ def write_region_boundaries(region_tree, tla_region, towns, sa1_dwellings, anzsi
             cagr = (d23 / d18) ** (1 / 5) - 1 if d18 else fallback_cagr
             cagr = max(-0.05, min(0.15, cagr))
             est_dwellings = d23 * (1 + cagr) ** years_ahead
-            ratio = anzsic_ratios.get(council_name)
-            if ratio and est_dwellings > 0:
-                est_total = est_dwellings * ratio
-                if est_total >= icps:   # impossible otherwise -- omit, don't mislead
-                    est_pct = round(icps / est_total * 100, 1)
+            # See _estimate_town_pcts for why a council's own ratio can
+            # be unrepresentative (concretely Nelson) and needs a
+            # national-blend fallback rather than just being omitted.
+            if est_dwellings > 0:
+                for ratio in (anzsic_ratios.get(council_name), national_ratio):
+                    if not ratio:
+                        continue
+                    est_total = est_dwellings * ratio
+                    if est_total >= icps:   # impossible otherwise -- omit, don't mislead
+                        est_pct = round(icps / est_total * 100, 1)
+                        break
         geom_dict = mapping(geoms[i])
         lat, lng = _representative_point(geom_dict["coordinates"], geom_dict["type"] == "MultiPolygon")
         features.append({
@@ -1124,6 +1169,8 @@ def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios):
     years_ahead = max(datetime.now(timezone.utc).year - 2023, 0)
     by_name = {t["name"]: t for t in towns}
 
+    national_ratio = anzsic_ratios.get("__national__")
+
     for name, (d18, d23) in sums.items():
         row = by_name.get(name)
         # Below ~30 dwellings the 2018->2023 ratio swings wildly on a
@@ -1135,13 +1182,21 @@ def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios):
         cagr = (d23 / d18) ** (1 / 5) - 1 if d18 else fallback_cagr
         cagr = max(-0.05, min(0.15, cagr))
         est_dwellings = d23 * (1 + cagr) ** years_ahead
-        ratio = anzsic_ratios.get(row["council"])
-        if not ratio or est_dwellings <= 0:
+        if est_dwellings <= 0:
             continue
-        est_total_icps = est_dwellings * ratio
-        if est_total_icps < row["icps"]:
-            continue   # impossible -- same null-out as the real region % elsewhere
-        row["estPct"] = round(row["icps"] / est_total_icps * 100, 1)
+        # Try the council's own ratio first; if it's missing, or -- as
+        # happens for Nelson -- produces an "impossible" result (a
+        # smaller estimated total than the real install count already
+        # observed, because that council's own network-derived ratio is
+        # unrepresentative; see fetch_anzsic_ratios), fall back to the
+        # national blend rather than dropping the estimate entirely.
+        for ratio in (anzsic_ratios.get(row["council"]), national_ratio):
+            if not ratio:
+                continue
+            est_total_icps = est_dwellings * ratio
+            if est_total_icps >= row["icps"]:
+                row["estPct"] = round(row["icps"] / est_total_icps * 100, 1)
+                break
 
 
 def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_ratios=None):
@@ -1977,6 +2032,15 @@ def main():
             write_town_boundaries(towns, town_anchors, sa1_dwellings, anzsic_ratios)
         except Exception as exc:                       # noqa: BLE001
             print(f"Town boundaries unavailable ({exc}) -- solar's Towns map mode will fall back to dots")
+
+    # Re-sort now that estPct exists (build_towns sorted by installs,
+    # before write_town_boundaries had computed it) -- % of connections
+    # is the more meaningful ranking for the sidebar than raw install
+    # count, which just favours big towns. Towns with no estimate (rare;
+    # see _estimate_town_pcts) keep their prior installs-sorted relative
+    # order and sink to the end, rather than being scattered by a
+    # missing value sorting as if it were zero.
+    towns.sort(key=lambda t: (t.get("estPct") is not None, t.get("estPct", 0)), reverse=True)
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
     save("previous_counts.json",
