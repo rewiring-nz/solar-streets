@@ -70,16 +70,47 @@
   #placeSearch {
     display: flex; align-items: center; background: var(--glass);
     backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--border); border-radius: 999px; padding: 0 10px;
+    border: 1px solid var(--border); border-radius: 999px;
     box-shadow: 0 8px 32px rgba(0,0,0,.45);
   }
+  /* Collapses to just the icon button when empty and unfocused, so the
+     top row has room for the dataset tabs on narrow screens -- expands
+     on click (see placeSearchIconEl) rather than always reserving the
+     full input width. */
+  #placeSearchIcon {
+    background: none; border: none; color: var(--dim); cursor: pointer;
+    width: 32px; height: 32px; flex: none; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #placeSearchIcon:hover { color: var(--text); }
   #placeSearchInput {
     background: transparent; border: none; outline: none; color: var(--text);
-    font-size: 11px; font-weight: 600; padding: 7px 2px; width: 130px;
+    font-size: 11px; font-weight: 600; padding: 7px 10px 7px 0; width: 150px;
+    opacity: 1; transition: width .18s ease, opacity .12s ease, padding .18s ease;
   }
+  #placeSearch.collapsed #placeSearchInput { width: 0; padding: 7px 0; opacity: 0; }
   #placeSearchInput::placeholder { color: var(--dim); }
   #placeSearch.no-match #placeSearchInput { color: #f87171; }
-  @media (max-width: 767px) { #placeSearchInput { width: 92px; } }
+  @media (max-width: 767px) { #placeSearchInput { width: 110px; } }
+
+  /* Only shown once zoomed into anything smaller than the whole
+     country (see updateBackToNzButton) -- top-centre on desktop, clear
+     of the top-left topWrap and the top-right fullscreen toggle; moved
+     to the bottom on mobile, where the top is already crowded, offset
+     from the Methodology button so the two don't collide. */
+  #backToNzBtn {
+    position: absolute; z-index: 15; top: 10px; left: 50%; transform: translateX(-50%);
+    background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px;
+    color: var(--text); font-size: 11px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+  }
+  #backToNzBtn.hidden { display: none; }
+  #backToNzBtn:hover { background: var(--glass-hi); }
+  @media (max-width: 767px) {
+    #backToNzBtn { top: auto; left: 10px; bottom: 10px; transform: none; }
+  }
 
   /* Compact by default, sized to its content -- grows to fit a chart
      when expanded. Click the "Show Chart" button to expand/collapse. */
@@ -353,8 +384,11 @@
         <button type="button" class="dataset-btn active" data-dataset="solar">Solar Installs</button>
         <button type="button" class="dataset-btn" data-dataset="ev">Electric Vehicles</button>
       </div>
-      <div id="placeSearch">
-        <input type="text" id="placeSearchInput" placeholder="Search street or suburb…" autocomplete="off" />
+      <div id="placeSearch" class="collapsed">
+        <button type="button" id="placeSearchIcon" aria-label="Search">&#128269;</button>
+        <input type="text" id="placeSearchInput" placeholder="Search street or suburb…"
+               title="Tip: for a street name that exists in more than one suburb, type e.g. &quot;Queen Street, Auckland&quot;"
+               autocomplete="off" />
       </div>
     </div>
 
@@ -385,6 +419,8 @@
       </div>
     </div>
   </div>
+
+  <button id="backToNzBtn" class="hidden" type="button">&larr; NZ</button>
 
   <button id="dashArrow" class="edge-arrow" title="Show/hide regions">
     <span class="glyph">▶</span>
@@ -711,6 +747,18 @@ const boardEl = document.getElementById("board");
 const listCaptionEl = document.querySelector(".list-caption");
 const placeSearchEl = document.getElementById("placeSearch");
 const placeSearchInputEl = document.getElementById("placeSearchInput");
+const backToNzBtnEl = document.getElementById("backToNzBtn");
+
+// Shown only once zoomed into anything smaller than the whole country --
+// called from renderTopbarStats/renderEvTopbarStats, so it always tracks
+// whatever currentFocus those just rendered from, however it changed
+// (map pan, dropdown, map click, search).
+function updateBackToNzButton() {
+  backToNzBtnEl.classList.toggle("hidden", currentFocus.level === "national");
+}
+backToNzBtnEl.addEventListener("click", () => {
+  map.flyTo({ center: NZ_VIEW.center, zoom: NZ_VIEW.zoom, duration: 800 });
+});
 
 let regionData = [];   // council-level, real %/totalIcps
 let townData = [];     // flat town list, as built by process.py -- powers the list
@@ -816,13 +864,58 @@ function visibleTowns() {
 // region/town name is rarely also someone's target street). townData and
 // streetIndex are both pre-sorted by installs/icps, so a substring tier
 // matching several candidates naturally prefers the more prominent one.
+// When several streets share a name -- very common; NZ has many Queen
+// Streets -- prefer whichever is closest to the current map view over
+// always the nationally busiest one. If the user is already zoomed into
+// a region, they almost certainly mean the one near them, not a
+// same-named street somewhere else in the country. Zoomed out to
+// (close to) the whole country, "closest" has no useful meaning, so
+// this falls back to streetIndex's own icps-sorted order instead
+// (candidates[0], since it's built pre-sorted -- see streetIndex).
+function pickClosestStreet(candidates) {
+  if (candidates.length === 1) return candidates[0];
+  const view = currentView();
+  if (!view || !map.getZoom || map.getZoom() < 6) return candidates[0];
+  const center = view.getCenter();
+  const coslat = Math.cos(center.lat * Math.PI / 180);
+  let best = candidates[0], bestD = Infinity;
+  for (const c of candidates) {
+    const dx = (c.lng - center.lng) * coslat, dy = c.lat - center.lat;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) { bestD = d; best = c; }
+  }
+  return best;
+}
+
+function streetMatch(street) {
+  return { name: `${street.street}, ${street.area}`, lng: street.lng, lat: street.lat, zoom: 15 };
+}
+
 function findPlace(term) {
   // Diacritic-insensitive (NFD strip) so "Wanaka" matches "Wānaka" --
   // NZ place names commonly carry macrons that an embedder typing a URL
   // param is unlikely to reproduce exactly.
   const norm = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-  const q = norm(term);
-  if (!q) return null;
+  const raw = (term || "").trim();
+  if (!raw) return null;
+
+  // "Queen Street, Auckland" -- an explicit ", suburb" narrows straight
+  // to a street in that suburb, skipping regions/towns entirely (typing
+  // a comma is only ever done to disambiguate a street, never to name a
+  // region on its own).
+  const commaAt = raw.indexOf(",");
+  if (commaAt !== -1) {
+    const q = norm(raw.slice(0, commaAt).trim());
+    const qArea = norm(raw.slice(commaAt + 1).trim());
+    if (!q || !qArea || DATASET === "ev") return null;   // EVs have no street-level data
+    for (const test of [s => norm(s) === q, s => norm(s).startsWith(q), s => norm(s).includes(q)]) {
+      const candidates = streetIndex.filter(f => test(f.street) && norm(f.area).includes(qArea));
+      if (candidates.length) return streetMatch(pickClosestStreet(candidates));
+    }
+    return null;
+  }
+
+  const q = norm(raw);
   const regions = DATASET === "ev" ? evRegions : regionData;
   const places = DATASET === "ev" ? evTlas : townData;   // EV "towns" are TLAs (polygons, no point)
   const streets = DATASET === "ev" ? [] : streetIndex;   // EVs have no street-level data
@@ -836,8 +929,8 @@ function findPlace(term) {
     if (region) return region;
     const place = places.find(t => test(t.name));
     if (place) return place;
-    const street = streets.find(f => test(f.street));
-    if (street) return { name: `${street.street}, ${street.area}`, lng: street.lng, lat: street.lat, zoom: 15 };
+    const candidates = streets.filter(f => test(f.street));
+    if (candidates.length) return streetMatch(pickClosestStreet(candidates));
   }
   return null;
 }
@@ -887,6 +980,7 @@ function renderTopbarStats() {
   ).join("");
   html += `</div>`;
   topbarStatsEl.innerHTML = html;
+  updateBackToNzButton();
 }
 
 function renderTopbar() {
@@ -1582,6 +1676,7 @@ function renderEvTopbarStats() {
   html += `<div class="stat-line">${segs.join("")}</div>`;
   html += `<div class="topbar-actions"><button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button></div>`;
   topbarStatsEl.innerHTML = html;
+  updateBackToNzButton();
 }
 
 function renderEvTopbar() {
@@ -1633,6 +1728,24 @@ placeSearchInputEl.addEventListener("keydown", e => {
   placeSearchEl.classList.toggle("no-match", !found);
 });
 placeSearchInputEl.addEventListener("input", () => placeSearchEl.classList.remove("no-match"));
+
+// Collapses to an icon-only button when there's nothing typed and it
+// isn't focused, so it doesn't compete with the dataset tabs for space
+// on narrow screens -- expands and focuses on click.
+const placeSearchIconEl = document.getElementById("placeSearchIcon");
+placeSearchIconEl.addEventListener("click", () => {
+  if (placeSearchEl.classList.contains("collapsed")) {
+    placeSearchEl.classList.remove("collapsed");
+    placeSearchInputEl.focus();
+  } else {
+    placeSearchInputEl.value = "";
+    placeSearchEl.classList.add("collapsed");
+    placeSearchEl.classList.remove("no-match");
+  }
+});
+placeSearchInputEl.addEventListener("blur", () => {
+  if (!placeSearchInputEl.value) placeSearchEl.classList.add("collapsed");
+});
 
 /* ================= TREND CHART ================= */
 /* Monthly install history since 2014, plus % of installs with a
