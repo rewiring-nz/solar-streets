@@ -85,11 +85,14 @@ top of `docs/index.html`.
 | File | Purpose |
 |---|---|
 | `process.py` | Downloads EMI/NZTA data, geocodes streets, writes the JSON/GeoJSON |
+| `requirements.txt` | Pinned Python dependencies for `process.py` |
 | `.github/workflows/update-data.yml` | Runs the above weekly |
 | `docs/index.html` | The map (both dashboards) |
 | `docs/streets.geojson` | Solar: every street with coordinates |
 | `docs/meta.json` | Solar: build date, totals, match rate, and the region/town dashboard tree |
 | `docs/trends.json` | Solar: monthly install/battery history since 2014 |
+| `docs/region_boundaries.geojson` | Solar: TLA-level polygons for the Regions map mode, tagged with each district's stats |
+| `docs/town_boundaries.geojson` | Solar: town boundary polygons for the Towns map mode |
 | `docs/ev.json` | EVs: national/region/district counts, % of local fleet, and yearly uptake trend, per vehicle category |
 | `docs/ev_boundaries.geojson` | EVs: simplified district polygons for the choropleth, tagged with each district's stats |
 | `road_cache.json` | Where each street is, from the latest run (not incrementally reused -- see below) |
@@ -97,7 +100,10 @@ top of `docs/index.html`.
 | `regc_bounds.json` | Real regional council boundaries (Stats NZ), cached -- powers the council grouping and the "regions within map view" filter |
 | `tla_bounds.json` | Real territorial authority (district/city) boundaries (Stats NZ), cached -- full precision, for the EV dashboard |
 | `town_anchors.json` | One point per real NZ town (LINZ), cached -- powers the solar town grouping |
-| `previous_counts.json` | Last build's numbers, for the "+N since last update" figures |
+| `sa1_dwellings.json` | Census dwelling counts by small area, cached -- powers the estimated town/district % figures |
+| `previous_counts.json` | Last build's per-street numbers, for the "+N since last update" figures |
+| `previous_town_totals.json` | Last build's per-town solar totals, for the Leaderboard's month-over-month change |
+| `previous_ev_totals.json` | Last build's per-district EV totals, for the Leaderboard's month-over-month change |
 
 ## How streets get their positions
 
@@ -119,7 +125,7 @@ private lanes, rural roads and recent renames. `process.py` prints the
 rate at the end of every run, and deliberately fails the build if it ever
 drops below 50%, so a bad build never gets published.
 
-## The dashboard's region leaderboard
+## The sidebar's region/town list
 
 The sidebar ranks NZ's 16 regional councils by % of ICPs with solar,
 alongside installs and MW. The % figure is a real join, not an estimate:
@@ -150,6 +156,34 @@ operators' own footprints, which don't follow council lines — Network
 Tasman serves most of Nelson city, for instance, so that approach had
 Nelson's real numbers geographically misattributed to Tasman. Real
 council polygons don't have that problem.
+
+## The trend chart's Leaderboard tab
+
+A second tab inside the trend chart panel (both dashboards) ranks
+regions/districts by real month-over-month change -- raw count and %,
+biggest gain first -- meant to answer "is there anything worth telling
+people about this month". Decliners are left off entirely: a negative
+figure is far more likely a reporting/attribution quirk (an EV
+re-registered to a new district, an ICP recounted under a different
+network) than a real drop, so showing it would read as a false signal.
+
+This is a *different* ranking from the sidebar's region/town list above
+-- that one shows the current standing (installs, MW, % of connections);
+this one shows what changed since last time. Backed by
+`previous_town_totals.json`/`previous_ev_totals.json`, each holding the
+prior run's own totals purely so the next run can diff against them (see
+`_change()` in `process.py`) -- so it needs at least two real runs
+before it has anything to show, and stays empty (rather than guessing)
+until then.
+
+## Searching for a street or suburb
+
+The search box next to the dataset tabs matches a region, town/district,
+or (solar only) an individual street name -- same free-text matching as
+the `?region=` embed param (`findPlace()`), extended with a flat search
+index built from the already-loaded street points. EVs have no
+individual-street data (NZTA's register only carries district-level
+addresses), so EV search covers regions/districts only.
 
 ## The EV dashboard
 

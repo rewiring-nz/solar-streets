@@ -248,6 +248,29 @@ session = requests.Session()
 session.headers["User-Agent"] = "nz-solar-map/1.0 (github actions; weekly build)"
 
 
+def get(url, retries=3, backoff=10, **kwargs):
+    """session.get() with retries -- most of this file's data sources are
+    government ArcGIS/statistics endpoints, and a plain single-shot
+    request would turn one transient hiccup (a slow day, a dropped
+    connection) into a whole feature going missing for a week, even
+    though the endpoint is otherwise fine. Every non-Overpass fetch in
+    this file goes through here (Overpass gets its own retry-and-
+    multi-mirror handling in overpass(), since it fails far more often
+    and needs a bigger hammer).
+    """
+    last_exc = None
+    for attempt in range(retries):
+        try:
+            r = session.get(url, **kwargs)
+            r.raise_for_status()
+            return r
+        except Exception as exc:                      # noqa: BLE001
+            last_exc = exc
+            if attempt < retries - 1:
+                time.sleep(backoff)
+    raise last_exc
+
+
 # ----------------------------------------------------------------------
 # Street name matching
 # ----------------------------------------------------------------------
@@ -385,14 +408,13 @@ def get_areas():
     print("Fetching SA2 boundaries from Stats NZ (all vintages)...")
     areas, offset = {}, 0
     while True:
-        r = session.get(SA2_SERVICE, timeout=180, params={
+        r = get(SA2_SERVICE, timeout=180, params={
             "where": "1=1", "orderByFields": "dataset_year ASC",
             "outFields": "SA2_code,SA2_name,dataset_year",
             "returnGeometry": "true",
             "geometryPrecision": 5, "f": "geojson",
             "resultOffset": offset, "resultRecordCount": 1000,
         })
-        r.raise_for_status()
         feats = r.json().get("features", [])
         if not feats:
             break
@@ -439,8 +461,7 @@ def icp_value(raw):
 
 def fetch_csv(url):
     print(f"Downloading {url.rsplit('/', 1)[-1]}...")
-    r = session.get(url, timeout=300)
-    r.raise_for_status()
+    r = get(url, timeout=300)
     return r.content.decode("utf-8-sig", errors="replace")
 
 
@@ -527,7 +548,7 @@ def fetch_total_icps():
     The source file is a monthly, date-stamped CSV -- we scrape today's
     link off the EMI page rather than hardcoding a filename that expires.
     """
-    page = session.get(ICP_TOTALS_PAGE, timeout=60).text
+    page = get(ICP_TOTALS_PAGE, timeout=60).text
     m = ICP_TOTALS_LINK_RE.search(page)
     if not m:
         print("  ! Couldn't find the ICP totals CSV link -- skipping % of ICPs")
@@ -562,7 +583,7 @@ def fetch_anzsic_ratios():
     the real ratio EMI's own data shows for that town's council, not a
     guessed multiplier.
     """
-    page = session.get(ICP_TOTALS_PAGE, timeout=60).text
+    page = get(ICP_TOTALS_PAGE, timeout=60).text
     m = ANZSIC_LINK_RE.search(page)
     if not m:
         print("  ! Couldn't find the ANZSIC breakdown CSV link -- skipping town % estimates")
@@ -618,14 +639,13 @@ def fetch_sa1_dwellings():
     print("Fetching 2018/2023 Census dwelling counts by SA1...")
     rows, offset = [], 0
     while True:
-        r = session.get(SA1_CENSUS_SERVICE, timeout=180, params={
+        r = get(SA1_CENSUS_SERVICE, timeout=180, params={
             "where": "1=1",
             "outFields": "C18_DwellOccupancy_Occupied,C23_DwellOccupancy_Occupied",
             "returnCentroid": "true", "returnGeometry": "false", "f": "json",
             "outSR": 4326,   # this layer's native SR is NZTM (2193), not lat/lng
             "resultOffset": offset, "resultRecordCount": 2000,
         })
-        r.raise_for_status()
         feats = r.json().get("features", [])
         if not feats:
             break
@@ -718,11 +738,10 @@ def fetch_regional_councils():
     # the same parameter barely changes their bbox, so only this fetch
     # needed the fix. Full precision here is ~9k points per council,
     # trivial for point-in-polygon.
-    r = session.get(REGC_SERVICE, timeout=120, params={
+    r = get(REGC_SERVICE, timeout=120, params={
         "where": "1=1", "outFields": "REGC_name",
         "returnGeometry": "true", "geometryPrecision": 6, "f": "geojson",
     })
-    r.raise_for_status()
     geo = r.json()
 
     councils = {}
@@ -759,11 +778,10 @@ def fetch_territorial_authorities():
         return cached
 
     print("Fetching territorial authority boundaries from Stats NZ...")
-    r = session.get(TLA_SERVICE, timeout=120, params={
+    r = get(TLA_SERVICE, timeout=120, params={
         "where": "1=1", "outFields": "TA_name_ascii",
         "returnGeometry": "true", "geometryPrecision": 6, "f": "geojson",
     })
-    r.raise_for_status()
     geo = r.json()
 
     tlas = {}
@@ -791,12 +809,11 @@ def write_ev_boundaries(ev_tla_rows):
     tens of MB to a few hundred KB.
     """
     print("Fetching simplified TLA boundaries for the EV choropleth...")
-    r = session.get(TLA_SERVICE, timeout=120, params={
+    r = get(TLA_SERVICE, timeout=120, params={
         "where": "1=1", "outFields": "TA_name_ascii",
         "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.005,
         "f": "geojson",
     })
-    r.raise_for_status()
     geo = r.json()
 
     by_name = {row["name"]: row for row in ev_tla_rows}
@@ -845,12 +862,11 @@ def write_region_boundaries(region_tree, tla_region, towns, sa1_dwellings, anzsi
     from shapely.strtree import STRtree
 
     print("Fetching simplified TLA boundaries for the solar choropleth...")
-    r = session.get(TLA_SERVICE, timeout=120, params={
+    r = get(TLA_SERVICE, timeout=120, params={
         "where": "1=1", "outFields": "TA_name_ascii",
         "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.005,
         "f": "geojson",
     })
-    r.raise_for_status()
     geo = r.json()
 
     by_council = {row["name"]: row for row in region_tree}
@@ -1035,12 +1051,11 @@ def fetch_town_anchors():
     best = {}   # major_name -> (population, [lat, lng])
     offset = 0
     while True:
-        r = session.get(TOWN_ANCHORS_SERVICE, timeout=120, params={
+        r = get(TOWN_ANCHORS_SERVICE, timeout=120, params={
             "where": "1=1", "outFields": "major_name,population_estimate",
             "returnCentroid": "true", "returnGeometry": "false", "f": "json",
             "resultOffset": offset, "resultRecordCount": 2000,
         })
-        r.raise_for_status()
         feats = r.json().get("features", [])
         if not feats:
             break
@@ -1157,12 +1172,11 @@ def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_r
     groups = {}   # major_name -> [shapely geometry, ...]
     offset = 0
     while True:
-        r = session.get(TOWN_ANCHORS_SERVICE, timeout=180, params={
+        r = get(TOWN_ANCHORS_SERVICE, timeout=180, params={
             "where": "1=1", "outFields": "major_name",
             "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.002,
             "f": "geojson", "resultOffset": offset, "resultRecordCount": 2000,
         })
-        r.raise_for_status()
         feats = r.json().get("features", [])
         if not feats:
             break
@@ -1213,12 +1227,11 @@ def _fetch_guehmt(fuel_type, region_type):
     """One fuel-type/region-granularity slice of the GUEHMT report:
     {region name: {date: ICP count}}.
     """
-    r = session.get(GUEHMT_URL, timeout=180, params={
+    r = get(GUEHMT_URL, timeout=180, params={
         "DateFrom": "20130901",
         "DateTo": datetime.now(timezone.utc).strftime("%Y%m%d"),
         "FuelType": fuel_type, "RegionType": region_type, "_rsdr": "ALL",
     })
-    r.raise_for_status()
     text = r.content.decode("utf-8-sig", errors="replace")
     lines = text.splitlines()
     start = next((i for i, ln in enumerate(lines) if ln.startswith("Month end,")), None)
@@ -1297,12 +1310,10 @@ def _mvr_query(where, group_fields=None):
             "statisticType": "count", "onStatisticField": "OBJECTID", "outStatisticFieldName": "cnt",
         }])
         params["orderByFields"] = group_fields
-        r = session.get(MVR_SERVICE, timeout=180, params=params)
-        r.raise_for_status()
+        r = get(MVR_SERVICE, timeout=180, params=params)
         return r.json().get("features", [])
     params["returnCountOnly"] = "true"
-    r = session.get(MVR_SERVICE, timeout=180, params=params)
-    r.raise_for_status()
+    r = get(MVR_SERVICE, timeout=180, params=params)
     return r.json().get("count", 0)
 
 
@@ -1640,7 +1651,16 @@ def geocode(records, areas, council_bounds):
     for code, norm in records:
         names_by_code.setdefault(code, set()).add(norm)
 
-    cache = {}
+    # Starts from last run's own cache, not empty -- a council's entries
+    # are only ever touched below once its query actually succeeds. If
+    # Overpass is having a bad day for one council, that council simply
+    # keeps last week's real positions instead of every street in it
+    # silently vanishing from the map. Verified live: this is exactly
+    # what happened to Northland/Nelson/Tasman/Gisborne during a spell of
+    # Overpass mirror outages -- without this fallback, a single bad
+    # geocoding run would have erased four regions' worth of real,
+    # previously-placed streets on the next publish.
+    cache = load(ROAD_CACHE, {})
     n_councils = len(codes_by_council)
     for i, (council, codes) in enumerate(codes_by_council.items(), 1):
         bbox = council_bounds[council]["bbox"]
@@ -1658,7 +1678,7 @@ def geocode(records, areas, council_bounds):
                 if attempt < 2:
                     time.sleep(10)
         if by_name is None:
-            print(f"  ! {council} failed after retries, its areas stay unplaced: {last_exc}")
+            print(f"  ! {council} failed after retries, keeping last run's data for its areas: {last_exc}")
             continue
 
         for code in codes:
@@ -1749,6 +1769,19 @@ def main():
 
     records = read_streets(fetch_csv(STREET_CSV))
     print(f"EMI: {len(records):,} streets")
+    # A real run has ~35-40k records; a number this far below that means
+    # read_streets() couldn't find its expected columns at all (an EMI
+    # schema/rename change) rather than there genuinely being almost no
+    # solar installs in NZ. Unlike a low match *rate* (checked at the end,
+    # once geocoding has actually run), this failure mode makes matched
+    # and total collapse *together*, so the existing "< 50% matched"
+    # guard alone would never catch it -- 0 of 0 doesn't trip a percentage
+    # check. Failing here, before any of the expensive work below, keeps
+    # a schema change from quietly publishing an empty map.
+    if len(records) < 1000:
+        print("Suspiciously few street records -- likely an EMI CSV schema "
+              "change; failing so nothing broken gets published")
+        sys.exit(1)
     data_date = fetch_data_date(STREET_CSV) or datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     try:

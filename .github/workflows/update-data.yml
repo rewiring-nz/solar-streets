@@ -10,6 +10,16 @@ on:
 permissions:
   contents: write
 
+# At most one run at a time. Without this, a manual run overlapping the
+# weekly cron (or two manual runs back to back) would both geocode and
+# both try to push -- the second push always loses (non-fast-forward)
+# after wasting a full ~20-minute run for nothing. Queuing rather than
+# cancelling, so a run already in progress is never cut off partway
+# through a geocode.
+concurrency:
+  group: update-solar-data
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,7 +34,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - run: pip install requests shapely
+      - run: pip install -r requirements.txt
 
       - name: Build streets.geojson
         run: python process.py
