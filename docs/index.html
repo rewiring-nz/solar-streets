@@ -66,6 +66,21 @@
   .dataset-btn[data-dataset="ev"].active { background: var(--cyan); color: #062229; }
   .dataset-btn:not(.active):hover { color: var(--text); }
 
+  #topRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #placeSearch {
+    display: flex; align-items: center; background: var(--glass);
+    backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border); border-radius: 999px; padding: 0 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+  }
+  #placeSearchInput {
+    background: transparent; border: none; outline: none; color: var(--text);
+    font-size: 11px; font-weight: 600; padding: 7px 2px; width: 130px;
+  }
+  #placeSearchInput::placeholder { color: var(--dim); }
+  #placeSearch.no-match #placeSearchInput { color: #f87171; }
+  @media (max-width: 767px) { #placeSearchInput { width: 92px; } }
+
   /* Compact by default, sized to its content -- grows to fit a chart
      when expanded. Click the "Show Chart" button to expand/collapse. */
   #topbar {
@@ -261,9 +276,14 @@
   <div id="map"></div>
 
   <div id="topWrap">
-    <div id="datasetSwitch">
-      <button type="button" class="dataset-btn active" data-dataset="solar">Solar Installs</button>
-      <button type="button" class="dataset-btn" data-dataset="ev">Electric Vehicles</button>
+    <div id="topRow">
+      <div id="datasetSwitch">
+        <button type="button" class="dataset-btn active" data-dataset="solar">Solar Installs</button>
+        <button type="button" class="dataset-btn" data-dataset="ev">Electric Vehicles</button>
+      </div>
+      <div id="placeSearch">
+        <input type="text" id="placeSearchInput" placeholder="Search street or suburb…" autocomplete="off" />
+      </div>
     </div>
 
     <div id="topbar">
@@ -580,9 +600,12 @@ const topbarStatsEl = document.getElementById("topbarStats");
 const dashArrow = document.getElementById("dashArrow");
 const boardEl = document.getElementById("board");
 const listCaptionEl = document.querySelector(".list-caption");
+const placeSearchEl = document.getElementById("placeSearch");
+const placeSearchInputEl = document.getElementById("placeSearchInput");
 
 let regionData = [];   // council-level, real %/totalIcps
 let townData = [];     // flat town list, as built by process.py -- powers the list
+let streetIndex = [];  // flat {street,area,lng,lat,icps} list built from streets.geojson -- search only, sorted by icps desc
 let metaNational = null;
 let metaUpdated = null;
 let currentFocus = { level: "national", name: "New Zealand" };
@@ -671,14 +694,16 @@ function visibleTowns() {
   return list;   // already sorted by installs at build time
 }
 
-// Free-text lookup for the ?region= embed param -- matches a region
-// (council) name or a town name, whichever is the closer match, so an
-// embedder can type "Canterbury" or "Wanaka" without needing to know
-// which kind of place it is. Exact match wins outright; otherwise
-// prefix, then substring, each tier checking regions before towns
-// (regions are the broader, more likely intent behind a short query).
-// townData is already sorted by installs, so a substring tier that
-// matches several towns naturally prefers the more prominent one.
+// Free-text lookup for the ?region= embed param and the topbar search box
+// -- matches a region (council) name, a town name, or (solar only, where
+// streetIndex is populated) an individual street, whichever is the
+// closest match, so a search can be "Canterbury", "Wanaka", or "Queen
+// Street" without needing to know which kind of place it is. Exact match
+// wins outright; otherwise prefix, then substring, each tier checking
+// regions before towns before streets (broader intent first, and a
+// region/town name is rarely also someone's target street). townData and
+// streetIndex are both pre-sorted by installs/icps, so a substring tier
+// matching several candidates naturally prefers the more prominent one.
 function findPlace(term) {
   // Diacritic-insensitive (NFD strip) so "Wanaka" matches "Wānaka" --
   // NZ place names commonly carry macrons that an embedder typing a URL
@@ -688,6 +713,7 @@ function findPlace(term) {
   if (!q) return null;
   const regions = DATASET === "ev" ? evRegions : regionData;
   const places = DATASET === "ev" ? evTlas : townData;   // EV "towns" are TLAs (polygons, no point)
+  const streets = DATASET === "ev" ? [] : streetIndex;   // EVs have no street-level data
   const tiers = [
     s => norm(s) === q,
     s => norm(s).startsWith(q),
@@ -698,19 +724,29 @@ function findPlace(term) {
     if (region) return region;
     const place = places.find(t => test(t.name));
     if (place) return place;
+    const street = streets.find(f => test(f.street));
+    if (street) return { name: `${street.street}, ${street.area}`, lng: street.lng, lat: street.lat, zoom: 15 };
   }
   return null;
 }
 
-function focusOnPlace(term) {
+// `animate` is off for the ?region= embed param (the map should already
+// be there when the page first paints, not visibly flying in) and on for
+// the interactive search box (where the motion is the feedback that the
+// search actually did something).
+function focusOnPlace(term, animate) {
   const match = findPlace(term);
-  if (!match) { console.warn(`?region=${term} -- no matching region or town found`); return; }
+  if (!match) { console.warn(`?region=${term} -- no matching region or town found`); return false; }
+  const opts = { padding: 40, duration: animate ? 800 : 0 };
   if (match.bbox) {
     const [s, w, n, e] = match.bbox;
-    map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 0 });
+    map.fitBounds([[w, s], [e, n]], opts);
+  } else if (animate) {
+    map.flyTo({ center: [match.lng, match.lat], zoom: match.zoom || 12, duration: 800 });
   } else {
-    map.jumpTo({ center: [match.lng, match.lat], zoom: 12 });
+    map.jumpTo({ center: [match.lng, match.lat], zoom: match.zoom || 12 });
   }
+  return true;
 }
 
 // Renders the topbar purely from whatever currentFocus already is --
@@ -1377,6 +1413,19 @@ datasetSwitchEl.addEventListener("click", e => {
   if (btn) setDataset(btn.dataset.dataset);
 });
 
+// Street/suburb/region search box, top-right of the dataset tabs -- Enter
+// flies the map there (see findPlace/focusOnPlace); a brief red flash on
+// the input is the only feedback needed for "nothing matched", since the
+// user can see straight away that the map didn't move.
+placeSearchInputEl.addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  const term = placeSearchInputEl.value.trim();
+  if (!term) return;
+  const found = focusOnPlace(term, true);
+  placeSearchEl.classList.toggle("no-match", !found);
+});
+placeSearchInputEl.addEventListener("input", () => placeSearchEl.classList.remove("no-match"));
+
 /* ================= TREND CHART ================= */
 /* Monthly install history since 2014, plus % of installs with a
    battery, at national/council/network-region granularity. Real EMI
@@ -1685,6 +1734,17 @@ chartSelectEl.addEventListener("change", async () => {
 
     await mapReady;
     addLayers(data);
+
+    // Flat, search-only index over the same points already on the map --
+    // sorted by icps so the search box's substring tier (findPlace)
+    // naturally prefers the busier of several same-named streets.
+    streetIndex = data.features
+      .map(f => ({
+        street: f.properties.street, area: f.properties.area,
+        lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1],
+        icps: f.properties.icps || 0,
+      }))
+      .sort((a, b) => b.icps - a.icps);
 
     regionData = (meta && meta.regions) || [];
     townData = (meta && meta.towns) || [];
