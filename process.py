@@ -444,6 +444,28 @@ def fetch_csv(url):
     return r.content.decode("utf-8-sig", errors="replace")
 
 
+def fetch_data_date(url):
+    """When EMI itself last published this file (its HTTP Last-Modified
+    header), not when our own pipeline happened to run -- the two can
+    easily disagree by days or weeks, since EMI republishes on its own
+    monthly cadence while this runs weekly. "Updated" should describe how
+    fresh the *data* is, not how recently a cron job fired; a run on the
+    20th showing "Updated August" would wrongly claim a month whose real
+    figures EMI hasn't finished publishing yet. None (falling back to
+    today's date at the call site) if the header is ever missing.
+    """
+    try:
+        r = session.head(url, timeout=30)
+        r.raise_for_status()
+        last_modified = r.headers.get("Last-Modified")
+        if last_modified:
+            from email.utils import parsedate_to_datetime
+            return parsedate_to_datetime(last_modified).date().isoformat()
+    except Exception:                                  # noqa: BLE001
+        pass
+    return None
+
+
 def read_streets(text):
     """One record per (area, street), with the three segments merged."""
     import csv
@@ -1727,6 +1749,7 @@ def main():
 
     records = read_streets(fetch_csv(STREET_CSV))
     print(f"EMI: {len(records):,} streets")
+    data_date = fetch_data_date(STREET_CSV) or datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     try:
         totals, networks = read_regions(fetch_csv(REGION_CSV))
@@ -1929,7 +1952,7 @@ def main():
     matched = len(features)
     total = len(records)
     save(OUT_META, {
-        "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+        "updated": data_date,
         "streets": matched,
         "streetsTotal": total,
         "matchRate": round(matched / total * 100, 1) if total else 0,
