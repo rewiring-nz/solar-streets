@@ -51,7 +51,29 @@ jobs:
                   previous_town_totals.json previous_ev_totals.json
           if git diff --staged --quiet; then
             echo "No changes"
-          else
-            git commit -m "Update solar data $(date -u +%Y-%m-%d)"
-            git push
+            exit 0
           fi
+          git commit -m "Update solar data $(date -u +%Y-%m-%d)"
+
+          # The concurrency group above only keeps two runs of *this*
+          # workflow from racing each other -- it doesn't stop an
+          # unrelated push (a docs change, a code fix) landing on main
+          # while this run's own ~20-minute geocode is still in
+          # progress, which makes the push below a plain non-fast-
+          # forward rejection. Verified live: an unrelated push mid-run
+          # did exactly this. Since this commit only ever touches the
+          # generated data files listed above -- never hand-edited, per
+          # the README -- rebasing onto whatever else landed on main
+          # has nothing real to conflict with, so retrying a few times
+          # is safe rather than papering over a genuine conflict.
+          for attempt in 1 2 3 4 5; do
+            if git push; then
+              exit 0
+            fi
+            echo "Push rejected (attempt $attempt/5) -- main moved, rebasing and retrying..."
+            git fetch origin main
+            git rebase origin/main
+            sleep 10
+          done
+          echo "::error::Failed to push after 5 attempts"
+          exit 1
