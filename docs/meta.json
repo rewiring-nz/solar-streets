@@ -1,8 +1,8 @@
 {
  "updated": "2026-08-20",
- "streets": 35592,
- "streetsTotal": 36997,
- "matchRate": 96.2,
+ "streets": 35792,
+ "streetsTotal": 36954,
+ "matchRate": 96.9,
  "national": {
   "icps": 90235,
   "kW": 1200851.2,
@@ -26,21 +26,6 @@
    "lng": 172.7194
   },
   {
-   "name": "Northland",
-   "icps": 6532,
-   "kW": 64821.3,
-   "totalIcps": 98676,
-   "pct": 6.47,
-   "bbox": [
-    -36.396324,
-    172.635244,
-    -34.39263,
-    174.783576
-   ],
-   "lat": -35.4128,
-   "lng": 173.8927
-  },
-  {
    "name": "Marlborough",
    "icps": 1847,
    "kW": 17665.8,
@@ -54,6 +39,21 @@
    ],
    "lat": -41.2717,
    "lng": 173.9068
+  },
+  {
+   "name": "Northland",
+   "icps": 6870,
+   "kW": 65059.4,
+   "totalIcps": 98676,
+   "pct": 6.47,
+   "bbox": [
+    -36.396324,
+    172.635244,
+    -34.39263,
+    174.783576
+   ],
+   "lat": -35.4128,
+   "lng": 173.8927
   },
   {
    "name": "Hawke's Bay",
@@ -117,7 +117,7 @@
   },
   {
    "name": "Taranaki",
-   "icps": 3064,
+   "icps": 3066,
    "kW": 9764.3,
    "totalIcps": 61475,
    "pct": 4.5,
@@ -147,8 +147,8 @@
   },
   {
    "name": "Manawat\u016b-Whanganui",
-   "icps": 4867,
-   "kW": 9337.5,
+   "icps": 4876,
+   "kW": 9305.5,
    "totalIcps": 100164,
    "pct": 3.47,
    "bbox": [
@@ -162,8 +162,8 @@
   },
   {
    "name": "Wellington",
-   "icps": 8688,
-   "kW": 25377.1,
+   "icps": 8760,
+   "kW": 25393.5,
    "totalIcps": 260097,
    "pct": 3.33,
    "bbox": [
@@ -364,8 +364,8 @@
   {
    "name": "Palmerston North",
    "council": "Manawat\u016b-Whanganui",
-   "icps": 1366,
-   "kW": 2953.4,
+   "icps": 1363,
+   "kW": 2921.4,
    "lat": -40.3649,
    "lng": 175.6328,
    "councilPct": 3.47,
@@ -412,6 +412,16 @@
    "estPct": 6.9
   },
   {
+   "name": "Whang\u0101rei",
+   "council": "Northland",
+   "icps": 1068,
+   "kW": 3073.3,
+   "lat": -35.6874,
+   "lng": 174.2612,
+   "councilPct": 6.47,
+   "estPct": 4.9
+  },
+  {
    "name": "Blenheim",
    "council": "Marlborough",
    "icps": 1005,
@@ -430,16 +440,6 @@
    "lng": 176.8872,
    "councilPct": 6.3,
    "estPct": 5.7
-  },
-  {
-   "name": "Whang\u0101rei",
-   "council": "Northland",
-   "icps": 975,
-   "kW": 3016.8,
-   "lat": -35.6874,
-   "lng": 174.2612,
-   "councilPct": 6.47,
-   "estPct": 4.5
   },
   {
    "name": "Upper Hutt",
@@ -612,6 +612,16 @@
    "estPct": 3.6
   },
   {
+   "name": "Waikanae",
+   "council": "Wellington",
+   "icps": 719,
+   "kW": 2486.7,
+   "lat": -40.8714,
+   "lng": 175.0664,
+   "councilPct": 3.33,
+   "estPct": 9.1
+  },
+  {
    "name": "Ashburton",
    "council": "Canterbury",
    "icps": 713,
@@ -650,16 +660,6 @@
    "lng": 176.3265,
    "councilPct": 5.05,
    "estPct": 5.6
-  },
-  {
-   "name": "Waikanae",
-   "council": "Wellington",
-   "icps": 683,
-   "kW": 2470.3,
-   "lat": -40.8714,
-   "lng": 175.0664,
-   "councilPct": 3.33,
-   "estPct": 8.6
   },
   {
    "name": "Gisborne",
@@ -732,6 +732,16 @@
    "estPct": 4.9
   },
   {
+   "name": "Mangawhai",
+   "council": "Northland",
+   "icps": 511,
+   "kW": 1823.8,
+   "lat": -36.1172,
+   "lng": 174.5593,
+   "councilPct": 6.47,
+   "estPct": 10.8
+  },
+  {
    "name": "Papakura",
    "council": "Auckland",
    "icps": 492,
@@ -782,16 +792,6 @@
    "estPct": 5.6
   },
   {
-   "name": "Mangawhai",
-   "council": "Northland",
-   "icps": 450,
-   "kW": 1633.0,
-   "lat": -36.1172,
-   "lng": 174.5593,
-   "councilPct": 6.47,
-   "estPct": 9.5
-  },
-  {
    "name": "Alexandra",
    "council": "Otago",
    "icps": 443,
@@ -800,6 +800,16 @@
    "lng": 169.3748,
    "councilPct": 4.64,
    "estPct": 11.5
+  },
+  {
+   "name": "Raumati Beach",
+   "council": "Wellington",
+   "icps": 439,
+   "kW": 1073.7,
+   "lat": -40.9184,
+   "lng": 174.9871,
+   "councilPct": 3.33,
+   "estPct": 4.8
   },
   {
    "name": "Feilding",
@@ -852,16 +862,6 @@
    "estPct": 3.1
   },
   {
-   "name": "Raumati Beach",
-   "council": "Wellington",
-   "icps": 413,
-   "kW": 1073.7,
-   "lat": -40.9184,
-   "lng": 174.9871,
-   "councilPct": 3.33,
-   "estPct": 4.6
-  },
-  {
    "name": "Arrowtown",
    "council": "Otago",
    "icps": 409,
@@ -902,6 +902,16 @@
    "estPct": 4.0
   },
   {
+   "name": "Levin",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 363,
+   "kW": 372.8,
+   "lat": -40.6286,
+   "lng": 175.3177,
+   "councilPct": 3.47,
+   "estPct": 3.6
+  },
+  {
    "name": "Whitianga",
    "council": "Waikato",
    "icps": 362,
@@ -922,16 +932,6 @@
    "estPct": 14.9
   },
   {
-   "name": "Levin",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 351,
-   "kW": 372.8,
-   "lat": -40.6286,
-   "lng": 175.3177,
-   "councilPct": 3.47,
-   "estPct": 3.5
-  },
-  {
    "name": "Ng\u0101ruaw\u0101hia",
    "council": "Waikato",
    "icps": 349,
@@ -944,7 +944,7 @@
   {
    "name": "H\u0101wera",
    "council": "Taranaki",
-   "icps": 347,
+   "icps": 349,
    "kW": 1158.8,
    "lat": -39.5811,
    "lng": 174.3012,
@@ -1012,6 +1012,16 @@
    "estPct": 5.7
   },
   {
+   "name": "Ruak\u0101k\u0101",
+   "council": "Northland",
+   "icps": 308,
+   "kW": 982.3,
+   "lat": -35.8862,
+   "lng": 174.436,
+   "councilPct": 6.47,
+   "estPct": 8.9
+  },
+  {
    "name": "Hira",
    "council": "Nelson",
    "icps": 303,
@@ -1031,14 +1041,14 @@
    "estPct": 6.1
   },
   {
-   "name": "Ruak\u0101k\u0101",
+   "name": "Whareora",
    "council": "Northland",
-   "icps": 290,
-   "kW": 982.3,
-   "lat": -35.8862,
-   "lng": 174.436,
+   "icps": 299,
+   "kW": 914.1,
+   "lat": -35.6968,
+   "lng": 174.4144,
    "councilPct": 6.47,
-   "estPct": 8.4
+   "estPct": 6.7
   },
   {
    "name": "\u014cmokoroa",
@@ -1051,24 +1061,14 @@
    "estPct": 7.2
   },
   {
-   "name": "Whareora",
-   "council": "Northland",
-   "icps": 287,
-   "kW": 914.1,
-   "lat": -35.6968,
-   "lng": 174.4144,
-   "councilPct": 6.47,
-   "estPct": 6.4
-  },
-  {
    "name": "\u014ctaki",
    "council": "Wellington",
-   "icps": 275,
+   "icps": 277,
    "kW": 848.5,
    "lat": -40.7542,
    "lng": 175.1646,
    "councilPct": 3.33,
-   "estPct": 5.6
+   "estPct": 5.7
   },
   {
    "name": "Tokoroa",
@@ -1171,6 +1171,16 @@
    "estPct": 7.2
   },
   {
+   "name": "Parua Bay",
+   "council": "Northland",
+   "icps": 225,
+   "kW": 1071.7,
+   "lat": -35.7479,
+   "lng": 174.4627,
+   "councilPct": 6.47,
+   "estPct": 12.8
+  },
+  {
    "name": "Thames",
    "council": "Waikato",
    "icps": 225,
@@ -1251,6 +1261,26 @@
    "estPct": 6.4
   },
   {
+   "name": "Maungakaramea",
+   "council": "Northland",
+   "icps": 205,
+   "kW": 642.7,
+   "lat": -35.837,
+   "lng": 174.1956,
+   "councilPct": 6.47,
+   "estPct": 10.2
+  },
+  {
+   "name": "Kauri",
+   "council": "Northland",
+   "icps": 204,
+   "kW": 649.8,
+   "lat": -35.6403,
+   "lng": 174.2815,
+   "councilPct": 6.47,
+   "estPct": 6.2
+  },
+  {
    "name": "Kume\u016b",
    "council": "Auckland",
    "icps": 201,
@@ -1259,6 +1289,16 @@
    "lng": 174.542,
    "councilPct": 2.45,
    "estPct": 3.9
+  },
+  {
+   "name": "Pataua North",
+   "council": "Northland",
+   "icps": 200,
+   "kW": 743.7,
+   "lat": -35.6902,
+   "lng": 174.4968,
+   "councilPct": 6.47,
+   "estPct": 12.2
   },
   {
    "name": "Karamu",
@@ -1281,16 +1321,6 @@
    "estPct": 6.8
   },
   {
-   "name": "Parua Bay",
-   "council": "Northland",
-   "icps": 199,
-   "kW": 1071.7,
-   "lat": -35.7479,
-   "lng": 174.4627,
-   "councilPct": 6.47,
-   "estPct": 11.3
-  },
-  {
    "name": "Wakefield",
    "council": "Tasman",
    "icps": 199,
@@ -1299,16 +1329,6 @@
    "lng": 173.0539,
    "councilPct": 7.83,
    "estPct": 10.0
-  },
-  {
-   "name": "Maungakaramea",
-   "council": "Northland",
-   "icps": 197,
-   "kW": 667.1,
-   "lat": -35.837,
-   "lng": 174.1956,
-   "councilPct": 6.47,
-   "estPct": 9.8
   },
   {
    "name": "Martinborough",
@@ -1371,16 +1391,6 @@
    "estPct": 9.1
   },
   {
-   "name": "Kauri",
-   "council": "Northland",
-   "icps": 186,
-   "kW": 634.6,
-   "lat": -35.6403,
-   "lng": 174.2815,
-   "councilPct": 6.47,
-   "estPct": 5.7
-  },
-  {
    "name": "Clive",
    "council": "Hawke's Bay",
    "icps": 184,
@@ -1389,6 +1399,16 @@
    "lng": 176.9125,
    "councilPct": 6.3,
    "estPct": 10.6
+  },
+  {
+   "name": "Waipu",
+   "council": "Northland",
+   "icps": 182,
+   "kW": 408.9,
+   "lat": -36.004,
+   "lng": 174.4157,
+   "councilPct": 6.47,
+   "estPct": 9.6
   },
   {
    "name": "Whangamat\u0101",
@@ -1481,16 +1501,6 @@
    "estPct": 6.5
   },
   {
-   "name": "Pataua North",
-   "council": "Northland",
-   "icps": 166,
-   "kW": 743.7,
-   "lat": -35.6902,
-   "lng": 174.4968,
-   "councilPct": 6.47,
-   "estPct": 10.1
-  },
-  {
    "name": "Paihia",
    "council": "Northland",
    "icps": 165,
@@ -1579,16 +1589,6 @@
    "lng": 174.4707,
    "councilPct": 2.45,
    "estPct": 5.0
-  },
-  {
-   "name": "Waipu",
-   "council": "Northland",
-   "icps": 152,
-   "kW": 408.9,
-   "lat": -36.004,
-   "lng": 174.4157,
-   "councilPct": 6.47,
-   "estPct": 8.0
   },
   {
    "name": "Swannanoa",
@@ -1701,6 +1701,16 @@
    "estPct": 8.7
   },
   {
+   "name": "Paraparaumu",
+   "council": "Wellington",
+   "icps": 137,
+   "kW": 468.3,
+   "lat": -40.9268,
+   "lng": 175.008,
+   "councilPct": 3.33,
+   "estPct": 5.0
+  },
+  {
    "name": "Greymouth",
    "council": "West Coast",
    "icps": 135,
@@ -1759,16 +1769,6 @@
    "lng": 175.3194,
    "councilPct": 3.33,
    "estPct": 7.6
-  },
-  {
-   "name": "Paraparaumu",
-   "council": "Wellington",
-   "icps": 131,
-   "kW": 468.3,
-   "lat": -40.9268,
-   "lng": 175.008,
-   "councilPct": 3.33,
-   "estPct": 4.8
   },
   {
    "name": "Te Aroha",
@@ -1949,6 +1949,16 @@
    "lng": 173.7516,
    "councilPct": 6.47,
    "estPct": 9.6
+  },
+  {
+   "name": "Whang\u0101rei Heads",
+   "council": "Northland",
+   "icps": 106,
+   "kW": 360.9,
+   "lat": -35.8209,
+   "lng": 174.5375,
+   "councilPct": 6.47,
+   "estPct": 9.9
   },
   {
    "name": "Inglewood",
@@ -2141,6 +2151,16 @@
    "estPct": 3.4
   },
   {
+   "name": "Hikurangi",
+   "council": "Northland",
+   "icps": 94,
+   "kW": 205.2,
+   "lat": -35.5814,
+   "lng": 174.3379,
+   "councilPct": 6.47,
+   "estPct": 7.0
+  },
+  {
    "name": "Coromandel",
    "council": "Waikato",
    "icps": 94,
@@ -2159,16 +2179,6 @@
    "lng": 176.081,
    "councilPct": 3.47,
    "estPct": 2.5
-  },
-  {
-   "name": "Whang\u0101rei Heads",
-   "council": "Northland",
-   "icps": 92,
-   "kW": 360.9,
-   "lat": -35.8209,
-   "lng": 174.5375,
-   "councilPct": 6.47,
-   "estPct": 8.6
   },
   {
    "name": "Haumoana",
@@ -2209,16 +2219,6 @@
    "lng": 172.6668,
    "councilPct": 4.51,
    "estPct": 11.8
-  },
-  {
-   "name": "Hikurangi",
-   "council": "Northland",
-   "icps": 90,
-   "kW": 205.2,
-   "lat": -35.5814,
-   "lng": 174.3379,
-   "councilPct": 6.47,
-   "estPct": 6.7
   },
   {
    "name": "Maraek\u0101kaho",
@@ -2311,6 +2311,16 @@
    "estPct": 9.4
   },
   {
+   "name": "Paek\u0101k\u0101riki",
+   "council": "Wellington",
+   "icps": 79,
+   "kW": 186.4,
+   "lat": -40.986,
+   "lng": 174.977,
+   "councilPct": 3.33,
+   "estPct": 5.6
+  },
+  {
    "name": "Kirwee",
    "council": "Canterbury",
    "icps": 79,
@@ -2341,16 +2351,6 @@
    "estPct": 5.3
   },
   {
-   "name": "Paek\u0101k\u0101riki",
-   "council": "Wellington",
-   "icps": 77,
-   "kW": 186.4,
-   "lat": -40.986,
-   "lng": 174.977,
-   "councilPct": 3.33,
-   "estPct": 5.5
-  },
-  {
    "name": "Westport",
    "council": "West Coast",
    "icps": 76,
@@ -2369,6 +2369,16 @@
    "lng": 172.728,
    "councilPct": 4.51,
    "estPct": 9.2
+  },
+  {
+   "name": "Kaiwaka",
+   "council": "Northland",
+   "icps": 75,
+   "kW": 126.2,
+   "lat": -36.2078,
+   "lng": 174.4075,
+   "councilPct": 6.47,
+   "estPct": 7.6
   },
   {
    "name": "Glenbrook",
@@ -2431,6 +2441,16 @@
    "estPct": 7.0
   },
   {
+   "name": "Tangiteroria",
+   "council": "Northland",
+   "icps": 73,
+   "kW": 300.9,
+   "lat": -35.8194,
+   "lng": 174.0065,
+   "councilPct": 6.47,
+   "estPct": 9.3
+  },
+  {
    "name": "Herbert",
    "council": "Otago",
    "icps": 72,
@@ -2439,16 +2459,6 @@
    "lng": 170.7965,
    "councilPct": 4.64,
    "estPct": 7.6
-  },
-  {
-   "name": "Tangiteroria",
-   "council": "Northland",
-   "icps": 71,
-   "kW": 300.9,
-   "lat": -35.8194,
-   "lng": 174.0065,
-   "councilPct": 6.47,
-   "estPct": 9.0
   },
   {
    "name": "Clyde",
@@ -2611,16 +2621,6 @@
    "estPct": 4.5
   },
   {
-   "name": "Kaiwaka",
-   "council": "Northland",
-   "icps": 63,
-   "kW": 126.2,
-   "lat": -36.2078,
-   "lng": 174.4075,
-   "councilPct": 6.47,
-   "estPct": 6.4
-  },
-  {
    "name": "Waitoki",
    "council": "Auckland",
    "icps": 63,
@@ -2689,6 +2689,16 @@
    "lng": 168.0145,
    "councilPct": 1.87,
    "estPct": 3.8
+  },
+  {
+   "name": "Maungaturoto",
+   "council": "Northland",
+   "icps": 61,
+   "kW": 17865.9,
+   "lat": -36.1249,
+   "lng": 174.3462,
+   "councilPct": 6.47,
+   "estPct": 6.6
   },
   {
    "name": "Wairoa",
@@ -2789,16 +2799,6 @@
    "lng": 170.1587,
    "councilPct": 4.64,
    "estPct": 6.3
-  },
-  {
-   "name": "Maungaturoto",
-   "council": "Northland",
-   "icps": 57,
-   "kW": 17865.9,
-   "lat": -36.1249,
-   "lng": 174.3462,
-   "councilPct": 6.47,
-   "estPct": 6.1
   },
   {
    "name": "Pollok",
@@ -3651,6 +3651,16 @@
    "estPct": 8.3
   },
   {
+   "name": "Baylys Beach",
+   "council": "Northland",
+   "icps": 32,
+   "kW": 12.3,
+   "lat": -35.9518,
+   "lng": 173.7583,
+   "councilPct": 6.47,
+   "estPct": 6.7
+  },
+  {
    "name": "Muriwai",
    "council": "Auckland",
    "icps": 32,
@@ -3729,16 +3739,6 @@
    "lng": 173.2472,
    "councilPct": 6.47,
    "estPct": 41.6
-  },
-  {
-   "name": "Baylys Beach",
-   "council": "Northland",
-   "icps": 30,
-   "kW": 12.3,
-   "lat": -35.9518,
-   "lng": 173.7583,
-   "councilPct": 6.47,
-   "estPct": 6.3
   },
   {
    "name": "Onewhero",
