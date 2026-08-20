@@ -341,10 +341,12 @@ const GESTURES_LOCKED = IN_IFRAME && GESTURES_PARAM !== "free";
 
 const usingLinz = LINZ_API_KEY.trim().length > 0;
 
+const NZ_VIEW = { center: [172.8, -41.0], zoom: 4.7 };
+
 const map = new maplibregl.Map({
   container: "map",
-  center: [172.8, -41.0],
-  zoom: 4.7,
+  center: NZ_VIEW.center,
+  zoom: NZ_VIEW.zoom,
   maxPitch: 80,
   cooperativeGestures: GESTURES_LOCKED,
   style: {
@@ -873,8 +875,13 @@ function loadSolarRegionsLayer() {
         id: "solar-regions-fill", type: "fill", source: "solar-regions",
         layout: { visibility: "none" },
         paint: {
+          // Coloured by this TLA's own estimated %, the same number its
+          // label shows -- not the parent council's shared "pct" (every
+          // TLA in a council used to render the same colour regardless
+          // of its own real number). Falls back to the council % only
+          // for the few small-sample TLAs with no estPct at all.
           "fill-color": [
-            "interpolate", ["linear"], ["coalesce", ["get", "pct"], 0],
+            "interpolate", ["linear"], ["coalesce", ["get", "estPct"], ["get", "pct"], 0],
             0, "#3a2c00", 2, "#7a5c00", 4, "#ffb703", 8, "#ffe08a",
           ],
           // Full opacity under the cursor -- a visible cue that each
@@ -1602,10 +1609,15 @@ chartSelectEl.addEventListener("change", async () => {
 
   // Picking a specific region while zoomed out to the whole country
   // flies there too -- otherwise there'd be nothing on screen to
-  // explain why the topbar/chart just changed.
+  // explain why the topbar/chart just changed. Picking "New Zealand"
+  // back from a region does the reverse, zooming back out -- without
+  // this the map stayed wherever it was, disagreeing with the topbar/
+  // chart now showing the whole country.
   if (wasNational && currentFocus.level !== "national" && currentFocus.data && currentFocus.data.bbox) {
     const [s, w, n, e] = currentFocus.data.bbox;
     map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 800 });
+  } else if (!wasNational && currentFocus.level === "national") {
+    map.flyTo({ center: NZ_VIEW.center, zoom: NZ_VIEW.zoom, duration: 800 });
   }
 });
 

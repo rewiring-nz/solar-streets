@@ -247,8 +247,9 @@ ABBREV = {
     "RD": "ROAD", "ST": "STREET", "AVE": "AVENUE", "AV": "AVENUE",
     "DR": "DRIVE", "CRES": "CRESCENT", "PL": "PLACE", "TCE": "TERRACE",
     "TER": "TERRACE", "LN": "LANE", "CT": "COURT", "HWY": "HIGHWAY",
-    "GRV": "GROVE", "PDE": "PARADE", "CL": "CLOSE", "BLVD": "BOULEVARD",
-    "MT": "MOUNT", "SH": "STATE HIGHWAY",
+    "GRV": "GROVE", "GRVE": "GROVE", "PDE": "PARADE", "CL": "CLOSE",
+    "CLSE": "CLOSE", "BLVD": "BOULEVARD", "MT": "MOUNT", "SH": "STATE HIGHWAY",
+    "HTS": "HEIGHTS",
 }
 
 # EMI's PhysicalAddressStreet always carries a formal street-type suffix
@@ -284,9 +285,18 @@ def normalise(name):
 
     Only the final word is expanded, so 'St Andrews Road' keeps its
     saint instead of becoming 'Street Andrews Road'.
+
+    Northland's EMI data appends "(PVT)" to private-road addresses --
+    a real marker of who owns/maintains the road, not part of the
+    road's own name, and never present in OSM's name tag -- stripped
+    before anything else so "Dryland Track (Pvt)" still finds OSM's
+    plain "Dryland Track". Verified live: 184 of 188 Northland (PVT)
+    streets that were otherwise completely unmatched turned out to
+    already be in OSM under their plain name.
     """
     if not name:
         return ""
+    name = re.sub(r"\(PVT\)\s*$", "", name.strip(), flags=re.IGNORECASE)
     words = re.sub(r"[^A-Z0-9 ]", " ", name.upper()).split()
     return " ".join(
         ABBREV[w] if (i == len(words) - 1 and w in ABBREV) else w
