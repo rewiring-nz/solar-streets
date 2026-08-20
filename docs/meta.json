@@ -1,8 +1,8 @@
 {
  "updated": "2026-08-20",
- "streets": 35792,
+ "streets": 36016,
  "streetsTotal": 36954,
- "matchRate": 96.9,
+ "matchRate": 97.5,
  "national": {
   "icps": 90235,
   "kW": 1200851.2,
@@ -12,8 +12,8 @@
  "regions": [
   {
    "name": "Tasman",
-   "icps": 2544,
-   "kW": 11377.8,
+   "icps": 2601,
+   "kW": 11629.3,
    "totalIcps": 53477,
    "pct": 7.83,
    "bbox": [
@@ -23,12 +23,14 @@
     173.304416
    ],
    "lat": -41.1025,
-   "lng": 172.7194
+   "lng": 172.7194,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Marlborough",
-   "icps": 1847,
-   "kW": 17665.8,
+   "icps": 1863,
+   "kW": 17742.6,
    "totalIcps": 26886,
    "pct": 6.47,
    "bbox": [
@@ -38,12 +40,14 @@
     174.446824
    ],
    "lat": -41.2717,
-   "lng": 173.9068
+   "lng": 173.9068,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Northland",
-   "icps": 6870,
-   "kW": 65059.4,
+   "icps": 6914,
+   "kW": 65182.3,
    "totalIcps": 98676,
    "pct": 6.47,
    "bbox": [
@@ -53,12 +57,14 @@
     174.783576
    ],
    "lat": -35.4128,
-   "lng": 173.8927
+   "lng": 173.8927,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Hawke's Bay",
-   "icps": 5154,
-   "kW": 19728.3,
+   "icps": 5183,
+   "kW": 19818.1,
    "totalIcps": 75832,
    "pct": 6.3,
    "bbox": [
@@ -68,12 +74,14 @@
     178.001674
    ],
    "lat": -39.3648,
-   "lng": 176.9539
+   "lng": 176.9539,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Bay of Plenty",
-   "icps": 8024,
-   "kW": 27784.9,
+   "icps": 8078,
+   "kW": 28163.9,
    "totalIcps": 150732,
    "pct": 5.05,
    "bbox": [
@@ -83,12 +91,14 @@
     178.107555
    ],
    "lat": -37.8999,
-   "lng": 176.7985
+   "lng": 176.7985,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Otago",
-   "icps": 6545,
-   "kW": 16595.1,
+   "icps": 6564,
+   "kW": 16655.9,
    "totalIcps": 121322,
    "pct": 4.64,
    "bbox": [
@@ -98,11 +108,13 @@
     171.144175
    ],
    "lat": -45.5143,
-   "lng": 169.8972
+   "lng": 169.8972,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Canterbury",
-   "icps": 16779,
+   "icps": 16789,
    "kW": 51650.2,
    "totalIcps": 350445,
    "pct": 4.51,
@@ -113,11 +125,13 @@
     174.06344
    ],
    "lat": -43.3808,
-   "lng": 172.2093
+   "lng": 172.2093,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Taranaki",
-   "icps": 3066,
+   "icps": 3070,
    "kW": 9764.3,
    "totalIcps": 61475,
    "pct": 4.5,
@@ -128,12 +142,14 @@
     174.991765
    ],
    "lat": -39.2584,
-   "lng": 174.5568
+   "lng": 174.5568,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Waikato",
-   "icps": 11024,
-   "kW": 77356.3,
+   "icps": 11113,
+   "kW": 77574.0,
    "totalIcps": 252062,
    "pct": 3.82,
    "bbox": [
@@ -143,12 +159,14 @@
     176.505325
    ],
    "lat": -37.5461,
-   "lng": 175.3002
+   "lng": 175.3002,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Manawat\u016b-Whanganui",
-   "icps": 4876,
-   "kW": 9305.5,
+   "icps": 4893,
+   "kW": 9337.2,
    "totalIcps": 100164,
    "pct": 3.47,
    "bbox": [
@@ -158,12 +176,14 @@
     176.632958
    ],
    "lat": -39.6301,
-   "lng": 175.4434
+   "lng": 175.4434,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Wellington",
-   "icps": 8760,
-   "kW": 25393.5,
+   "icps": 8817,
+   "kW": 25557.2,
    "totalIcps": 260097,
    "pct": 3.33,
    "bbox": [
@@ -173,7 +193,9 @@
     176.332763
    ],
    "lat": -41.1408,
-   "lng": 175.3351
+   "lng": 175.3351,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Gisborne",
@@ -188,12 +210,14 @@
     178.577243
    ],
    "lat": -38.2635,
-   "lng": 177.9764
+   "lng": 177.9764,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Auckland",
-   "icps": 18960,
-   "kW": 49751.8,
+   "icps": 19284,
+   "kW": 50663.4,
    "totalIcps": 709319,
    "pct": 2.45,
    "bbox": [
@@ -203,7 +227,9 @@
     175.550653
    ],
    "lat": -36.7784,
-   "lng": 174.7025
+   "lng": 174.7025,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Southland",
@@ -218,7 +244,9 @@
     169.279166
    ],
    "lat": -45.6105,
-   "lng": 167.4494
+   "lng": 167.4494,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "West Coast",
@@ -233,7 +261,9 @@
     172.692052
    ],
    "lat": -42.7948,
-   "lng": 170.7898
+   "lng": 170.7898,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Nelson",
@@ -248,28 +278,34 @@
     173.598762
    ],
    "lat": -41.1993,
-   "lng": 173.4173
+   "lng": 173.4173,
+   "change": null,
+   "changePct": null
   }
  ],
  "towns": [
   {
    "name": "Auckland",
    "council": "Auckland",
-   "icps": 4817,
-   "kW": 9590.5,
+   "icps": 4903,
+   "kW": 9788.7,
    "lat": -36.9769,
    "lng": 174.8554,
    "councilPct": 2.45,
-   "estPct": 2.0
+   "change": null,
+   "changePct": null,
+   "estPct": 2.1
   },
   {
    "name": "Christchurch",
    "council": "Canterbury",
-   "icps": 3445,
+   "icps": 3451,
    "kW": 7203.4,
    "lat": -43.588,
    "lng": 172.5547,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
   },
   {
@@ -280,27 +316,33 @@
    "lat": -37.7921,
    "lng": 175.2998,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.7
   },
   {
    "name": "Taupaki",
    "council": "Auckland",
-   "icps": 2567,
-   "kW": 5546.8,
+   "icps": 2629,
+   "kW": 5650.9,
    "lat": -36.82,
    "lng": 174.5559,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 2.6
   },
   {
    "name": "Coatesville",
    "council": "Auckland",
-   "icps": 2462,
-   "kW": 4461.4,
+   "icps": 2497,
+   "kW": 4591.6,
    "lat": -36.7205,
    "lng": 174.6403,
    "councilPct": 2.45,
-   "estPct": 2.4
+   "change": null,
+   "changePct": null,
+   "estPct": 2.5
   },
   {
    "name": "Napier",
@@ -310,16 +352,20 @@
    "lat": -39.5383,
    "lng": 176.8382,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 6.6
   },
   {
    "name": "Lyttelton",
    "council": "Canterbury",
-   "icps": 1688,
+   "icps": 1690,
    "kW": 4184.1,
    "lat": -43.5993,
    "lng": 172.7249,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 3.7
   },
   {
@@ -329,16 +375,32 @@
    "kW": 5273.6,
    "lat": -41.3235,
    "lng": 173.2373,
-   "councilPct": null
+   "councilPct": null,
+   "change": null,
+   "changePct": null
+  },
+  {
+   "name": "Porirua",
+   "council": "Wellington",
+   "icps": 1450,
+   "kW": 2966.5,
+   "lat": -41.1178,
+   "lng": 174.8964,
+   "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
+   "estPct": 4.0
   },
   {
    "name": "Wellington",
    "council": "Wellington",
-   "icps": 1441,
+   "icps": 1443,
    "kW": 2002.3,
    "lat": -41.2928,
    "lng": 174.7298,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 2.2
   },
   {
@@ -349,17 +411,9 @@
    "lat": -36.9446,
    "lng": 174.981,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 3.4
-  },
-  {
-   "name": "Porirua",
-   "council": "Wellington",
-   "icps": 1435,
-   "kW": 2915.9,
-   "lat": -41.1178,
-   "lng": 174.8964,
-   "councilPct": 3.33,
-   "estPct": 3.9
   },
   {
    "name": "Palmerston North",
@@ -369,27 +423,33 @@
    "lat": -40.3649,
    "lng": 175.6328,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.8
-  },
-  {
-   "name": "Takanini",
-   "council": "Auckland",
-   "icps": 1242,
-   "kW": 1998.0,
-   "lat": -37.0462,
-   "lng": 174.9122,
-   "councilPct": 2.45,
-   "estPct": 3.2
   },
   {
    "name": "W\u0101naka",
    "council": "Otago",
-   "icps": 1238,
-   "kW": 4653.9,
+   "icps": 1247,
+   "kW": 4691.4,
    "lat": -44.7278,
    "lng": 169.1415,
    "councilPct": 4.64,
-   "estPct": 15.9
+   "change": null,
+   "changePct": null,
+   "estPct": 16.0
+  },
+  {
+   "name": "Takanini",
+   "council": "Auckland",
+   "icps": 1244,
+   "kW": 1998.0,
+   "lat": -37.0462,
+   "lng": 174.9122,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 3.2
   },
   {
    "name": "Mount Maunganui",
@@ -399,6 +459,8 @@
    "lat": -37.6661,
    "lng": 176.2063,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 4.5
   },
   {
@@ -409,6 +471,8 @@
    "lat": -43.5855,
    "lng": 172.4009,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 6.9
   },
   {
@@ -419,16 +483,20 @@
    "lat": -35.6874,
    "lng": 174.2612,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.9
   },
   {
    "name": "Blenheim",
    "council": "Marlborough",
-   "icps": 1005,
-   "kW": 4272.5,
+   "icps": 1013,
+   "kW": 4311.2,
    "lat": -41.5169,
    "lng": 173.9563,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.8
   },
   {
@@ -439,26 +507,32 @@
    "lat": -39.6712,
    "lng": 176.8872,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
    "name": "Upper Hutt",
    "council": "Wellington",
-   "icps": 965,
-   "kW": 2158.8,
+   "icps": 972,
+   "kW": 2201.2,
    "lat": -41.1421,
    "lng": 175.0421,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 3.7
   },
   {
    "name": "New Plymouth",
    "council": "Taranaki",
-   "icps": 957,
+   "icps": 959,
    "kW": 3131.4,
    "lat": -39.031,
    "lng": 174.1533,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
   },
   {
@@ -469,16 +543,20 @@
    "lat": -38.1336,
    "lng": 176.3207,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 4.0
   },
   {
    "name": "Cambridge",
    "council": "Waikato",
-   "icps": 915,
+   "icps": 917,
    "kW": 3382.9,
    "lat": -37.898,
    "lng": 175.4793,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.7
   },
   {
@@ -489,7 +567,21 @@
    "lat": -37.7873,
    "lng": 176.1179,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 6.7
+  },
+  {
+   "name": "Dunedin",
+   "council": "Otago",
+   "icps": 874,
+   "kW": 559.9,
+   "lat": -45.8615,
+   "lng": 170.5189,
+   "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
+   "estPct": 2.1
   },
   {
    "name": "Kaiapoi",
@@ -499,17 +591,9 @@
    "lat": -43.378,
    "lng": 172.6683,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
-  },
-  {
-   "name": "Dunedin",
-   "council": "Otago",
-   "icps": 872,
-   "kW": 559.9,
-   "lat": -45.8615,
-   "lng": 170.5189,
-   "councilPct": 4.64,
-   "estPct": 2.1
   },
   {
    "name": "Governors Bay",
@@ -519,16 +603,20 @@
    "lat": -43.6179,
    "lng": 172.6434,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
    "name": "Whanganui",
    "council": "Manawat\u016b-Whanganui",
-   "icps": 839,
+   "icps": 843,
    "kW": 1794.6,
    "lat": -39.9172,
    "lng": 175.0719,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.8
   },
   {
@@ -539,17 +627,33 @@
    "lat": -37.6794,
    "lng": 176.0718,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
    "name": "Lower Hutt",
    "council": "Wellington",
-   "icps": 826,
+   "icps": 828,
    "kW": 1037.9,
    "lat": -41.2594,
    "lng": 175.0062,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 2.7
+  },
+  {
+   "name": "Hastings",
+   "council": "Hawke's Bay",
+   "icps": 808,
+   "kW": 2712.2,
+   "lat": -39.6204,
+   "lng": 176.7801,
+   "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
+   "estPct": 6.5
   },
   {
    "name": "Rangiora",
@@ -559,6 +663,8 @@
    "lat": -43.3072,
    "lng": 172.6027,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.2
   },
   {
@@ -569,57 +675,69 @@
    "lat": -45.0285,
    "lng": 168.6648,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 7.8
-  },
-  {
-   "name": "Hastings",
-   "council": "Hawke's Bay",
-   "icps": 779,
-   "kW": 2622.4,
-   "lat": -39.6204,
-   "lng": 176.7801,
-   "councilPct": 6.3,
-   "estPct": 6.3
   },
   {
    "name": "Richmond",
    "council": "Tasman",
-   "icps": 772,
-   "kW": 2967.4,
+   "icps": 781,
+   "kW": 3030.0,
    "lat": -41.3407,
    "lng": 173.1883,
    "councilPct": 7.83,
-   "estPct": 7.4
+   "change": null,
+   "changePct": null,
+   "estPct": 7.5
   },
   {
    "name": "Kerikeri",
    "council": "Northland",
-   "icps": 768,
+   "icps": 770,
    "kW": 4271.6,
    "lat": -35.2237,
    "lng": 173.9576,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 12.1
   },
   {
    "name": "Whangapar\u0101oa",
    "council": "Auckland",
-   "icps": 733,
-   "kW": 1817.2,
+   "icps": 753,
+   "kW": 1903.5,
    "lat": -36.627,
    "lng": 174.7312,
    "councilPct": 2.45,
-   "estPct": 3.6
+   "change": null,
+   "changePct": null,
+   "estPct": 3.7
+  },
+  {
+   "name": "Taup\u014d",
+   "council": "Waikato",
+   "icps": 732,
+   "kW": 1562.5,
+   "lat": -38.6874,
+   "lng": 176.0823,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 5.1
   },
   {
    "name": "Waikanae",
    "council": "Wellington",
-   "icps": 719,
-   "kW": 2486.7,
+   "icps": 732,
+   "kW": 2535.8,
    "lat": -40.8714,
    "lng": 175.0664,
    "councilPct": 3.33,
-   "estPct": 9.1
+   "change": null,
+   "changePct": null,
+   "estPct": 9.3
   },
   {
    "name": "Ashburton",
@@ -629,17 +747,9 @@
    "lat": -43.8751,
    "lng": 171.7507,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.8
-  },
-  {
-   "name": "Taup\u014d",
-   "council": "Waikato",
-   "icps": 698,
-   "kW": 1480.8,
-   "lat": -38.6874,
-   "lng": 176.0823,
-   "councilPct": 3.82,
-   "estPct": 4.8
   },
   {
    "name": "Kairaki",
@@ -649,6 +759,8 @@
    "lat": -43.3863,
    "lng": 172.7066,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -659,6 +771,8 @@
    "lat": -37.7223,
    "lng": 176.3265,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -669,6 +783,8 @@
    "lat": -38.6537,
    "lng": 178.0006,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 3.7
   },
   {
@@ -679,6 +795,8 @@
    "lat": -45.0296,
    "lng": 169.1596,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 12.7
   },
   {
@@ -689,6 +807,8 @@
    "lat": -44.3783,
    "lng": 171.2249,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.0
   },
   {
@@ -699,7 +819,21 @@
    "lat": -46.426,
    "lng": 168.353,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.0
+  },
+  {
+   "name": "Pukekohe",
+   "council": "Auckland",
+   "icps": 564,
+   "kW": 883.0,
+   "lat": -37.2034,
+   "lng": 174.8926,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 4.1
   },
   {
    "name": "M\u0101kara Beach",
@@ -709,26 +843,20 @@
    "lat": -41.2217,
    "lng": 174.713,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 3.0
-  },
-  {
-   "name": "Pukekohe",
-   "council": "Auckland",
-   "icps": 555,
-   "kW": 841.2,
-   "lat": -37.2034,
-   "lng": 174.8926,
-   "councilPct": 2.45,
-   "estPct": 4.0
   },
   {
    "name": "Masterton",
    "council": "Wellington",
-   "icps": 554,
+   "icps": 556,
    "kW": 5572.5,
    "lat": -40.9471,
    "lng": 175.6508,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 4.9
   },
   {
@@ -739,27 +867,33 @@
    "lat": -36.1172,
    "lng": 174.5593,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 10.8
   },
   {
    "name": "Papakura",
    "council": "Auckland",
-   "icps": 492,
+   "icps": 494,
    "kW": 5552.2,
    "lat": -37.0591,
    "lng": 174.9668,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 3.0
   },
   {
    "name": "Piha",
    "council": "Auckland",
-   "icps": 480,
+   "icps": 484,
    "kW": 1681.7,
    "lat": -36.9518,
    "lng": 174.4939,
    "councilPct": 2.45,
-   "estPct": 4.5
+   "change": null,
+   "changePct": null,
+   "estPct": 4.6
   },
   {
    "name": "Lincoln",
@@ -769,16 +903,20 @@
    "lat": -43.6654,
    "lng": 172.498,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.7
   },
   {
    "name": "M\u0101pua",
    "council": "Tasman",
-   "icps": 461,
+   "icps": 463,
    "kW": 2682.5,
    "lat": -41.2504,
    "lng": 173.0847,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 16.8
   },
   {
@@ -789,6 +927,8 @@
    "lat": -39.1179,
    "lng": 173.9524,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -799,6 +939,8 @@
    "lat": -45.2305,
    "lng": 169.3748,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 11.5
   },
   {
@@ -809,6 +951,8 @@
    "lat": -40.9184,
    "lng": 174.9871,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -819,6 +963,8 @@
    "lat": -40.2081,
    "lng": 175.5581,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -829,6 +975,8 @@
    "lat": -43.3734,
    "lng": 172.5677,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.5
   },
   {
@@ -839,16 +987,20 @@
    "lat": -37.7621,
    "lng": 176.2386,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
    "name": "Prebbleton",
    "council": "Canterbury",
-   "icps": 420,
+   "icps": 422,
    "kW": 1085.5,
    "lat": -43.5914,
    "lng": 172.5015,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -859,7 +1011,21 @@
    "lat": -45.8673,
    "lng": 170.3471,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.1
+  },
+  {
+   "name": "Motueka",
+   "council": "Tasman",
+   "icps": 410,
+   "kW": 2264.0,
+   "lat": -41.1204,
+   "lng": 172.9915,
+   "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
+   "estPct": 7.2
   },
   {
    "name": "Arrowtown",
@@ -869,27 +1035,21 @@
    "lat": -44.9307,
    "lng": 168.8255,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 9.0
-  },
-  {
-   "name": "Motueka",
-   "council": "Tasman",
-   "icps": 404,
-   "kW": 2264.0,
-   "lat": -41.1204,
-   "lng": 172.9915,
-   "councilPct": 7.83,
-   "estPct": 7.1
   },
   {
    "name": "Whakat\u0101ne",
    "council": "Bay of Plenty",
-   "icps": 391,
-   "kW": 1258.3,
+   "icps": 404,
+   "kW": 1283.3,
    "lat": -37.9744,
    "lng": 176.9913,
    "councilPct": 5.05,
-   "estPct": 5.0
+   "change": null,
+   "changePct": null,
+   "estPct": 5.1
   },
   {
    "name": "Te Awamutu",
@@ -899,7 +1059,33 @@
    "lat": -37.9932,
    "lng": 175.3281,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.0
+  },
+  {
+   "name": "Whitianga",
+   "council": "Waikato",
+   "icps": 368,
+   "kW": 24411.8,
+   "lat": -36.8173,
+   "lng": 175.6756,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 7.0
+  },
+  {
+   "name": "Ng\u0101ruaw\u0101hia",
+   "council": "Waikato",
+   "icps": 364,
+   "kW": 1232.0,
+   "lat": -37.6781,
+   "lng": 175.1272,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 6.6
   },
   {
    "name": "Levin",
@@ -909,17 +1095,9 @@
    "lat": -40.6286,
    "lng": 175.3177,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
-  },
-  {
-   "name": "Whitianga",
-   "council": "Waikato",
-   "icps": 362,
-   "kW": 24411.8,
-   "lat": -36.8173,
-   "lng": 175.6756,
-   "councilPct": 3.82,
-   "estPct": 6.9
   },
   {
    "name": "West Melton",
@@ -929,17 +1107,9 @@
    "lat": -43.5076,
    "lng": 172.3589,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 14.9
-  },
-  {
-   "name": "Ng\u0101ruaw\u0101hia",
-   "council": "Waikato",
-   "icps": 349,
-   "kW": 1096.0,
-   "lat": -37.6781,
-   "lng": 175.1272,
-   "councilPct": 3.82,
-   "estPct": 6.3
   },
   {
    "name": "H\u0101wera",
@@ -949,7 +1119,21 @@
    "lat": -39.5811,
    "lng": 174.3012,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 5.4
+  },
+  {
+   "name": "Silverdale",
+   "council": "Auckland",
+   "icps": 339,
+   "kW": 507.5,
+   "lat": -36.6146,
+   "lng": 174.6727,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 4.1
   },
   {
    "name": "Morrinsville",
@@ -959,27 +1143,21 @@
    "lat": -37.6823,
    "lng": 175.5417,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.0
   },
   {
    "name": "Carterton",
    "council": "Wellington",
-   "icps": 336,
+   "icps": 338,
    "kW": 1132.8,
    "lat": -41.0314,
    "lng": 175.5144,
    "councilPct": 3.33,
-   "estPct": 8.6
-  },
-  {
-   "name": "Silverdale",
-   "council": "Auckland",
-   "icps": 335,
-   "kW": 507.5,
-   "lat": -36.6146,
-   "lng": 174.6727,
-   "councilPct": 2.45,
-   "estPct": 4.0
+   "change": null,
+   "changePct": null,
+   "estPct": 8.7
   },
   {
    "name": "Oamaru",
@@ -989,6 +1167,8 @@
    "lat": -45.0675,
    "lng": 170.9904,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
   },
   {
@@ -999,6 +1179,8 @@
    "lat": -36.7804,
    "lng": 175.0117,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
@@ -1009,17 +1191,21 @@
    "lat": -37.8368,
    "lng": 175.7519,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
    "name": "Ruak\u0101k\u0101",
    "council": "Northland",
-   "icps": 308,
-   "kW": 982.3,
+   "icps": 326,
+   "kW": 1048.6,
    "lat": -35.8862,
    "lng": 174.436,
    "councilPct": 6.47,
-   "estPct": 8.9
+   "change": null,
+   "changePct": null,
+   "estPct": 9.4
   },
   {
    "name": "Hira",
@@ -1028,7 +1214,9 @@
    "kW": 1466.1,
    "lat": -41.2132,
    "lng": 173.4024,
-   "councilPct": null
+   "councilPct": null,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Waiuku",
@@ -1038,6 +1226,8 @@
    "lat": -37.2471,
    "lng": 174.7552,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 6.1
   },
   {
@@ -1048,47 +1238,57 @@
    "lat": -35.6968,
    "lng": 174.4144,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.7
   },
   {
    "name": "\u014cmokoroa",
    "council": "Bay of Plenty",
-   "icps": 289,
+   "icps": 291,
    "kW": 1367.4,
    "lat": -37.6494,
    "lng": 176.0287,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 7.2
   },
   {
    "name": "\u014ctaki",
    "council": "Wellington",
-   "icps": 277,
-   "kW": 848.5,
+   "icps": 289,
+   "kW": 870.1,
    "lat": -40.7542,
    "lng": 175.1646,
    "councilPct": 3.33,
-   "estPct": 5.7
-  },
-  {
-   "name": "Tokoroa",
-   "council": "Waikato",
-   "icps": 272,
-   "kW": 734.1,
-   "lat": -38.2187,
-   "lng": 175.8646,
-   "councilPct": 3.82,
-   "estPct": 4.0
+   "change": null,
+   "changePct": null,
+   "estPct": 5.9
   },
   {
    "name": "Orewa",
    "council": "Auckland",
-   "icps": 269,
+   "icps": 275,
    "kW": 432.2,
    "lat": -36.5858,
    "lng": 174.6811,
    "councilPct": 2.45,
-   "estPct": 2.9
+   "change": null,
+   "changePct": null,
+   "estPct": 3.0
+  },
+  {
+   "name": "Tokoroa",
+   "council": "Waikato",
+   "icps": 274,
+   "kW": 734.1,
+   "lat": -38.2187,
+   "lng": 175.8646,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 4.1
   },
   {
    "name": "Lake H\u0101wea",
@@ -1098,6 +1298,8 @@
    "lat": -44.641,
    "lng": 169.3166,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 15.0
   },
   {
@@ -1108,6 +1310,8 @@
    "lat": -41.0848,
    "lng": 175.4596,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 13.8
   },
   {
@@ -1118,6 +1322,8 @@
    "lat": -43.1537,
    "lng": 172.7402,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 12.5
   },
   {
@@ -1128,6 +1334,8 @@
    "lat": -38.0101,
    "lng": 176.1792,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 6.9
   },
   {
@@ -1138,7 +1346,21 @@
    "lat": -43.3286,
    "lng": 172.2182,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 12.8
+  },
+  {
+   "name": "Warkworth",
+   "council": "Auckland",
+   "icps": 231,
+   "kW": 531.7,
+   "lat": -36.424,
+   "lng": 174.6542,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 5.3
   },
   {
    "name": "Egmont Village",
@@ -1148,17 +1370,21 @@
    "lat": -39.1456,
    "lng": 174.1464,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 7.7
   },
   {
-   "name": "Warkworth",
-   "council": "Auckland",
+   "name": "Thames",
+   "council": "Waikato",
    "icps": 229,
-   "kW": 531.7,
-   "lat": -36.424,
-   "lng": 174.6542,
-   "councilPct": 2.45,
-   "estPct": 5.3
+   "kW": 461.4,
+   "lat": -37.1332,
+   "lng": 175.5751,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 4.8
   },
   {
    "name": "Woodend",
@@ -1168,6 +1394,8 @@
    "lat": -43.3246,
    "lng": 172.6701,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.2
   },
   {
@@ -1178,17 +1406,9 @@
    "lat": -35.7479,
    "lng": 174.4627,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 12.8
-  },
-  {
-   "name": "Thames",
-   "council": "Waikato",
-   "icps": 225,
-   "kW": 461.4,
-   "lat": -37.1332,
-   "lng": 175.5751,
-   "councilPct": 3.82,
-   "estPct": 4.7
   },
   {
    "name": "P\u014dkeno",
@@ -1198,6 +1418,8 @@
    "lat": -37.2443,
    "lng": 175.0143,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.8
   },
   {
@@ -1208,6 +1430,8 @@
    "lat": -37.8617,
    "lng": 174.8997,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -1218,6 +1442,8 @@
    "lat": -38.9997,
    "lng": 174.2441,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 4.7
   },
   {
@@ -1228,6 +1454,8 @@
    "lat": -37.112,
    "lng": 174.9696,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 6.8
   },
   {
@@ -1238,6 +1466,8 @@
    "lat": -37.8098,
    "lng": 176.3,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 5.0
   },
   {
@@ -1248,6 +1478,8 @@
    "lat": -43.3109,
    "lng": 172.6986,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 8.7
   },
   {
@@ -1258,6 +1490,8 @@
    "lat": -37.5508,
    "lng": 175.924,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 6.4
   },
   {
@@ -1268,7 +1502,21 @@
    "lat": -35.837,
    "lng": 174.1956,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 10.2
+  },
+  {
+   "name": "Clevedon",
+   "council": "Auckland",
+   "icps": 205,
+   "kW": 1058.6,
+   "lat": -36.9904,
+   "lng": 175.0565,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 20.1
   },
   {
    "name": "Kauri",
@@ -1278,6 +1526,8 @@
    "lat": -35.6403,
    "lng": 174.2815,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.2
   },
   {
@@ -1288,6 +1538,8 @@
    "lat": -36.7873,
    "lng": 174.542,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 3.9
   },
   {
@@ -1298,6 +1550,8 @@
    "lat": -35.6902,
    "lng": 174.4968,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 12.2
   },
   {
@@ -1308,6 +1562,8 @@
    "lat": -37.8701,
    "lng": 175.1171,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 10.2
   },
   {
@@ -1318,6 +1574,8 @@
    "lat": -40.0262,
    "lng": 176.564,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 6.8
   },
   {
@@ -1328,6 +1586,8 @@
    "lat": -41.4236,
    "lng": 173.0539,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 10.0
   },
   {
@@ -1338,6 +1598,8 @@
    "lat": -41.2124,
    "lng": 175.4785,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 14.7
   },
   {
@@ -1348,6 +1610,8 @@
    "lat": -37.4071,
    "lng": 175.8553,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -1358,6 +1622,8 @@
    "lat": -44.0964,
    "lng": 171.2501,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.8
   },
   {
@@ -1368,6 +1634,8 @@
    "lat": -40.0393,
    "lng": 175.3911,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.4
   },
   {
@@ -1378,6 +1646,8 @@
    "lat": -43.4863,
    "lng": 172.0874,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 9.3
   },
   {
@@ -1388,7 +1658,33 @@
    "lat": -37.717,
    "lng": 176.0523,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 9.1
+  },
+  {
+   "name": "Renwick",
+   "council": "Marlborough",
+   "icps": 185,
+   "kW": 629.6,
+   "lat": -41.5115,
+   "lng": 173.7855,
+   "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 10.1
+  },
+  {
+   "name": "Waipu",
+   "council": "Northland",
+   "icps": 184,
+   "kW": 408.9,
+   "lat": -36.004,
+   "lng": 174.4157,
+   "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 9.7
   },
   {
    "name": "Clive",
@@ -1398,17 +1694,9 @@
    "lat": -39.5913,
    "lng": 176.9125,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 10.6
-  },
-  {
-   "name": "Waipu",
-   "council": "Northland",
-   "icps": 182,
-   "kW": 408.9,
-   "lat": -36.004,
-   "lng": 174.4157,
-   "councilPct": 6.47,
-   "estPct": 9.6
   },
   {
    "name": "Whangamat\u0101",
@@ -1418,37 +1706,21 @@
    "lat": -37.1974,
    "lng": 175.8092,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.5
-  },
-  {
-   "name": "Renwick",
-   "council": "Marlborough",
-   "icps": 179,
-   "kW": 591.5,
-   "lat": -41.5115,
-   "lng": 173.7855,
-   "councilPct": 6.47,
-   "estPct": 9.8
   },
   {
    "name": "Huntly",
    "council": "Waikato",
-   "icps": 176,
+   "icps": 178,
    "kW": 22871.8,
    "lat": -37.5764,
    "lng": 175.1526,
    "councilPct": 3.82,
-   "estPct": 4.3
-  },
-  {
-   "name": "Clevedon",
-   "council": "Auckland",
-   "icps": 175,
-   "kW": 997.0,
-   "lat": -36.9904,
-   "lng": 175.0565,
-   "councilPct": 2.45,
-   "estPct": 17.1
+   "change": null,
+   "changePct": null,
+   "estPct": 4.4
   },
   {
    "name": "Waihi Beach",
@@ -1458,6 +1730,8 @@
    "lat": -37.4129,
    "lng": 175.9266,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -1468,6 +1742,8 @@
    "lat": -35.9539,
    "lng": 173.8469,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.0
   },
   {
@@ -1478,6 +1754,8 @@
    "lat": -41.3647,
    "lng": 173.0824,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 8.9
   },
   {
@@ -1488,17 +1766,45 @@
    "lat": -35.1934,
    "lng": 173.8729,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 12.5
+  },
+  {
+   "name": "Awanui",
+   "council": "Northland",
+   "icps": 171,
+   "kW": 481.3,
+   "lat": -35.0454,
+   "lng": 173.2465,
+   "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 6.0
   },
   {
    "name": "Kaikohe",
    "council": "Northland",
-   "icps": 169,
+   "icps": 171,
    "kW": 394.5,
    "lat": -35.4332,
    "lng": 173.7916,
    "councilPct": 6.47,
-   "estPct": 6.5
+   "change": null,
+   "changePct": null,
+   "estPct": 6.6
+  },
+  {
+   "name": "Waitati",
+   "council": "Otago",
+   "icps": 168,
+   "kW": 375.0,
+   "lat": -45.7517,
+   "lng": 170.5718,
+   "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
+   "estPct": 12.2
   },
   {
    "name": "Paihia",
@@ -1508,17 +1814,9 @@
    "lat": -35.2898,
    "lng": 174.0814,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.4
-  },
-  {
-   "name": "Waitati",
-   "council": "Otago",
-   "icps": 162,
-   "kW": 351.7,
-   "lat": -45.7517,
-   "lng": 170.5718,
-   "councilPct": 4.64,
-   "estPct": 11.7
   },
   {
    "name": "Stratford",
@@ -1528,7 +1826,21 @@
    "lat": -39.3253,
    "lng": 174.3082,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 3.8
+  },
+  {
+   "name": "Picton",
+   "council": "Marlborough",
+   "icps": 157,
+   "kW": 359.4,
+   "lat": -41.3065,
+   "lng": 174.0141,
+   "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 5.1
   },
   {
    "name": "Bombay",
@@ -1538,6 +1850,8 @@
    "lat": -37.1815,
    "lng": 175.003,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 9.7
   },
   {
@@ -1548,17 +1862,9 @@
    "lat": -38.0919,
    "lng": 176.6875,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
-  },
-  {
-   "name": "Picton",
-   "council": "Marlborough",
-   "icps": 155,
-   "kW": 359.4,
-   "lat": -41.3065,
-   "lng": 174.0141,
-   "councilPct": 6.47,
-   "estPct": 5.1
   },
   {
    "name": "Te Kauwhata",
@@ -1568,6 +1874,8 @@
    "lat": -37.3954,
    "lng": 175.1632,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.2
   },
   {
@@ -1578,6 +1886,8 @@
    "lat": -40.4472,
    "lng": 175.3107,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
   },
   {
@@ -1588,6 +1898,8 @@
    "lat": -36.6928,
    "lng": 174.4707,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 5.0
   },
   {
@@ -1598,17 +1910,9 @@
    "lat": -43.3891,
    "lng": 172.4898,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 10.2
-  },
-  {
-   "name": "Awanui",
-   "council": "Northland",
-   "icps": 151,
-   "kW": 424.7,
-   "lat": -35.0454,
-   "lng": 173.2465,
-   "councilPct": 6.47,
-   "estPct": 5.3
   },
   {
    "name": "Ashhurst",
@@ -1618,6 +1922,8 @@
    "lat": -40.2553,
    "lng": 175.7631,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -1628,6 +1934,8 @@
    "lat": -37.9681,
    "lng": 176.8342,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 6.3
   },
   {
@@ -1638,6 +1946,8 @@
    "lat": -36.4188,
    "lng": 174.7245,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 7.7
   },
   {
@@ -1648,17 +1958,33 @@
    "lat": -37.9168,
    "lng": 175.3281,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 8.8
   },
   {
    "name": "Put\u0101ruru",
    "council": "Waikato",
-   "icps": 143,
+   "icps": 145,
    "kW": 356.7,
    "lat": -38.0485,
    "lng": 175.758,
    "councilPct": 3.82,
-   "estPct": 5.4
+   "change": null,
+   "changePct": null,
+   "estPct": 5.5
+  },
+  {
+   "name": "T\u0101kaka",
+   "council": "Tasman",
+   "icps": 145,
+   "kW": 486.1,
+   "lat": -40.8824,
+   "lng": 172.7844,
+   "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
+   "estPct": 8.7
   },
   {
    "name": "Kaitaia",
@@ -1668,7 +1994,21 @@
    "lat": -35.1266,
    "lng": 173.3362,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.1
+  },
+  {
+   "name": "\u014ctorohanga",
+   "council": "Waikato",
+   "icps": 142,
+   "kW": 323.0,
+   "lat": -38.1851,
+   "lng": 175.2374,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 4.6
   },
   {
    "name": "Tuakau",
@@ -1678,6 +2018,8 @@
    "lat": -37.2674,
    "lng": 174.9551,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -1688,6 +2030,8 @@
    "lat": -46.1033,
    "lng": 168.9332,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.5
   },
   {
@@ -1698,6 +2042,8 @@
    "lat": -39.925,
    "lng": 176.566,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 8.7
   },
   {
@@ -1708,6 +2054,8 @@
    "lat": -40.9268,
    "lng": 175.008,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 5.0
   },
   {
@@ -1718,6 +2066,8 @@
    "lat": -42.4665,
    "lng": 171.2092,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 2.8
   },
   {
@@ -1728,6 +2078,8 @@
    "lat": -43.2187,
    "lng": 172.5076,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 11.9
   },
   {
@@ -1738,17 +2090,9 @@
    "lat": -36.6689,
    "lng": 174.6426,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 8.9
-  },
-  {
-   "name": "\u014ctorohanga",
-   "council": "Waikato",
-   "icps": 132,
-   "kW": 323.0,
-   "lat": -38.1851,
-   "lng": 175.2374,
-   "councilPct": 3.82,
-   "estPct": 4.3
   },
   {
    "name": "Aongatete",
@@ -1758,6 +2102,8 @@
    "lat": -37.6202,
    "lng": 175.9245,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 11.7
   },
   {
@@ -1768,6 +2114,8 @@
    "lat": -41.1105,
    "lng": 175.3194,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
@@ -1778,6 +2126,8 @@
    "lat": -37.5138,
    "lng": 175.6942,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -1788,6 +2138,8 @@
    "lat": -44.223,
    "lng": 171.2493,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -1798,17 +2150,9 @@
    "lat": -44.7474,
    "lng": 171.0499,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
-  },
-  {
-   "name": "T\u0101kaka",
-   "council": "Tasman",
-   "icps": 124,
-   "kW": 405.7,
-   "lat": -40.8824,
-   "lng": 172.7844,
-   "councilPct": 7.83,
-   "estPct": 7.5
   },
   {
    "name": "Clarks Beach",
@@ -1818,6 +2162,8 @@
    "lat": -37.1401,
    "lng": 174.7228,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 5.9
   },
   {
@@ -1828,6 +2174,8 @@
    "lat": -43.2909,
    "lng": 172.3746,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 14.0
   },
   {
@@ -1838,6 +2186,8 @@
    "lat": -45.3497,
    "lng": 167.881,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -1848,17 +2198,21 @@
    "lat": -41.2619,
    "lng": 172.9935,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 11.5
   },
   {
    "name": "Waimauku",
    "council": "Auckland",
-   "icps": 119,
+   "icps": 121,
    "kW": 460.1,
    "lat": -36.7721,
    "lng": 174.4761,
    "councilPct": 2.45,
-   "estPct": 7.7
+   "change": null,
+   "changePct": null,
+   "estPct": 7.8
   },
   {
    "name": "Kaukapakapa",
@@ -1868,6 +2222,8 @@
    "lat": -36.5992,
    "lng": 174.4978,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 7.9
   },
   {
@@ -1878,6 +2234,8 @@
    "lat": -41.4618,
    "lng": 173.9908,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.4
   },
   {
@@ -1888,6 +2246,8 @@
    "lat": -36.7237,
    "lng": 174.5832,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 6.3
   },
   {
@@ -1898,6 +2258,8 @@
    "lat": -35.2847,
    "lng": 173.7806,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.9
   },
   {
@@ -1908,7 +2270,21 @@
    "lat": -37.6954,
    "lng": 175.9814,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 13.9
+  },
+  {
+   "name": "\u014chope",
+   "council": "Bay of Plenty",
+   "icps": 113,
+   "kW": 469.2,
+   "lat": -37.9767,
+   "lng": 177.0754,
+   "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
+   "estPct": 7.9
   },
   {
    "name": "Lower Moutere",
@@ -1918,6 +2294,8 @@
    "lat": -41.171,
    "lng": 172.9814,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 9.8
   },
   {
@@ -1928,6 +2306,8 @@
    "lat": -37.3968,
    "lng": 175.6728,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
   },
   {
@@ -1938,6 +2318,8 @@
    "lat": -37.8576,
    "lng": 176.1775,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 14.3
   },
   {
@@ -1948,6 +2330,8 @@
    "lat": -35.108,
    "lng": 173.7516,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.6
   },
   {
@@ -1958,6 +2342,8 @@
    "lat": -35.8209,
    "lng": 174.5375,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.9
   },
   {
@@ -1968,6 +2354,8 @@
    "lat": -39.1514,
    "lng": 174.2028,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
   },
   {
@@ -1978,6 +2366,8 @@
    "lat": -39.438,
    "lng": 174.2895,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 5.2
   },
   {
@@ -1988,6 +2378,20 @@
    "lat": -44.2576,
    "lng": 170.0738,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
+   "estPct": 7.5
+  },
+  {
+   "name": "T\u012brau",
+   "council": "Waikato",
+   "icps": 105,
+   "kW": 245.8,
+   "lat": -37.9883,
+   "lng": 175.7715,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 7.5
   },
   {
@@ -1998,6 +2402,8 @@
    "lat": -36.3001,
    "lng": 174.5207,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -2008,6 +2414,8 @@
    "lat": -37.6203,
    "lng": 175.2569,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
@@ -2018,17 +2426,9 @@
    "lat": -43.7403,
    "lng": 172.3078,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.5
-  },
-  {
-   "name": "T\u012brau",
-   "council": "Waikato",
-   "icps": 103,
-   "kW": 245.8,
-   "lat": -37.9883,
-   "lng": 175.7715,
-   "councilPct": 3.82,
-   "estPct": 7.4
   },
   {
    "name": "\u014chau",
@@ -2038,6 +2438,8 @@
    "lat": -40.6542,
    "lng": 175.2167,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.2
   },
   {
@@ -2048,6 +2450,8 @@
    "lat": -35.0044,
    "lng": 173.5007,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 12.2
   },
   {
@@ -2058,6 +2462,8 @@
    "lat": -37.2855,
    "lng": 175.481,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.5
   },
   {
@@ -2068,6 +2474,8 @@
    "lat": -42.3989,
    "lng": 173.6747,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.7
   },
   {
@@ -2078,6 +2486,8 @@
    "lat": -36.9999,
    "lng": 175.8457,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 8.6
   },
   {
@@ -2088,6 +2498,8 @@
    "lat": -37.9922,
    "lng": 175.1895,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 7.3
   },
   {
@@ -2098,17 +2510,9 @@
    "lat": -38.3419,
    "lng": 175.1402,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
-  },
-  {
-   "name": "\u014chope",
-   "council": "Bay of Plenty",
-   "icps": 96,
-   "kW": 363.5,
-   "lat": -37.9767,
-   "lng": 177.0754,
-   "councilPct": 5.05,
-   "estPct": 6.7
   },
   {
    "name": "\u014cp\u014dtiki",
@@ -2118,6 +2522,8 @@
    "lat": -38.0146,
    "lng": 177.2785,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 3.0
   },
   {
@@ -2128,6 +2534,8 @@
    "lat": -43.6296,
    "lng": 171.6186,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 6.1
   },
   {
@@ -2138,6 +2546,8 @@
    "lat": -46.3385,
    "lng": 168.278,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 4.3
   },
   {
@@ -2148,6 +2558,8 @@
    "lat": -42.7178,
    "lng": 170.9779,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 3.4
   },
   {
@@ -2158,6 +2570,8 @@
    "lat": -35.5814,
    "lng": 174.3379,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.0
   },
   {
@@ -2168,6 +2582,8 @@
    "lat": -36.7386,
    "lng": 175.5026,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -2178,6 +2594,8 @@
    "lat": -40.2209,
    "lng": 176.081,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 2.5
   },
   {
@@ -2188,6 +2606,8 @@
    "lat": -39.6308,
    "lng": 176.9396,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 13.9
   },
   {
@@ -2198,6 +2618,8 @@
    "lat": -43.6365,
    "lng": 172.7326,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 9.0
   },
   {
@@ -2208,6 +2630,8 @@
    "lat": -46.1245,
    "lng": 168.3293,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 3.5
   },
   {
@@ -2218,6 +2642,8 @@
    "lat": -43.2407,
    "lng": 172.6668,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 11.8
   },
   {
@@ -2228,6 +2654,8 @@
    "lat": -39.6538,
    "lng": 176.5346,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 13.2
   },
   {
@@ -2238,6 +2666,8 @@
    "lat": -36.4368,
    "lng": 174.7421,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 10.7
   },
   {
@@ -2248,6 +2678,8 @@
    "lat": -36.3489,
    "lng": 174.7012,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 9.9
   },
   {
@@ -2258,6 +2690,8 @@
    "lat": -37.5399,
    "lng": 175.904,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 9.2
   },
   {
@@ -2268,6 +2702,8 @@
    "lat": -34.9908,
    "lng": 173.5137,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -2278,6 +2714,8 @@
    "lat": -40.1769,
    "lng": 175.3297,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -2288,7 +2726,21 @@
    "lat": -40.9384,
    "lng": 174.9849,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 5.8
+  },
+  {
+   "name": "Omaha",
+   "council": "Auckland",
+   "icps": 84,
+   "kW": 203.1,
+   "lat": -36.3444,
+   "lng": 174.7831,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 18.6
   },
   {
    "name": "Kohukohu",
@@ -2298,6 +2750,8 @@
    "lat": -35.3306,
    "lng": 173.4916,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 8.3
   },
   {
@@ -2308,7 +2762,21 @@
    "lat": -40.8969,
    "lng": 175.6532,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 9.4
+  },
+  {
+   "name": "Shannon",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 79,
+   "kW": 65.0,
+   "lat": -40.5619,
+   "lng": 175.4563,
+   "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 5.5
   },
   {
    "name": "Paek\u0101k\u0101riki",
@@ -2318,6 +2786,8 @@
    "lat": -40.986,
    "lng": 174.977,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -2328,6 +2798,8 @@
    "lat": -43.5128,
    "lng": 172.2458,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 8.3
   },
   {
@@ -2338,17 +2810,9 @@
    "lat": -37.7614,
    "lng": 176.4559,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 6.9
-  },
-  {
-   "name": "Shannon",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 77,
-   "kW": 65.0,
-   "lat": -40.5619,
-   "lng": 175.4563,
-   "councilPct": 3.47,
-   "estPct": 5.3
   },
   {
    "name": "Westport",
@@ -2358,6 +2822,8 @@
    "lat": -41.7886,
    "lng": 171.6135,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 2.1
   },
   {
@@ -2368,6 +2834,8 @@
    "lat": -43.2103,
    "lng": 172.728,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 9.2
   },
   {
@@ -2378,6 +2846,8 @@
    "lat": -36.2078,
    "lng": 174.4075,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
@@ -2388,6 +2858,8 @@
    "lat": -37.1903,
    "lng": 174.7497,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 8.2
   },
   {
@@ -2398,6 +2870,8 @@
    "lat": -39.8918,
    "lng": 176.6498,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 9.6
   },
   {
@@ -2408,6 +2882,8 @@
    "lat": -44.2589,
    "lng": 171.1343,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.4
   },
   {
@@ -2418,6 +2894,8 @@
    "lat": -46.2176,
    "lng": 169.7436,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.1
   },
   {
@@ -2428,6 +2906,8 @@
    "lat": -35.2873,
    "lng": 174.0187,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 11.3
   },
   {
@@ -2438,6 +2918,8 @@
    "lat": -35.3764,
    "lng": 174.081,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.0
   },
   {
@@ -2448,6 +2930,8 @@
    "lat": -35.8194,
    "lng": 174.0065,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.3
   },
   {
@@ -2458,6 +2942,8 @@
    "lat": -45.229,
    "lng": 170.7965,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
@@ -2468,6 +2954,8 @@
    "lat": -45.1711,
    "lng": 169.2775,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 6.1
   },
   {
@@ -2478,6 +2966,8 @@
    "lat": -45.5866,
    "lng": 170.6786,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -2488,6 +2978,8 @@
    "lat": -45.7817,
    "lng": 170.6878,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.5
   },
   {
@@ -2498,6 +2990,8 @@
    "lat": -36.5855,
    "lng": 174.6201,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 7.3
   },
   {
@@ -2508,7 +3002,33 @@
    "lat": -35.3232,
    "lng": 174.0977,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 12.9
+  },
+  {
+   "name": "T\u016brangi",
+   "council": "Waikato",
+   "icps": 68,
+   "kW": 0.0,
+   "lat": -38.9875,
+   "lng": 175.8594,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 2.7
+  },
+  {
+   "name": "Kairanga",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 68,
+   "kW": 238.0,
+   "lat": -40.34,
+   "lng": 175.5103,
+   "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 5.5
   },
   {
    "name": "Hanmer Springs",
@@ -2518,6 +3038,8 @@
    "lat": -42.5414,
    "lng": 172.7989,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 6.5
   },
   {
@@ -2528,6 +3050,8 @@
    "lat": -35.4218,
    "lng": 173.9658,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.8
   },
   {
@@ -2538,6 +3062,8 @@
    "lat": -40.1193,
    "lng": 175.5216,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.7
   },
   {
@@ -2548,17 +3074,9 @@
    "lat": -41.5829,
    "lng": 173.8674,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 16.9
-  },
-  {
-   "name": "T\u016brangi",
-   "council": "Waikato",
-   "icps": 66,
-   "kW": 0.0,
-   "lat": -38.9875,
-   "lng": 175.8594,
-   "councilPct": 3.82,
-   "estPct": 2.6
   },
   {
    "name": "Manaia",
@@ -2568,17 +3086,9 @@
    "lat": -39.5463,
    "lng": 174.1349,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 4.5
-  },
-  {
-   "name": "Kairanga",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 66,
-   "kW": 238.0,
-   "lat": -40.34,
-   "lng": 175.5103,
-   "councilPct": 3.47,
-   "estPct": 5.3
   },
   {
    "name": "Lansdowne",
@@ -2588,6 +3098,8 @@
    "lat": -43.6242,
    "lng": 172.5932,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 13.2
   },
   {
@@ -2598,6 +3110,8 @@
    "lat": -38.0732,
    "lng": 175.5734,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.5
   },
   {
@@ -2608,6 +3122,8 @@
    "lat": -35.4963,
    "lng": 173.4196,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.3
   },
   {
@@ -2618,6 +3134,8 @@
    "lat": -39.4132,
    "lng": 173.9052,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 4.5
   },
   {
@@ -2628,6 +3146,8 @@
    "lat": -36.6395,
    "lng": 174.5711,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 7.7
   },
   {
@@ -2638,6 +3158,8 @@
    "lat": -43.4143,
    "lng": 172.2943,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 9.4
   },
   {
@@ -2648,6 +3170,8 @@
    "lat": -36.8894,
    "lng": 174.4601,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 10.6
   },
   {
@@ -2658,6 +3182,8 @@
    "lat": -40.3656,
    "lng": 175.7188,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.3
   },
   {
@@ -2668,6 +3194,8 @@
    "lat": -40.4884,
    "lng": 175.905,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.1
   },
   {
@@ -2678,6 +3206,8 @@
    "lat": -43.6681,
    "lng": 172.582,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 8.5
   },
   {
@@ -2688,6 +3218,8 @@
    "lat": -46.3582,
    "lng": 168.0145,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 3.8
   },
   {
@@ -2698,6 +3230,8 @@
    "lat": -36.1249,
    "lng": 174.3462,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.6
   },
   {
@@ -2708,6 +3242,8 @@
    "lat": -39.0345,
    "lng": 177.3953,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 2.5
   },
   {
@@ -2718,6 +3254,8 @@
    "lat": -40.911,
    "lng": 172.9663,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 8.7
   },
   {
@@ -2728,6 +3266,8 @@
    "lat": -41.3148,
    "lng": 173.7642,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.0
   },
   {
@@ -2738,7 +3278,21 @@
    "lat": -38.8637,
    "lng": 175.2469,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 2.2
+  },
+  {
+   "name": "Taieri Mouth",
+   "council": "Otago",
+   "icps": 60,
+   "kW": 397.4,
+   "lat": -46.0717,
+   "lng": 170.1587,
+   "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
+   "estPct": 6.6
   },
   {
    "name": "Kaiaua",
@@ -2748,7 +3302,21 @@
    "lat": -37.1985,
    "lng": 175.3003,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 7.2
+  },
+  {
+   "name": "Mangakino",
+   "council": "Waikato",
+   "icps": 59,
+   "kW": 174.1,
+   "lat": -38.4142,
+   "lng": 175.6645,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 5.8
   },
   {
    "name": "Rakaia",
@@ -2758,6 +3326,8 @@
    "lat": -43.7889,
    "lng": 172.0172,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -2768,7 +3338,21 @@
    "lat": -35.0211,
    "lng": 173.5868,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.2
+  },
+  {
+   "name": "Point Wells",
+   "council": "Auckland",
+   "icps": 58,
+   "kW": 292.1,
+   "lat": -36.3315,
+   "lng": 174.7557,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 12.4
   },
   {
    "name": "Waim\u0101rama",
@@ -2778,6 +3362,8 @@
    "lat": -39.8006,
    "lng": 176.962,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 17.1
   },
   {
@@ -2788,17 +3374,9 @@
    "lat": -39.2032,
    "lng": 173.8899,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 7.5
-  },
-  {
-   "name": "Taieri Mouth",
-   "council": "Otago",
-   "icps": 58,
-   "kW": 397.4,
-   "lat": -46.0717,
-   "lng": 170.1587,
-   "councilPct": 4.64,
-   "estPct": 6.3
   },
   {
    "name": "Pollok",
@@ -2808,6 +3386,8 @@
    "lat": -37.1813,
    "lng": 174.6469,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 9.6
   },
   {
@@ -2818,6 +3398,8 @@
    "lat": -39.7152,
    "lng": 174.52,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 5.1
   },
   {
@@ -2828,6 +3410,8 @@
    "lat": -45.549,
    "lng": 167.6795,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 6.1
   },
   {
@@ -2838,7 +3422,45 @@
    "lat": -34.8717,
    "lng": 173.3713,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.5
+  },
+  {
+   "name": "Big Omaha",
+   "council": "Auckland",
+   "icps": 54,
+   "kW": 229.0,
+   "lat": -36.3069,
+   "lng": 174.7247,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 14.5
+  },
+  {
+   "name": "Matat\u0101",
+   "council": "Bay of Plenty",
+   "icps": 54,
+   "kW": 118.0,
+   "lat": -37.9131,
+   "lng": 176.7396,
+   "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
+   "estPct": 6.3
+  },
+  {
+   "name": "Golden Bay / Mohua",
+   "council": "Tasman",
+   "icps": 54,
+   "kW": 223.6,
+   "lat": -40.7124,
+   "lng": 172.6717,
+   "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
+   "estPct": 8.8
   },
   {
    "name": "Milton",
@@ -2848,27 +3470,9 @@
    "lat": -46.1317,
    "lng": 169.943,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.4
-  },
-  {
-   "name": "Point Wells",
-   "council": "Auckland",
-   "icps": 53,
-   "kW": 244.6,
-   "lat": -36.3315,
-   "lng": 174.7557,
-   "councilPct": 2.45,
-   "estPct": 11.4
-  },
-  {
-   "name": "Mangakino",
-   "council": "Waikato",
-   "icps": 53,
-   "kW": 174.1,
-   "lat": -38.4142,
-   "lng": 175.6645,
-   "councilPct": 3.82,
-   "estPct": 5.2
   },
   {
    "name": "Urenui",
@@ -2878,6 +3482,8 @@
    "lat": -39.0133,
    "lng": 174.4191,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -2888,6 +3494,8 @@
    "lat": -39.4251,
    "lng": 175.3777,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
   },
   {
@@ -2898,6 +3506,8 @@
    "lat": -43.6723,
    "lng": 172.4017,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -2908,6 +3518,8 @@
    "lat": -44.0105,
    "lng": 170.4719,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.1
   },
   {
@@ -2918,6 +3530,8 @@
    "lat": -45.5417,
    "lng": 169.2842,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -2928,6 +3542,8 @@
    "lat": -35.479,
    "lng": 173.4538,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.7
   },
   {
@@ -2938,17 +3554,9 @@
    "lat": -36.5712,
    "lng": 174.3087,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 7.5
-  },
-  {
-   "name": "Matat\u0101",
-   "council": "Bay of Plenty",
-   "icps": 50,
-   "kW": 118.0,
-   "lat": -37.9131,
-   "lng": 176.7396,
-   "councilPct": 5.05,
-   "estPct": 5.9
   },
   {
    "name": "Outram",
@@ -2958,6 +3566,8 @@
    "lat": -45.8252,
    "lng": 170.2284,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 5.3
   },
   {
@@ -2968,6 +3578,8 @@
    "lat": -35.2846,
    "lng": 174.1858,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.7
   },
   {
@@ -2978,6 +3590,8 @@
    "lat": -37.7444,
    "lng": 175.7551,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.9
   },
   {
@@ -2988,6 +3602,8 @@
    "lat": -37.8623,
    "lng": 176.3959,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 6.4
   },
   {
@@ -2998,7 +3614,21 @@
    "lat": -41.0359,
    "lng": 175.7066,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 15.2
+  },
+  {
+   "name": "Omanawa",
+   "council": "Bay of Plenty",
+   "icps": 48,
+   "kW": 440.5,
+   "lat": -37.8485,
+   "lng": 176.0903,
+   "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
+   "estPct": 11.7
   },
   {
    "name": "Sanson",
@@ -3008,6 +3638,8 @@
    "lat": -40.2169,
    "lng": 175.4479,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.5
   },
   {
@@ -3018,6 +3650,8 @@
    "lat": -40.7173,
    "lng": 175.2147,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.5
   },
   {
@@ -3028,17 +3662,9 @@
    "lat": -45.4681,
    "lng": 170.7225,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 6.3
-  },
-  {
-   "name": "Omaha",
-   "council": "Auckland",
-   "icps": 47,
-   "kW": 40.0,
-   "lat": -36.3444,
-   "lng": 174.7831,
-   "councilPct": 2.45,
-   "estPct": 10.4
   },
   {
    "name": "Mangat\u0101whiri",
@@ -3048,6 +3674,8 @@
    "lat": -37.2154,
    "lng": 175.1044,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 9.0
   },
   {
@@ -3058,6 +3686,8 @@
    "lat": -39.6897,
    "lng": 174.6434,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -3068,6 +3698,8 @@
    "lat": -44.4711,
    "lng": 171.1975,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 8.7
   },
   {
@@ -3078,6 +3710,8 @@
    "lat": -35.0329,
    "lng": 173.4446,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.7
   },
   {
@@ -3088,6 +3722,8 @@
    "lat": -35.3647,
    "lng": 174.1662,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.4
   },
   {
@@ -3098,6 +3734,8 @@
    "lat": -37.1052,
    "lng": 174.6039,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 7.8
   },
   {
@@ -3108,6 +3746,8 @@
    "lat": -37.3964,
    "lng": 175.7132,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.5
   },
   {
@@ -3118,6 +3758,8 @@
    "lat": -43.2932,
    "lng": 172.6724,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 17.6
   },
   {
@@ -3128,6 +3770,8 @@
    "lat": -43.2846,
    "lng": 172.7135,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 8.0
   },
   {
@@ -3138,6 +3782,8 @@
    "lat": -37.0512,
    "lng": 175.8609,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 11.0
   },
   {
@@ -3148,6 +3794,8 @@
    "lat": -37.5932,
    "lng": 175.4122,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -3158,6 +3806,8 @@
    "lat": -39.6531,
    "lng": 176.9798,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 9.8
   },
   {
@@ -3168,6 +3818,8 @@
    "lat": -40.0309,
    "lng": 176.3173,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 10.3
   },
   {
@@ -3178,6 +3830,8 @@
    "lat": -41.2618,
    "lng": 173.9058,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 10.5
   },
   {
@@ -3188,7 +3842,21 @@
    "lat": -44.8059,
    "lng": 168.4072,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 11.9
+  },
+  {
+   "name": "Leigh",
+   "council": "Auckland",
+   "icps": 43,
+   "kW": 67.0,
+   "lat": -36.2803,
+   "lng": 174.7874,
+   "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
+   "estPct": 10.6
   },
   {
    "name": "Waitoa",
@@ -3198,6 +3866,8 @@
    "lat": -37.6104,
    "lng": 175.6503,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.3
   },
   {
@@ -3208,6 +3878,8 @@
    "lat": -38.0483,
    "lng": 177.1383,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 8.2
   },
   {
@@ -3218,6 +3890,8 @@
    "lat": -38.6818,
    "lng": 177.8923,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 4.0
   },
   {
@@ -3228,6 +3902,8 @@
    "lat": -34.8354,
    "lng": 173.0862,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -3238,6 +3914,8 @@
    "lat": -39.8828,
    "lng": 176.3587,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 11.6
   },
   {
@@ -3248,7 +3926,21 @@
    "lat": -40.2848,
    "lng": 175.4305,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
+  },
+  {
+   "name": "Kuku",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 42,
+   "kW": 98.3,
+   "lat": -40.6781,
+   "lng": 175.2219,
+   "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 12.4
   },
   {
    "name": "Seddon",
@@ -3258,6 +3950,8 @@
    "lat": -41.6988,
    "lng": 174.0126,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.9
   },
   {
@@ -3268,6 +3962,8 @@
    "lat": -43.8005,
    "lng": 172.1865,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -3278,6 +3974,8 @@
    "lat": -46.1986,
    "lng": 168.8391,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 3.5
   },
   {
@@ -3288,6 +3986,8 @@
    "lat": -34.6072,
    "lng": 172.9137,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 15.4
   },
   {
@@ -3298,6 +3998,8 @@
    "lat": -37.0868,
    "lng": 175.135,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
@@ -3308,17 +4010,9 @@
    "lat": -38.1127,
    "lng": 176.0648,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
-  },
-  {
-   "name": "Big Omaha",
-   "council": "Auckland",
-   "icps": 40,
-   "kW": 150.2,
-   "lat": -36.3069,
-   "lng": 174.7247,
-   "councilPct": 2.45,
-   "estPct": 10.8
   },
   {
    "name": "Ngakuru",
@@ -3328,6 +4022,8 @@
    "lat": -38.3056,
    "lng": 176.22,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.6
   },
   {
@@ -3338,17 +4034,9 @@
    "lat": -43.7859,
    "lng": 172.9839,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 8.5
-  },
-  {
-   "name": "Leigh",
-   "council": "Auckland",
-   "icps": 39,
-   "kW": 67.0,
-   "lat": -36.2803,
-   "lng": 174.7874,
-   "councilPct": 2.45,
-   "estPct": 9.6
   },
   {
    "name": "Pukekawa",
@@ -3358,6 +4046,8 @@
    "lat": -37.3609,
    "lng": 175.0029,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.5
   },
   {
@@ -3368,6 +4058,8 @@
    "lat": -43.0295,
    "lng": 172.7639,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 9.8
   },
   {
@@ -3378,6 +4070,8 @@
    "lat": -37.2465,
    "lng": 175.2439,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 13.3
   },
   {
@@ -3388,6 +4082,8 @@
    "lat": -37.9342,
    "lng": 175.1325,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.8
   },
   {
@@ -3398,6 +4094,8 @@
    "lat": -38.3554,
    "lng": 176.1061,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 8.9
   },
   {
@@ -3408,6 +4106,8 @@
    "lat": -39.142,
    "lng": 176.9667,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 8.8
   },
   {
@@ -3418,6 +4118,8 @@
    "lat": -39.2827,
    "lng": 173.8264,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 6.5
   },
   {
@@ -3428,6 +4130,8 @@
    "lat": -39.6504,
    "lng": 175.7267,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.0
   },
   {
@@ -3438,17 +4142,9 @@
    "lat": -36.0712,
    "lng": 174.2386,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.8
-  },
-  {
-   "name": "Kuku",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 37,
-   "kW": 66.6,
-   "lat": -40.6781,
-   "lng": 175.2219,
-   "councilPct": 3.47,
-   "estPct": 10.9
   },
   {
    "name": "Longbush",
@@ -3458,6 +4154,8 @@
    "lat": -41.1521,
    "lng": 175.619,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 10.6
   },
   {
@@ -3468,6 +4166,8 @@
    "lat": -45.354,
    "lng": 168.6313,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 12.3
   },
   {
@@ -3478,6 +4178,8 @@
    "lat": -37.3155,
    "lng": 174.7219,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
@@ -3488,6 +4190,8 @@
    "lat": -39.7886,
    "lng": 175.0496,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -3498,6 +4202,8 @@
    "lat": -40.0135,
    "lng": 175.7714,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 8.2
   },
   {
@@ -3508,6 +4214,8 @@
    "lat": -43.6707,
    "lng": 171.3917,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
   },
   {
@@ -3518,6 +4226,8 @@
    "lat": -44.5045,
    "lng": 171.1426,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.1
   },
   {
@@ -3528,17 +4238,9 @@
    "lat": -37.8267,
    "lng": 176.0092,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 10.7
-  },
-  {
-   "name": "Golden Bay / Mohua",
-   "council": "Tasman",
-   "icps": 35,
-   "kW": 115.1,
-   "lat": -40.7124,
-   "lng": 172.6717,
-   "councilPct": 7.83,
-   "estPct": 5.7
   },
   {
    "name": "Burnham",
@@ -3548,6 +4250,8 @@
    "lat": -43.6166,
    "lng": 172.2849,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -3558,6 +4262,8 @@
    "lat": -36.147,
    "lng": 174.2692,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -3568,6 +4274,8 @@
    "lat": -37.0452,
    "lng": 175.6603,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -3578,17 +4286,9 @@
    "lat": -37.3206,
    "lng": 174.8414,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.4
-  },
-  {
-   "name": "Omanawa",
-   "council": "Bay of Plenty",
-   "icps": 34,
-   "kW": 294.5,
-   "lat": -37.8485,
-   "lng": 176.0903,
-   "councilPct": 5.05,
-   "estPct": 8.3
   },
   {
    "name": "Te Karaka",
@@ -3598,6 +4298,8 @@
    "lat": -38.4589,
    "lng": 177.8408,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 4.0
   },
   {
@@ -3608,6 +4310,8 @@
    "lat": -40.3776,
    "lng": 175.2514,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.8
   },
   {
@@ -3618,6 +4322,8 @@
    "lat": -40.3223,
    "lng": 175.8592,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.0
   },
   {
@@ -3628,6 +4334,8 @@
    "lat": -42.4034,
    "lng": 171.259,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 3.4
   },
   {
@@ -3638,6 +4346,8 @@
    "lat": -43.2022,
    "lng": 172.3924,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 10.2
   },
   {
@@ -3648,6 +4358,8 @@
    "lat": -41.1192,
    "lng": 175.3827,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 8.3
   },
   {
@@ -3658,6 +4370,8 @@
    "lat": -35.9518,
    "lng": 173.7583,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.7
   },
   {
@@ -3668,6 +4382,8 @@
    "lat": -36.7809,
    "lng": 174.4195,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 5.4
   },
   {
@@ -3678,6 +4394,8 @@
    "lat": -36.9658,
    "lng": 175.1678,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 6.8
   },
   {
@@ -3688,6 +4406,8 @@
    "lat": -37.7659,
    "lng": 175.6554,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.4
   },
   {
@@ -3698,6 +4418,8 @@
    "lat": -39.1104,
    "lng": 177.8864,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 9.7
   },
   {
@@ -3708,6 +4430,8 @@
    "lat": -39.7787,
    "lng": 176.7584,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 8.4
   },
   {
@@ -3718,6 +4442,8 @@
    "lat": -40.6671,
    "lng": 172.6529,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 7.7
   },
   {
@@ -3728,6 +4454,8 @@
    "lat": -37.6631,
    "lng": 175.0682,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.2
   },
   {
@@ -3738,6 +4466,8 @@
    "lat": -41.7499,
    "lng": 173.2472,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 41.6
   },
   {
@@ -3748,6 +4478,8 @@
    "lat": -37.3666,
    "lng": 174.881,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 8.4
   },
   {
@@ -3758,6 +4490,8 @@
    "lat": -37.5502,
    "lng": 175.2922,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 10.3
   },
   {
@@ -3768,6 +4502,8 @@
    "lat": -37.6431,
    "lng": 175.7711,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -3778,6 +4514,8 @@
    "lat": -37.8482,
    "lng": 176.5465,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -3788,6 +4526,8 @@
    "lat": -42.8035,
    "lng": 173.2791,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.1
   },
   {
@@ -3798,6 +4538,8 @@
    "lat": -43.4637,
    "lng": 171.9802,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 6.8
   },
   {
@@ -3808,6 +4550,8 @@
    "lat": -44.2937,
    "lng": 170.7962,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 3.7
   },
   {
@@ -3818,7 +4562,21 @@
    "lat": -46.6093,
    "lng": 168.3346,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.3
+  },
+  {
+   "name": "T\u0101neatua",
+   "council": "Bay of Plenty",
+   "icps": 29,
+   "kW": 137.9,
+   "lat": -38.0731,
+   "lng": 176.9644,
+   "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
+   "estPct": 5.8
   },
   {
    "name": "Flemington",
@@ -3828,6 +4586,8 @@
    "lat": -40.1522,
    "lng": 176.4157,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 13.7
   },
   {
@@ -3838,6 +4598,8 @@
    "lat": -43.7567,
    "lng": 172.8022,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.8
   },
   {
@@ -3848,6 +4610,8 @@
    "lat": -38.0939,
    "lng": 175.4712,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.4
   },
   {
@@ -3858,6 +4622,8 @@
    "lat": -38.4431,
    "lng": 176.3581,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.7
   },
   {
@@ -3868,6 +4634,8 @@
    "lat": -40.0613,
    "lng": 176.1903,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 8.6
   },
   {
@@ -3878,6 +4646,8 @@
    "lat": -43.7427,
    "lng": 172.9288,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 14.7
   },
   {
@@ -3888,6 +4658,8 @@
    "lat": -43.6523,
    "lng": 172.1408,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.7
   },
   {
@@ -3898,6 +4670,8 @@
    "lat": -44.8638,
    "lng": 170.6767,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -3908,6 +4682,8 @@
    "lat": -44.5173,
    "lng": 169.929,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 13.9
   },
   {
@@ -3918,6 +4694,8 @@
    "lat": -45.0646,
    "lng": 169.5742,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
   },
   {
@@ -3928,6 +4706,8 @@
    "lat": -45.12,
    "lng": 170.0891,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -3938,6 +4718,8 @@
    "lat": -45.9352,
    "lng": 169.2476,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 2.6
   },
   {
@@ -3948,6 +4730,8 @@
    "lat": -44.6653,
    "lng": 170.0799,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 10.1
   },
   {
@@ -3958,6 +4742,8 @@
    "lat": -40.303,
    "lng": 176.6005,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 10.4
   },
   {
@@ -3968,6 +4754,8 @@
    "lat": -42.9405,
    "lng": 173.0056,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.1
   },
   {
@@ -3978,6 +4766,8 @@
    "lat": -44.1861,
    "lng": 171.3094,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 3.2
   },
   {
@@ -3988,6 +4778,8 @@
    "lat": -44.9562,
    "lng": 171.0947,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
   },
   {
@@ -3998,17 +4790,9 @@
    "lat": -46.3053,
    "lng": 168.7513,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.3
-  },
-  {
-   "name": "T\u0101neatua",
-   "council": "Bay of Plenty",
-   "icps": 25,
-   "kW": 35.6,
-   "lat": -38.0731,
-   "lng": 176.9644,
-   "councilPct": 5.05,
-   "estPct": 5.0
   },
   {
    "name": "Murupara",
@@ -4018,6 +4802,8 @@
    "lat": -38.4532,
    "lng": 176.7077,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 2.4
   },
   {
@@ -4028,6 +4814,8 @@
    "lat": -39.7921,
    "lng": 176.8588,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 12.8
   },
   {
@@ -4038,6 +4826,8 @@
    "lat": -41.7769,
    "lng": 172.9023,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 6.2
   },
   {
@@ -4048,6 +4838,8 @@
    "lat": -35.9378,
    "lng": 174.1906,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 11.2
   },
   {
@@ -4058,6 +4850,8 @@
    "lat": -36.2094,
    "lng": 174.2082,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.2
   },
   {
@@ -4068,6 +4862,8 @@
    "lat": -36.299,
    "lng": 174.7643,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 11.7
   },
   {
@@ -4078,6 +4874,8 @@
    "lat": -36.9975,
    "lng": 175.2282,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 6.1
   },
   {
@@ -4088,6 +4886,8 @@
    "lat": -37.3179,
    "lng": 175.0713,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.7
   },
   {
@@ -4098,6 +4898,8 @@
    "lat": -39.8838,
    "lng": 175.5454,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.2
   },
   {
@@ -4108,6 +4910,8 @@
    "lat": -41.0362,
    "lng": 175.8099,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 7.1
   },
   {
@@ -4118,6 +4922,8 @@
    "lat": -42.945,
    "lng": 172.6962,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 7.2
   },
   {
@@ -4128,6 +4934,8 @@
    "lat": -43.3905,
    "lng": 172.0006,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 9.6
   },
   {
@@ -4138,6 +4946,8 @@
    "lat": -43.8748,
    "lng": 172.0973,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 10.0
   },
   {
@@ -4148,6 +4958,8 @@
    "lat": -44.2993,
    "lng": 171.2929,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
   },
   {
@@ -4158,6 +4970,8 @@
    "lat": -45.922,
    "lng": 169.6856,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
   },
   {
@@ -4168,6 +4982,8 @@
    "lat": -45.7465,
    "lng": 168.8498,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -4178,7 +4994,21 @@
    "lat": -36.357,
    "lng": 174.3298,
    "councilPct": 2.45,
+   "change": null,
+   "changePct": null,
    "estPct": 8.2
+  },
+  {
+   "name": "Pirinoa",
+   "council": "Wellington",
+   "icps": 23,
+   "kW": 103.1,
+   "lat": -41.3516,
+   "lng": 175.2373,
+   "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
+   "estPct": 10.7
   },
   {
    "name": "Fairlie",
@@ -4188,6 +5018,8 @@
    "lat": -43.8936,
    "lng": 170.9367,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 6.2
   },
   {
@@ -4198,6 +5030,8 @@
    "lat": -36.1287,
    "lng": 173.944,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.4
   },
   {
@@ -4208,6 +5042,8 @@
    "lat": -36.0777,
    "lng": 174.0532,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.5
   },
   {
@@ -4218,7 +5054,21 @@
    "lat": -36.1195,
    "lng": 174.148,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.4
+  },
+  {
+   "name": "Motuoapa",
+   "council": "Waikato",
+   "icps": 22,
+   "kW": 30.8,
+   "lat": -38.9744,
+   "lng": 175.9276,
+   "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
+   "estPct": 5.8
   },
   {
    "name": "Ruatoria",
@@ -4228,6 +5078,8 @@
    "lat": -37.8644,
    "lng": 178.3048,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 3.7
   },
   {
@@ -4238,6 +5090,8 @@
    "lat": -39.7796,
    "lng": 176.3923,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 7.8
   },
   {
@@ -4248,6 +5102,8 @@
    "lat": -39.8049,
    "lng": 175.855,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.2
   },
   {
@@ -4258,6 +5114,8 @@
    "lat": -40.6361,
    "lng": 175.7007,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.2
   },
   {
@@ -4268,6 +5126,8 @@
    "lat": -41.8481,
    "lng": 174.0717,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.4
   },
   {
@@ -4278,6 +5138,8 @@
    "lat": -42.9188,
    "lng": 172.6321,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -4288,6 +5150,8 @@
    "lat": -44.7578,
    "lng": 170.3896,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 6.6
   },
   {
@@ -4298,17 +5162,9 @@
    "lat": -46.4583,
    "lng": 169.6219,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
-  },
-  {
-   "name": "Pirinoa",
-   "council": "Wellington",
-   "icps": 21,
-   "kW": 103.1,
-   "lat": -41.3516,
-   "lng": 175.2373,
-   "councilPct": 3.33,
-   "estPct": 9.8
   },
   {
    "name": "Mount Pleasant",
@@ -4318,6 +5174,8 @@
    "lat": -41.3161,
    "lng": 173.9731,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 8.7
   },
   {
@@ -4328,6 +5186,8 @@
    "lat": -42.6217,
    "lng": 173.0959,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.3
   },
   {
@@ -4338,6 +5198,8 @@
    "lat": -43.3251,
    "lng": 171.8598,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -4348,6 +5210,8 @@
    "lat": -45.266,
    "lng": 170.0699,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 11.6
   },
   {
@@ -4358,6 +5222,8 @@
    "lat": -37.4042,
    "lng": 174.7703,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -4368,6 +5234,8 @@
    "lat": -37.4964,
    "lng": 175.4786,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -4378,17 +5246,9 @@
    "lat": -37.5249,
    "lng": 175.5563,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
-  },
-  {
-   "name": "Motuoapa",
-   "council": "Waikato",
-   "icps": 20,
-   "kW": 30.8,
-   "lat": -38.9744,
-   "lng": 175.9276,
-   "councilPct": 3.82,
-   "estPct": 5.2
   },
   {
    "name": "Rerewhakaaitu",
@@ -4398,6 +5258,8 @@
    "lat": -38.3069,
    "lng": 176.5051,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -4408,6 +5270,8 @@
    "lat": -39.2081,
    "lng": 174.2122,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -4418,6 +5282,8 @@
    "lat": -39.2091,
    "lng": 174.3271,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -4428,6 +5294,8 @@
    "lat": -40.8016,
    "lng": 176.0779,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -4438,6 +5306,8 @@
    "lat": -43.7429,
    "lng": 172.3315,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
   },
   {
@@ -4448,6 +5318,8 @@
    "lat": -46.2456,
    "lng": 169.3523,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
   },
   {
@@ -4458,6 +5330,8 @@
    "lat": -46.1486,
    "lng": 168.0037,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 1.9
   },
   {
@@ -4468,6 +5342,8 @@
    "lat": -41.105,
    "lng": 173.7683,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.9
   },
   {
@@ -4478,6 +5354,8 @@
    "lat": -35.4035,
    "lng": 173.3843,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.6
   },
   {
@@ -4488,6 +5366,8 @@
    "lat": -38.0275,
    "lng": 174.8469,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -4498,6 +5378,8 @@
    "lat": -38.5834,
    "lng": 176.3168,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
   },
   {
@@ -4508,6 +5390,8 @@
    "lat": -38.1253,
    "lng": 177.0642,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 3.4
   },
   {
@@ -4518,6 +5402,20 @@
    "lat": -40.0417,
    "lng": 176.7637,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
+   "estPct": 6.3
+  },
+  {
+   "name": "Tarata",
+   "council": "Taranaki",
+   "icps": 18,
+   "kW": 43.2,
+   "lat": -39.161,
+   "lng": 174.403,
+   "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 6.3
   },
   {
@@ -4528,6 +5426,8 @@
    "lat": -41.2331,
    "lng": 175.317,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 8.2
   },
   {
@@ -4538,6 +5438,8 @@
    "lat": -41.7645,
    "lng": 172.22,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 2.5
   },
   {
@@ -4548,6 +5450,8 @@
    "lat": -41.5395,
    "lng": 174.022,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 12.1
   },
   {
@@ -4558,6 +5462,8 @@
    "lat": -42.6991,
    "lng": 172.9919,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.0
   },
   {
@@ -4568,6 +5474,8 @@
    "lat": -46.1239,
    "lng": 167.6786,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.4
   },
   {
@@ -4578,6 +5486,8 @@
    "lat": -45.9168,
    "lng": 168.732,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.6
   },
   {
@@ -4588,6 +5498,8 @@
    "lat": -46.5695,
    "lng": 168.9259,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.7
   },
   {
@@ -4598,6 +5510,8 @@
    "lat": -35.7518,
    "lng": 173.7091,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.7
   },
   {
@@ -4608,6 +5522,8 @@
    "lat": -37.9005,
    "lng": 176.5015,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 5.3
   },
   {
@@ -4618,6 +5534,8 @@
    "lat": -37.4587,
    "lng": 175.3163,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -4628,6 +5546,8 @@
    "lat": -37.7712,
    "lng": 177.7845,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 3.1
   },
   {
@@ -4638,17 +5558,9 @@
    "lat": -39.7103,
    "lng": 176.6671,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
-  },
-  {
-   "name": "Tarata",
-   "council": "Taranaki",
-   "icps": 16,
-   "kW": 43.2,
-   "lat": -39.161,
-   "lng": 174.403,
-   "councilPct": 4.5,
-   "estPct": 5.6
   },
   {
    "name": "Kaiwhaiki",
@@ -4658,6 +5570,8 @@
    "lat": -39.8309,
    "lng": 175.102,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 15.6
   },
   {
@@ -4668,6 +5582,8 @@
    "lat": -39.8646,
    "lng": 175.1865,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.9
   },
   {
@@ -4678,6 +5594,8 @@
    "lat": -39.9146,
    "lng": 175.3,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -4688,6 +5606,8 @@
    "lat": -40.7658,
    "lng": 175.6912,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 4.5
   },
   {
@@ -4698,6 +5618,8 @@
    "lat": -41.2819,
    "lng": 175.3738,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 5.9
   },
   {
@@ -4708,6 +5630,8 @@
    "lat": -42.5006,
    "lng": 171.4164,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -4718,6 +5642,8 @@
    "lat": -43.0883,
    "lng": 172.6031,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 10.2
   },
   {
@@ -4728,6 +5654,8 @@
    "lat": -43.5747,
    "lng": 171.9126,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 3.9
   },
   {
@@ -4738,6 +5666,8 @@
    "lat": -45.5852,
    "lng": 170.0022,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 5.1
   },
   {
@@ -4748,6 +5678,8 @@
    "lat": -46.2489,
    "lng": 169.8456,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.0
   },
   {
@@ -4758,6 +5690,8 @@
    "lat": -46.3689,
    "lng": 169.7476,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 5.2
   },
   {
@@ -4768,6 +5702,8 @@
    "lat": -46.3283,
    "lng": 168.8612,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.6
   },
   {
@@ -4778,6 +5714,8 @@
    "lat": -36.3133,
    "lng": 174.0852,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 16.7
   },
   {
@@ -4788,6 +5726,8 @@
    "lat": -39.9153,
    "lng": 176.8251,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 7.6
   },
   {
@@ -4798,6 +5738,8 @@
    "lat": -43.3767,
    "lng": 172.7045,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
   },
   {
@@ -4808,6 +5750,8 @@
    "lat": -35.3396,
    "lng": 173.2762,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.1
   },
   {
@@ -4818,6 +5762,8 @@
    "lat": -37.4016,
    "lng": 175.458,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 6.3
   },
   {
@@ -4828,6 +5774,8 @@
    "lat": -38.1439,
    "lng": 178.2439,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
   },
   {
@@ -4838,6 +5786,8 @@
    "lat": -39.1988,
    "lng": 174.1416,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -4848,6 +5798,8 @@
    "lat": -39.2315,
    "lng": 173.8242,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 7.5
   },
   {
@@ -4858,7 +5810,21 @@
    "lat": -40.2964,
    "lng": 175.3032,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.3
+  },
+  {
+   "name": "Glen Oroua",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 14,
+   "kW": 59.7,
+   "lat": -40.348,
+   "lng": 175.3837,
+   "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 4.0
   },
   {
    "name": "Ormondville",
@@ -4868,6 +5834,8 @@
    "lat": -40.1427,
    "lng": 176.2766,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
   },
   {
@@ -4878,6 +5846,8 @@
    "lat": -41.1049,
    "lng": 173.6372,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 23.3
   },
   {
@@ -4888,6 +5858,8 @@
    "lat": -41.2091,
    "lng": 173.6258,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.4
   },
   {
@@ -4898,6 +5870,8 @@
    "lat": -41.4611,
    "lng": 173.3595,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 6.1
   },
   {
@@ -4908,6 +5882,8 @@
    "lat": -41.5112,
    "lng": 174.0152,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.9
   },
   {
@@ -4918,6 +5894,8 @@
    "lat": -41.2435,
    "lng": 172.1419,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 2.8
   },
   {
@@ -4928,6 +5906,8 @@
    "lat": -41.7827,
    "lng": 171.4974,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 4.3
   },
   {
@@ -4938,6 +5918,8 @@
    "lat": -42.1039,
    "lng": 171.8551,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 1.4
   },
   {
@@ -4948,6 +5930,8 @@
    "lat": -43.3979,
    "lng": 172.0338,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -4958,6 +5942,8 @@
    "lat": -43.8419,
    "lng": 172.9872,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 17.5
   },
   {
@@ -4968,6 +5954,8 @@
    "lat": -45.3364,
    "lng": 170.757,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.5
   },
   {
@@ -4978,6 +5966,8 @@
    "lat": -45.0109,
    "lng": 170.1427,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 6.6
   },
   {
@@ -4988,6 +5978,8 @@
    "lat": -45.7194,
    "lng": 168.4608,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 2.3
   },
   {
@@ -4998,6 +5990,8 @@
    "lat": -39.9873,
    "lng": 175.9342,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.5
   },
   {
@@ -5008,6 +6002,8 @@
    "lat": -37.7346,
    "lng": 175.8958,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 2.8
   },
   {
@@ -5018,6 +6014,8 @@
    "lat": -39.2805,
    "lng": 176.3371,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 2.9
   },
   {
@@ -5028,6 +6026,8 @@
    "lat": -38.9558,
    "lng": 175.3997,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.2
   },
   {
@@ -5038,17 +6038,9 @@
    "lat": -39.1738,
    "lng": 175.3702,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.1
-  },
-  {
-   "name": "Glen Oroua",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 12,
-   "kW": 59.7,
-   "lat": -40.348,
-   "lng": 175.3837,
-   "councilPct": 3.47,
-   "estPct": 3.4
   },
   {
    "name": "Culverden",
@@ -5058,6 +6050,8 @@
    "lat": -42.7659,
    "lng": 172.8317,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 3.8
   },
   {
@@ -5068,6 +6062,8 @@
    "lat": -44.3269,
    "lng": 170.9868,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.2
   },
   {
@@ -5078,6 +6074,8 @@
    "lat": -45.3727,
    "lng": 170.8489,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 10.7
   },
   {
@@ -5088,6 +6086,8 @@
    "lat": -45.4969,
    "lng": 168.5877,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 5.9
   },
   {
@@ -5098,6 +6098,8 @@
    "lat": -40.4509,
    "lng": 176.4894,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 13.8
   },
   {
@@ -5108,6 +6110,8 @@
    "lat": -37.6842,
    "lng": 178.3175,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 4.4
   },
   {
@@ -5118,6 +6122,8 @@
    "lat": -38.7748,
    "lng": 177.4193,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -5128,6 +6134,8 @@
    "lat": -38.552,
    "lng": 178.1955,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 6.3
   },
   {
@@ -5138,6 +6146,8 @@
    "lat": -38.3955,
    "lng": 178.2474,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 2.1
   },
   {
@@ -5148,6 +6158,8 @@
    "lat": -39.017,
    "lng": 177.174,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 4.5
   },
   {
@@ -5158,6 +6170,8 @@
    "lat": -39.4845,
    "lng": 175.2435,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 1.4
   },
   {
@@ -5167,7 +6181,9 @@
    "kW": 57.0,
    "lat": -41.2885,
    "lng": 175.0655,
-   "councilPct": 3.33
+   "councilPct": 3.33,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Domett",
@@ -5177,6 +6193,8 @@
    "lat": -42.8897,
    "lng": 173.236,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 8.1
   },
   {
@@ -5187,6 +6205,8 @@
    "lat": -43.6798,
    "lng": 172.9102,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 10.5
   },
   {
@@ -5197,6 +6217,8 @@
    "lat": -43.8442,
    "lng": 172.8985,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.8
   },
   {
@@ -5206,7 +6228,9 @@
    "kW": 0.0,
    "lat": -43.2412,
    "lng": 171.7427,
-   "councilPct": 4.51
+   "councilPct": 4.51,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Bankside",
@@ -5216,6 +6240,8 @@
    "lat": -43.6741,
    "lng": 171.9828,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 2.8
   },
   {
@@ -5226,6 +6252,8 @@
    "lat": -44.4375,
    "lng": 170.9632,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 5.0
   },
   {
@@ -5236,6 +6264,8 @@
    "lat": -35.224,
    "lng": 173.7358,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 4.8
   },
   {
@@ -5246,6 +6276,8 @@
    "lat": -39.2829,
    "lng": 174.0529,
    "councilPct": 4.5,
+   "change": null,
+   "changePct": null,
    "estPct": 10.7
   },
   {
@@ -5256,6 +6288,8 @@
    "lat": -41.7446,
    "lng": 173.5251,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.4
   },
   {
@@ -5266,6 +6300,8 @@
    "lat": -37.1045,
    "lng": 175.7804,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.3
   },
   {
@@ -5276,6 +6312,8 @@
    "lat": -37.9403,
    "lng": 174.9182,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 5.0
   },
   {
@@ -5286,6 +6324,8 @@
    "lat": -38.1716,
    "lng": 174.7624,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 2.7
   },
   {
@@ -5296,6 +6336,8 @@
    "lat": -38.4727,
    "lng": 174.9922,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 1.6
   },
   {
@@ -5306,6 +6348,8 @@
    "lat": -38.7307,
    "lng": 176.7125,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 4.0
   },
   {
@@ -5316,6 +6360,8 @@
    "lat": -38.1291,
    "lng": 177.1305,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 3.8
   },
   {
@@ -5326,6 +6372,8 @@
    "lat": -38.5148,
    "lng": 178.0979,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 15.6
   },
   {
@@ -5336,6 +6384,8 @@
    "lat": -40.3698,
    "lng": 175.3086,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 7.1
   },
   {
@@ -5346,6 +6396,8 @@
    "lat": -40.3576,
    "lng": 176.0218,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 5.6
   },
   {
@@ -5356,6 +6408,8 @@
    "lat": -40.5921,
    "lng": 176.2169,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.3
   },
   {
@@ -5366,7 +6420,21 @@
    "lat": -41.4516,
    "lng": 175.3145,
    "councilPct": 3.33,
+   "change": null,
+   "changePct": null,
    "estPct": 5.9
+  },
+  {
+   "name": "Kumara",
+   "council": "West Coast",
+   "icps": 8,
+   "kW": 0.0,
+   "lat": -42.6928,
+   "lng": 171.3037,
+   "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
+   "estPct": 1.9
   },
   {
    "name": "Ruatapu",
@@ -5376,6 +6444,8 @@
    "lat": -42.7989,
    "lng": 170.9498,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 1.9
   },
   {
@@ -5385,7 +6455,9 @@
    "kW": 21.4,
    "lat": -44.2701,
    "lng": 169.6529,
-   "councilPct": 4.51
+   "councilPct": 4.51,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Dipton West",
@@ -5395,6 +6467,8 @@
    "lat": -45.9044,
    "lng": 168.3125,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 5.3
   },
   {
@@ -5405,6 +6479,8 @@
    "lat": -35.7397,
    "lng": 173.5926,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 3.9
   },
   {
@@ -5415,6 +6491,8 @@
    "lat": -38.1242,
    "lng": 174.955,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.9
   },
   {
@@ -5425,6 +6503,8 @@
    "lat": -38.6925,
    "lng": 174.7662,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 2.1
   },
   {
@@ -5435,6 +6515,8 @@
    "lat": -38.6235,
    "lng": 175.3652,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 2.0
   },
   {
@@ -5445,7 +6527,21 @@
    "lat": -38.6028,
    "lng": 175.0581,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 3.3
+  },
+  {
+   "name": "Pureora Forest Park",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 6,
+   "kW": 0.0,
+   "lat": -38.594,
+   "lng": 175.5569,
+   "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
+   "estPct": 6.4
   },
   {
    "name": "Matakana Island",
@@ -5455,6 +6551,8 @@
    "lat": -37.5618,
    "lng": 176.0564,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 2.9
   },
   {
@@ -5465,6 +6563,8 @@
    "lat": -38.6166,
    "lng": 177.4903,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
   },
   {
@@ -5475,6 +6575,8 @@
    "lat": -38.2675,
    "lng": 178.2381,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 6.2
   },
   {
@@ -5485,6 +6587,8 @@
    "lat": -38.8268,
    "lng": 175.3925,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 2.2
   },
   {
@@ -5495,6 +6599,8 @@
    "lat": -41.588,
    "lng": 171.8971,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 3.6
   },
   {
@@ -5505,6 +6611,8 @@
    "lat": -42.1203,
    "lng": 171.3347,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 4.0
   },
   {
@@ -5515,17 +6623,9 @@
    "lat": -42.4099,
    "lng": 171.4676,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 2.1
-  },
-  {
-   "name": "Kumara",
-   "council": "West Coast",
-   "icps": 6,
-   "kW": 0.0,
-   "lat": -42.6928,
-   "lng": 171.3037,
-   "councilPct": 1.76,
-   "estPct": 1.4
   },
   {
    "name": "Harihari",
@@ -5535,6 +6635,8 @@
    "lat": -43.1532,
    "lng": 170.6184,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 3.1
   },
   {
@@ -5545,6 +6647,8 @@
    "lat": -43.7485,
    "lng": 173.072,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 9.6
   },
   {
@@ -5555,6 +6659,8 @@
    "lat": -43.4512,
    "lng": 171.8536,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 3.9
   },
   {
@@ -5565,6 +6671,8 @@
    "lat": -43.7223,
    "lng": 171.7245,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 1.2
   },
   {
@@ -5575,6 +6683,8 @@
    "lat": -45.3678,
    "lng": 170.4527,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 8.9
   },
   {
@@ -5585,6 +6695,8 @@
    "lat": -46.1103,
    "lng": 169.5049,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 1.4
   },
   {
@@ -5595,6 +6707,8 @@
    "lat": -46.479,
    "lng": 169.2429,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 4.0
   },
   {
@@ -5605,6 +6719,8 @@
    "lat": -46.2504,
    "lng": 169.7975,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 1.8
   },
   {
@@ -5615,6 +6731,8 @@
    "lat": -45.969,
    "lng": 168.0154,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 1.1
   },
   {
@@ -5625,17 +6743,9 @@
    "lat": -37.7622,
    "lng": 178.4054,
    "councilPct": 2.98,
+   "change": null,
+   "changePct": null,
    "estPct": 2.8
-  },
-  {
-   "name": "Pureora Forest Park",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 4,
-   "kW": 0.0,
-   "lat": -38.594,
-   "lng": 175.5569,
-   "councilPct": 3.47,
-   "estPct": 4.3
   },
   {
    "name": "Minginui",
@@ -5645,6 +6755,8 @@
    "lat": -38.6006,
    "lng": 176.9315,
    "councilPct": 5.05,
+   "change": null,
+   "changePct": null,
    "estPct": 6.6
   },
   {
@@ -5655,6 +6767,8 @@
    "lat": -39.8593,
    "lng": 176.107,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 9.7
   },
   {
@@ -5665,6 +6779,8 @@
    "lat": -39.3146,
    "lng": 174.9685,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 1.8
   },
   {
@@ -5675,6 +6791,8 @@
    "lat": -38.7362,
    "lng": 175.3105,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 10.4
   },
   {
@@ -5685,6 +6803,8 @@
    "lat": -42.044,
    "lng": 172.6051,
    "councilPct": 7.83,
+   "change": null,
+   "changePct": null,
    "estPct": 5.1
   },
   {
@@ -5695,6 +6815,8 @@
    "lat": -41.6364,
    "lng": 171.8505,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 0.8
   },
   {
@@ -5705,6 +6827,8 @@
    "lat": -42.1422,
    "lng": 172.2355,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 2.3
   },
   {
@@ -5715,6 +6839,8 @@
    "lat": -42.7012,
    "lng": 171.5709,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 2.5
   },
   {
@@ -5725,6 +6851,8 @@
    "lat": -43.3638,
    "lng": 170.1589,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 1.4
   },
   {
@@ -5735,6 +6863,8 @@
    "lat": -42.932,
    "lng": 170.8225,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 1.3
   },
   {
@@ -5745,6 +6875,8 @@
    "lat": -42.8086,
    "lng": 172.7379,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 2.6
   },
   {
@@ -5755,6 +6887,8 @@
    "lat": -43.6849,
    "lng": 173.0015,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.6
   },
   {
@@ -5765,6 +6899,8 @@
    "lat": -43.759,
    "lng": 172.9852,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 9.3
   },
   {
@@ -5775,6 +6911,8 @@
    "lat": -44.8084,
    "lng": 169.8573,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 2.8
   },
   {
@@ -5785,17 +6923,9 @@
    "lat": -44.9965,
    "lng": 169.9137,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 3.1
-  },
-  {
-   "name": "Mount Aspiring National Park",
-   "council": "West Coast",
-   "icps": 4,
-   "kW": 0.0,
-   "lat": -44.2771,
-   "lng": 168.7919,
-   "councilPct": 1.76,
-   "estPct": 2.1
   },
   {
    "name": "Acton",
@@ -5805,6 +6935,8 @@
    "lat": -45.6364,
    "lng": 168.3225,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 4.7
   },
   {
@@ -5815,6 +6947,8 @@
    "lat": -45.6929,
    "lng": 168.2083,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 1.2
   },
   {
@@ -5825,6 +6959,8 @@
    "lat": -45.9182,
    "lng": 167.9811,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 0.9
   },
   {
@@ -5835,6 +6971,8 @@
    "lat": -43.5996,
    "lng": 170.2848,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 1.8
   },
   {
@@ -5845,6 +6983,8 @@
    "lat": -35.6622,
    "lng": 173.6742,
    "councilPct": 6.47,
+   "change": null,
+   "changePct": null,
    "estPct": 1.5
   },
   {
@@ -5855,6 +6995,8 @@
    "lat": -37.9787,
    "lng": 175.0254,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 1.5
   },
   {
@@ -5865,6 +7007,8 @@
    "lat": -38.5487,
    "lng": 174.8486,
    "councilPct": 3.82,
+   "change": null,
+   "changePct": null,
    "estPct": 1.0
   },
   {
@@ -5875,6 +7019,8 @@
    "lat": -38.9551,
    "lng": 177.6069,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 1.8
   },
   {
@@ -5885,6 +7031,8 @@
    "lat": -38.9885,
    "lng": 177.7271,
    "councilPct": 6.3,
+   "change": null,
+   "changePct": null,
    "estPct": 0.5
   },
   {
@@ -5895,6 +7043,8 @@
    "lat": -38.8038,
    "lng": 174.9963,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 0.9
   },
   {
@@ -5905,6 +7055,8 @@
    "lat": -38.7353,
    "lng": 175.1224,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 1.2
   },
   {
@@ -5915,6 +7067,8 @@
    "lat": -39.0355,
    "lng": 175.3194,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 1.1
   },
   {
@@ -5925,6 +7079,8 @@
    "lat": -42.2005,
    "lng": 173.7413,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 2.2
   },
   {
@@ -5935,6 +7091,8 @@
    "lat": -42.0889,
    "lng": 171.4996,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 0.8
   },
   {
@@ -5945,6 +7103,8 @@
    "lat": -42.24,
    "lng": 171.5179,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 2.0
   },
   {
@@ -5955,6 +7115,8 @@
    "lat": -43.4636,
    "lng": 169.9363,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 2.9
   },
   {
@@ -5965,6 +7127,8 @@
    "lat": -42.9419,
    "lng": 171.1256,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 1.5
   },
   {
@@ -5975,6 +7139,8 @@
    "lat": -42.6416,
    "lng": 172.2444,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 4.1
   },
   {
@@ -5985,6 +7151,8 @@
    "lat": -43.1023,
    "lng": 171.5304,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 1.1
   },
   {
@@ -5995,6 +7163,8 @@
    "lat": -43.708,
    "lng": 170.8857,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 2.4
   },
   {
@@ -6004,7 +7174,9 @@
    "kW": 0.0,
    "lat": -44.2256,
    "lng": 170.2205,
-   "councilPct": 4.51
+   "councilPct": 4.51,
+   "change": null,
+   "changePct": null
   },
   {
    "name": "Moa Creek",
@@ -6014,7 +7186,21 @@
    "lat": -45.2051,
    "lng": 169.7083,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 4.3
+  },
+  {
+   "name": "Mount Aspiring National Park",
+   "council": "West Coast",
+   "icps": 2,
+   "kW": 0.0,
+   "lat": -44.2771,
+   "lng": 168.7919,
+   "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
+   "estPct": 1.0
   },
   {
    "name": "Dipton",
@@ -6024,6 +7210,8 @@
    "lat": -45.9619,
    "lng": 168.389,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 0.6
   },
   {
@@ -6034,6 +7222,8 @@
    "lat": -46.2621,
    "lng": 168.8903,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 1.2
   },
   {
@@ -6044,6 +7234,8 @@
    "lat": -39.4916,
    "lng": 175.6601,
    "councilPct": 3.47,
+   "change": null,
+   "changePct": null,
    "estPct": 0.4
   },
   {
@@ -6054,6 +7246,8 @@
    "lat": -42.3686,
    "lng": 171.5688,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 0.6
   },
   {
@@ -6064,6 +7258,8 @@
    "lat": -43.2862,
    "lng": 170.463,
    "councilPct": 1.76,
+   "change": null,
+   "changePct": null,
    "estPct": 1.2
   },
   {
@@ -6074,6 +7270,8 @@
    "lat": -43.3956,
    "lng": 171.6912,
    "councilPct": 4.51,
+   "change": null,
+   "changePct": null,
    "estPct": 2.1
   },
   {
@@ -6084,6 +7282,8 @@
    "lat": -44.6189,
    "lng": 169.5802,
    "councilPct": 4.64,
+   "change": null,
+   "changePct": null,
    "estPct": 2.5
   },
   {
@@ -6094,6 +7294,8 @@
    "lat": -45.8539,
    "lng": 168.5714,
    "councilPct": 1.87,
+   "change": null,
+   "changePct": null,
    "estPct": 1.1
   }
  ]
