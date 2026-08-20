@@ -1,13 +1,30 @@
 # NZ Solar Installations Map
 
 A map of every street in New Zealand with solar connections, from the
-Electricity Authority's EMI data. Dots sit on the actual streets, and the
-whole country loads at once. A second dashboard, switchable from the
-buttons at the top, shows electric vehicle uptake by district instead.
+Electricity Authority's EMI data — dots sit on the actual streets, and
+the whole country loads at once. A second dashboard shows electric
+vehicle uptake by district. Both update themselves automatically, on a
+schedule, with no server to run or maintain.
+
+**Live demo:** <https://rewiring-nz.github.io/solar-streets/>
+
+## Contents
+
+- [How it works](#how-it-works)
+- [Setup](#setup-about-ten-minutes-once)
+- [Embedding it](#embedding-it)
+- [Keeping it current](#keeping-it-current)
+- [Configuration](#configuration)
+- [Project structure](#project-structure)
+- [Data sources](#data-sources)
+- [Contributing](#contributing)
+- [License](#license)
+
+## How it works
 
 The map itself does no work: a scheduled job turns EMI's (and NZTA's)
 data into static JSON/GeoJSON files, and the page just downloads and
-draws them.
+draws them. No database, no backend, no API keys to manage.
 
 ```
 EMI CSVs ──────────────┐
@@ -15,6 +32,10 @@ NZTA vehicle register ─┼─> process.py ──> docs/*.json, *.geojson ─�
 Stats NZ boundaries ────┘    (weekly, in       (static files,          (instant)
                               GitHub Actions)    served by Pages)
 ```
+
+For how street positions are actually determined, how the region/town
+grouping works, and the reliability guards the pipeline runs under, see
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Setup (about ten minutes, once)
 
@@ -32,14 +53,13 @@ Stats NZ boundaries ────┘    (weekly, in       (static files,         
 4. **Run the first build**
    Actions tab → *Update solar data* → *Run workflow*.
 
-   Takes roughly 15-20 minutes. Road positions are geocoded via
-   OpenStreetMap in one query per regional council (~16 requests, not one
-   per street), so this isn't a "slow first run, fast after" split --
+   Takes roughly 15–20 minutes. Road positions are geocoded via
+   OpenStreetMap in one query per regional council (~16 requests, not
+   one per street), so this isn't a "slow first run, fast after" split —
    every run does the same fresh lookup and finishes in about the same
    time.
 
-5. **Open your map** at
-   `https://YOUR-USERNAME.github.io/YOUR-REPO/`
+5. **Open your map** at `https://YOUR-USERNAME.github.io/YOUR-REPO/`
 
 ## Embedding it
 
@@ -52,8 +72,8 @@ Inside an iframe, scroll-to-zoom automatically requires Ctrl/Cmd+scroll
 instead (MapLibre's `cooperativeGestures`), so scrolling past the embed
 scrolls the host page rather than fighting the map. Opened standalone,
 it behaves as a normal map. If the embed *is* the whole page (nothing
-above or below it to scroll past), `?gestures=free` turns that lock
-back off so a plain scroll zooms immediately.
+above or below it to scroll past), `?gestures=free` turns that lock back
+off so a plain scroll zooms immediately.
 
 Query params customise what loads, for a specific-region embed or link:
 
@@ -67,20 +87,25 @@ Query params customise what loads, for a specific-region embed or link:
 
 e.g. `https://YOUR-USERNAME.github.io/YOUR-REPO/?dataset=ev&region=Canterbury&chart=open`
 
+On the map itself, the search box (top of the page) matches a street,
+suburb, region, or district by name and flies there — the interactive
+equivalent of `?region=`.
+
 ## Keeping it current
 
 The workflow runs every Monday at 6am NZ time and commits only if
 something changed. EMI publishes monthly, so nothing goes stale. You can
-also trigger it by hand from the Actions tab any time.
+also trigger it by hand from the Actions tab any time; concurrent runs
+are queued rather than allowed to race each other.
 
-## Sharper imagery (optional)
+## Configuration
 
 The map uses Esri satellite imagery, which needs no account. For LINZ's
 NZ aerial imagery — much sharper over towns — get a free key at
 <https://basemaps.linz.govt.nz> and paste it into `LINZ_API_KEY` near the
 top of `docs/index.html`.
 
-## Files
+## Project structure
 
 | File | Purpose |
 |---|---|
@@ -88,6 +113,12 @@ top of `docs/index.html`.
 | `requirements.txt` | Pinned Python dependencies for `process.py` |
 | `.github/workflows/update-data.yml` | Runs the above weekly |
 | `docs/index.html` | The map (both dashboards) |
+
+<details>
+<summary>Generated/cached data files (all written by <code>process.py</code>; none are hand-edited)</summary>
+
+| File | Purpose |
+|---|---|
 | `docs/streets.geojson` | Solar: every street with coordinates |
 | `docs/meta.json` | Solar: build date, totals, match rate, and the region/town dashboard tree |
 | `docs/trends.json` | Solar: monthly install/battery history since 2014 |
@@ -95,138 +126,17 @@ top of `docs/index.html`.
 | `docs/town_boundaries.geojson` | Solar: town boundary polygons for the Towns map mode |
 | `docs/ev.json` | EVs: national/region/district counts, % of local fleet, and yearly uptake trend, per vehicle category |
 | `docs/ev_boundaries.geojson` | EVs: simplified district polygons for the choropleth, tagged with each district's stats |
-| `road_cache.json` | Where each street is, from the latest run (not incrementally reused -- see below) |
+| `road_cache.json` | Where each street is, from the latest successful run per council (see [ARCHITECTURE.md](ARCHITECTURE.md#reliability)) |
 | `sa2_areas.json` | Statistical area boundaries, cached |
-| `regc_bounds.json` | Real regional council boundaries (Stats NZ), cached -- powers the council grouping and the "regions within map view" filter |
-| `tla_bounds.json` | Real territorial authority (district/city) boundaries (Stats NZ), cached -- full precision, for the EV dashboard |
-| `town_anchors.json` | One point per real NZ town (LINZ), cached -- powers the solar town grouping |
-| `sa1_dwellings.json` | Census dwelling counts by small area, cached -- powers the estimated town/district % figures |
+| `regc_bounds.json` | Real regional council boundaries (Stats NZ), cached — powers the council grouping and the "regions within map view" filter |
+| `tla_bounds.json` | Real territorial authority (district/city) boundaries (Stats NZ), cached — full precision, for the EV dashboard |
+| `town_anchors.json` | One point per real NZ town (LINZ), cached — powers the solar town grouping |
+| `sa1_dwellings.json` | Census dwelling counts by small area, cached — powers the estimated town/district % figures |
 | `previous_counts.json` | Last build's per-street numbers, for the "+N since last update" figures |
 | `previous_town_totals.json` | Last build's per-town solar totals, for the Leaderboard's month-over-month change |
 | `previous_ev_totals.json` | Last build's per-district EV totals, for the Leaderboard's month-over-month change |
 
-## How streets get their positions
-
-EMI publishes street *names*, not coordinates — and New Zealand has a
-great many Queen Streets. Each EMI row also carries a Statistical Area 2
-(SA2) code, and every SA2 has a known bounding box (from Stats NZ,
-covering all boundary vintages back to 2018 — EMI's data references a
-mix of them). A road only counts for a given street if its OpenStreetMap
-position falls inside the exact SA2 EMI assigned it to, which is what
-keeps Auckland's Queen Street out of Invercargill.
-
-The OpenStreetMap side is queried once per regional council (~16
-requests covering the whole country), not once per SA2 (~2,100) — a
-council's worth of roads is fetched in one go, then matched to the right
-SA2 locally. Same accuracy, far fewer requests.
-
-Expect a match rate in the 80–95% range. The stragglers are usually
-private lanes, rural roads and recent renames. `process.py` prints the
-rate at the end of every run, and deliberately fails the build if it ever
-drops below 50%, so a bad build never gets published.
-
-## The sidebar's region/town list
-
-The sidebar ranks NZ's 16 regional councils by % of ICPs with solar,
-alongside installs and MW. The % figure is a real join, not an estimate:
-EMI publishes solar ICPs and total ICPs for the same 39 "network
-reporting regions", so both numbers come from the same source at the
-same granularity. The council grouping on top of that is a display
-choice (`NETWORK_TO_COUNCIL` in `process.py`) — a handful of networks
-straddle a council boundary and are marked there.
-
-Expand a council to see its towns — e.g. "Wānaka" and "Queenstown" as
-separate entries — with their own installs and MW. No % at this level:
-EMI doesn't publish a total-ICP figure per town, only per network
-region, so there's no honest denominator to divide by that finely.
-
-Towns are real places, not SA2 fragments: each solar record is assigned
-to its nearest named town centre from LINZ's Suburbs and Localities data
-(`fetch_town_anchors()`/`town_anchors.json`), grouped by that dataset's
-own `major_name` field. Plain SA2 would split "Wanaka" into "Wanaka
-North"/"Wanaka West"; a district-level grouping would merge Wānaka and
-Queenstown into one "Queenstown-Lakes" bucket. This sits at the
-granularity in between — one row per commonly-recognised town.
-
-Both levels use real regional-council boundaries from Stats NZ
-(`fetch_regional_councils()`/`regc_bounds.json`) to decide which council
-a town falls inside, and to power the "regions within map view" filter.
-An earlier version approximated council boundaries by unioning network
-operators' own footprints, which don't follow council lines — Network
-Tasman serves most of Nelson city, for instance, so that approach had
-Nelson's real numbers geographically misattributed to Tasman. Real
-council polygons don't have that problem.
-
-## The trend chart's Leaderboard tab
-
-A second tab inside the trend chart panel (both dashboards) ranks
-regions/districts by real month-over-month change -- raw count and %,
-biggest gain first -- meant to answer "is there anything worth telling
-people about this month". Decliners are left off entirely: a negative
-figure is far more likely a reporting/attribution quirk (an EV
-re-registered to a new district, an ICP recounted under a different
-network) than a real drop, so showing it would read as a false signal.
-
-This is a *different* ranking from the sidebar's region/town list above
--- that one shows the current standing (installs, MW, % of connections);
-this one shows what changed since last time. Backed by
-`previous_town_totals.json`/`previous_ev_totals.json`, each holding the
-prior run's own totals purely so the next run can diff against them (see
-`_change()` in `process.py`) -- so it needs at least two real runs
-before it has anything to show, and stays empty (rather than guessing)
-until then.
-
-## Searching for a street or suburb
-
-The search box next to the dataset tabs matches a region, town/district,
-or (solar only) an individual street name -- same free-text matching as
-the `?region=` embed param (`findPlace()`), extended with a flat search
-index built from the already-loaded street points. EVs have no
-individual-street data (NZTA's register only carries district-level
-addresses), so EV search covers regions/districts only.
-
-## The EV dashboard
-
-Built entirely from NZTA's Motor Vehicle Register (MVR) -- the live
-register of every currently-registered NZ vehicle (~5.9M rows), queried
-as server-side aggregate counts (`fetch_ev_snapshot`/`fetch_ev_trends`
-in `process.py`), never downloaded whole.
-
-Every vehicle in the MVR carries its owner's real Territorial Authority
-(TLA -- district/city council, e.g. "Queenstown-Lakes District")
-directly, so unlike solar's towns this needs no nearest-anchor
-approximation: TLA *is* the real "district level" granularity, straight
-from official data. Districts roll up to the same 16 regions solar
-uses, via `assign_tla_regions` -- derived geometrically (real
-point-in-polygon against the regional council boundaries already
-fetched for solar), not hand-typed, and checked against all 67 real
-districts. `TLA_REGION_OVERRIDES` covers the one genuine exception:
-Rotorua Lakes District's own territory straddles Bay of Plenty and
-Waikato.
-
-Five vehicle categories (Cars, Utes, Trucks, Buses, Tractors) are drawn
-straight from the MVR's own `VEHICLE_TYPE`/`BODY_TYPE` fields
-(`EV_CATEGORIES` in `process.py`), not guessed from make or model. Each
-one's % figure is a real join: electric count and *total local fleet*
-count for that category, in that district, from the same register at
-the same time -- not population-normalised, so it answers "what
-fraction of this district's trucks/buses/etc. are electric", the same
-style of honest, real-join percentage as solar's "% of connections".
-
-The uptake chart is a cumulative count of vehicles by first-NZ-
-registration year that are still on the road today -- not a strict
-historical registration count (a vehicle scrapped or exported since
-wouldn't show), but EVs are almost all under ~12 years old, so the
-difference is negligible. The display window starts at 2013; a handful
-of EVs go back to the 1930s (early imports/curiosities), and including
-those 80-odd near-flat years would waste the whole chart width on
-nothing -- the running total itself still starts from the real first
-year, so 2013's value correctly includes everything before it.
-
-Because the MVR has no street-level address (only district + postcode,
-for privacy), districts are shown as a shaded choropleth rather than
-individual dots like solar's streets -- there's no honest point to
-place a dot at.
+</details>
 
 ## Data sources
 
@@ -236,3 +146,15 @@ place a dot at.
 - Electric vehicle counts: [NZTA Waka Kotahi, Motor Vehicle Register](https://opendata-nzta.opendata.arcgis.com/datasets/NZTA::motor-vehicle-register) (CC BY 4.0)
 - Statistical areas, regional councils, and territorial authorities: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
 - Town/locality names: [LINZ, Suburbs and Localities](https://data.linz.govt.nz/layer/113764-nz-suburbs-and-localities/) (CC BY 4.0)
+
+## Contributing
+
+Issues and pull requests are welcome. For anything beyond a small fix,
+please open an issue first to discuss the approach — this keeps the
+pipeline's data-accuracy guarantees (see [ARCHITECTURE.md](ARCHITECTURE.md))
+intact.
+
+## License
+
+[MIT](LICENSE) for the code in this repository. The underlying datasets
+keep their own licenses — see [Data sources](#data-sources) above.
