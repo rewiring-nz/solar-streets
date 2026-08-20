@@ -240,6 +240,12 @@
   .est-badge { cursor: help; border-bottom: 1px dotted var(--dim); }
   .est-badge b { color: var(--red); font-weight: 700; letter-spacing: .02em; }
 
+  /* Map-click popups: % of connections leads as the headline figure --
+     it's the number that actually answers "how much uptake here",
+     installs/MW are supporting detail underneath. */
+  .popup-pct { font-size: 16px; font-weight: 700; color: var(--amber); margin: 2px 0; }
+  .popup-sub { font-size: 12px; color: var(--dim); }
+
   /* ============ EV rows (category breakdown per TLA) ============ */
   .ev-row { padding: 8px 8px 10px; border-radius: 10px; margin: 2px 0; }
   .ev-row-head { display: flex; align-items: flex-start; gap: 8px; }
@@ -657,7 +663,13 @@ let DATASET = "solar";
 let SOLAR_MODE = "points";
 
 const fmt = n => n.toLocaleString();
-const fmtMW = kW => (kW / 1000).toLocaleString(undefined, { maximumFractionDigits: kW >= 10000 ? 0 : 1 });
+// Extra decimal under 1 MW so a real-but-small figure (a handful of kW)
+// doesn't round away to a bare "0" -- most of these are now non-zero
+// after process.py's suppressed-row kW estimate (see read_streets), but
+// a genuinely tiny town/district can still land under 0.05 MW.
+const fmtMW = kW => (kW / 1000).toLocaleString(undefined, {
+  maximumFractionDigits: kW >= 10000 ? 0 : kW < 1000 ? 2 : 1,
+});
 const MONTHS3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -672,10 +684,6 @@ const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this to
   "projected forward using its own 2018–2023 growth rate, then scaled to a full " +
   "connections estimate using its council's real residential/business mix (EMI). " +
   "Unlike the region %, this isn't a direct EMI figure.";
-function estBadge(pct) {
-  if (pct == null) return "";
-  return ` <span class="est-badge" title="${EST_PCT_TITLE}">~${pct.toFixed(1)}% <b>est</b></span>`;
-}
 
 function bboxIntersects(b, view) {
   if (!b) return true;   // no boundary data -- never hide it
@@ -805,7 +813,7 @@ function renderTopbarStats() {
   html += `<div class="stat-line">${segs.join("")}</div>`;
   html += `<div class="topbar-actions">`;
   html += `<button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button>`;
-  html += ["points", "regions", "towns"].map(mode =>
+  html += ["points", "towns", "regions"].map(mode =>
     `<button type="button" class="map-mode-btn${SOLAR_MODE === mode ? " active" : ""}" data-mode="${mode}">Show ${mode[0].toUpperCase()}${mode.slice(1)}</button>`
   ).join("");
   html += `</div>`;
@@ -830,6 +838,17 @@ function rowHTML(t, rank) {
   const region = t.council
     ? `<span class="row-region" data-council="${t.council}">${label}</span>`
     : label;
+  // % of connections is the more meaningful figure than a raw install
+  // count (a big town and a small one can have the same % uptake), so
+  // it leads as the bold headline -- installs/MW are still shown, just
+  // demoted to the smaller detail line. Towns process.py couldn't
+  // produce an estimate for (rare -- see _estimate_town_pcts) fall back
+  // to installs as the headline, same as before this change.
+  const metric = t.estPct != null
+    ? `<span class="headline">${t.estPct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></span>
+       <span class="detail">${fmt(t.icps)} installs &middot; ${fmtMW(t.kW)} MW</span>`
+    : `<span class="headline">${fmt(t.icps)} installs</span>
+       <span class="detail">${fmtMW(t.kW)} MW</span>`;
   return `
     <div class="row-main">
       <span class="row-rank">${rank}</span>
@@ -837,10 +856,7 @@ function rowHTML(t, rank) {
         <div class="row-name">${t.name}</div>
         <div class="row-sub">${region}</div>
       </div>
-      <div class="row-metric">
-        <span class="headline">${fmt(t.icps)} installs</span>
-        <span class="detail">${fmtMW(t.kW)} MW${estBadge(t.estPct)}</span>
-      </div>
+      <div class="row-metric">${metric}</div>
     </div>`;
 }
 
@@ -919,11 +935,48 @@ function loadSolarTownsLayer() {
         layout: { visibility: "none" },
         paint: { "line-color": "rgba(0,0,0,.25)", "line-width": 1 },
       });
+      // Same idea as solar-region-labels, sized down: towns are far more
+      // numerous (585 vs 67 TLAs) and individually much smaller, so the
+      // region labels' 11px would collide constantly and overwhelm the
+      // small shapes. townData already carries each town's own lat/lng
+      // (see build_towns/process.py) and estPct (attached in place by
+      // _estimate_town_pcts before meta.json is saved), so this reuses
+      // that instead of needing a second server-computed point.
+      map.addSource("solar-town-label-points", {
+        type: "geojson",
+        data: {
+          type: "FeatureCollection",
+          features: townData.filter(t => t.lat != null && t.lng != null).map(t => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [t.lng, t.lat] },
+            properties: { estPct: t.estPct != null ? t.estPct : null },
+          })),
+        },
+      });
+      map.addLayer({
+        id: "solar-town-labels", type: "symbol", source: "solar-town-label-points",
+        layout: {
+          visibility: "none",
+          "text-field": [
+            "case", ["==", ["get", "estPct"], null], "",
+            ["concat", ["number-format", ["get", "estPct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
+          ],
+          "text-font": ["Noto Sans Bold"], "text-size": 8, "text-allow-overlap": true,
+        },
+        paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0,0,0,.45)", "text-halo-width": 1 },
+      });
       map.on("click", "solar-town-boundaries-fill", e => {
         const p = e.features[0].properties;
+        const pct = p.estPct != null ? +p.estPct : null;
+        // % leads as the focus -- it's the number that actually answers
+        // "how much uptake here"; installs/MW are supporting detail.
+        const pctLine = pct != null
+          ? `<div class="popup-pct">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
+          : "";
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
-          `<strong>${p.name}</strong><br>Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW${estBadge(p.estPct != null ? +p.estPct : null)}` +
-          (p.councilPct != null ? `<br>${p.council} region: ${(+p.councilPct).toFixed(1)}%` : "")
+          `<strong>${p.name}</strong><br>` + pctLine +
+          `<span class="popup-sub">${fmt(p.icps)} installs &middot; ${fmtMW(p.kW)} MW</span>` +
+          (p.councilPct != null ? `<br><span class="popup-sub">${p.council} region: ${(+p.councilPct).toFixed(1)}%</span>` : "")
         ).addTo(map);
       });
       let hoveredTownId = null;
@@ -1010,15 +1063,21 @@ function loadSolarRegionsLayer() {
         // real geographic install data, summed inside this exact TLA
         // boundary (see write_region_boundaries/process.py), not the
         // council total. p.estPct is a modelled estimate (same
-        // methodology as the Towns mode -- see estBadge); r.pct is the
-        // real council-wide % shown for context underneath.
+        // methodology as the Towns mode -- see EST_PCT_TITLE); r.pct is
+        // the real council-wide % shown for context underneath.
         const districtLine = (p.tla && p.tla !== r.name)
           ? `<strong>${p.tla}</strong><br><span style="opacity:.7">${r.name} region</span><br>`
           : `<strong>${r.name}</strong><br>`;
+        const pct = p.estPct != null ? +p.estPct : null;
+        // % leads as the focus -- it's the number that actually answers
+        // "how much uptake here"; installs/MW are supporting detail.
+        const pctLine = pct != null
+          ? `<div class="popup-pct">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
+          : "";
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
-          districtLine +
-          `Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW${estBadge(p.estPct != null ? +p.estPct : null)}` +
-          (r.pct != null ? `<br><span style="opacity:.6;font-size:.85em">${r.name} region: ${r.pct.toFixed(1)}% of connections</span>` : "")
+          districtLine + pctLine +
+          `<span class="popup-sub">${fmt(p.icps)} installs &middot; ${fmtMW(p.kW)} MW</span>` +
+          (r.pct != null ? `<br><span class="popup-sub">${r.name} region: ${r.pct.toFixed(1)}% of connections</span>` : "")
         ).addTo(map);
         // Solar's real trend data only goes down to council/region level
         // (see solarFocusFor), not per-TLA, so a click always jumps the
@@ -1056,7 +1115,7 @@ function applySolarLayers(mode) {
   ["street-points", "street-labels", "spider-legs", "spider-nodes", "spider-labels"].forEach(id => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("points"));
   });
-  ["solar-town-boundaries-fill", "solar-town-boundaries-outline"].forEach(id => {
+  ["solar-town-boundaries-fill", "solar-town-boundaries-outline", "solar-town-labels"].forEach(id => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("towns"));
   });
   ["solar-regions-fill", "solar-regions-outline", "solar-region-labels"].forEach(id => {
