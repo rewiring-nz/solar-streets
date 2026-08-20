@@ -37,7 +37,8 @@ jobs:
                   docs/ev.json docs/ev_boundaries.geojson docs/region_boundaries.geojson \
                   docs/town_boundaries.geojson \
                   road_cache.json sa2_areas.json regc_bounds.json town_anchors.json \
-                  tla_bounds.json sa1_dwellings.json previous_counts.json
+                  tla_bounds.json sa1_dwellings.json previous_counts.json \
+                  previous_town_totals.json previous_ev_totals.json
           if git diff --staged --quiet; then
             echo "No changes"
           else

@@ -256,6 +256,30 @@
   .loading-note { padding: 16px; font-size: 12.5px; color: var(--dim); }
 
   /* ============ Trend chart (inline, inside the top bar) ============ */
+  .chart-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  .chart-tab {
+    border: none; background: rgba(255,255,255,.06); color: var(--dim);
+    font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 7px;
+    cursor: pointer; letter-spacing: .2px;
+  }
+  .chart-tab.active { background: var(--amber); color: #241a00; }
+  body.dataset-ev .chart-tab.active { background: var(--cyan); color: #062229; }
+  .chart-tab:not(.active):hover { color: var(--text); }
+
+  .leaderboard-list { display: flex; flex-direction: column; }
+  .lb-row {
+    display: flex; align-items: baseline; gap: 8px; padding: 7px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .lb-row:last-child { border-bottom: none; }
+  .lb-rank { width: 16px; font-size: 10px; color: var(--dim); text-align: right; flex: none; }
+  .lb-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; }
+  .lb-change { font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .lb-change.up { color: var(--up); }
+  .lb-change.down { color: #f87171; }
+  .lb-change small { font-weight: 600; opacity: .8; }
+  .leaderboard-empty { padding: 10px 0; font-size: 12px; color: var(--dim); }
+
   .chart-select {
     background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--text);
     border-radius: 8px; padding: 5px 8px; font-size: 12px; max-width: 100%;
@@ -292,12 +316,19 @@
       </div>
       <div id="topbarChart" class="topbar-chart">
         <div class="topbar-chart-inner">
-          <select id="chartSelect" class="chart-select"></select>
-          <div class="chart-svg-wrap"><svg id="chartSvg" viewBox="0 0 700 320"></svg></div>
-          <div class="chart-legend" id="chartLegend">
-            <span><i class="swatch installs"></i>Solar installs</span>
-            <span><i class="swatch battery"></i>% of installs with a battery</span>
+          <div class="chart-tabs" id="chartTabs">
+            <button type="button" class="chart-tab active" data-mode="trend">Trend</button>
+            <button type="button" class="chart-tab" data-mode="leaderboard">Leaderboard</button>
           </div>
+          <div id="trendView">
+            <select id="chartSelect" class="chart-select"></select>
+            <div class="chart-svg-wrap"><svg id="chartSvg" viewBox="0 0 700 320"></svg></div>
+            <div class="chart-legend" id="chartLegend">
+              <span><i class="swatch installs"></i>Solar installs</span>
+              <span><i class="swatch battery"></i>% of installs with a battery</span>
+            </div>
+          </div>
+          <div id="leaderboardView" class="hidden"></div>
           <div class="data-sources">
             Solar: EMI (Electricity Authority) · EVs: NZTA Motor Vehicle Register ·
             Streets: OpenStreetMap contributors · Areas: Stats NZ · Towns: LINZ
@@ -1157,6 +1188,10 @@ new ResizeObserver(syncTopbarHeight).observe(topWrapEl);
 
 const datasetSwitchEl = document.getElementById("datasetSwitch");
 const chartLegendEl = document.getElementById("chartLegend");
+const chartTabsEl = document.getElementById("chartTabs");
+const trendViewEl = document.getElementById("trendView");
+const leaderboardViewEl = document.getElementById("leaderboardView");
+let chartMode = "trend";   // "trend" | "leaderboard" -- which view topbarChart's panel shows
 
 // Fixed stacking order (largest category at the base) and a colour per
 // category for the chart's stacked areas, the map choropleth legend
@@ -1646,7 +1681,42 @@ function renderEvChartSelection() {
   renderEvChartLegend(level, name);
 }
 
+// Ranks regions by raw month-over-month change (see _change()/
+// PREV_TOWN_TOTALS/PREV_EV_TOTALS in process.py), biggest gain first --
+// the same "region" granularity as the Regions board (regionData/
+// evRegions), not individual towns/districts, since that's the level a
+// leaderboard reader can act on ("email people about Canterbury").
+// change/changePct are null until this feature has seen two real runs
+// to compare (see _change()'s doc comment), so rows without a change
+// are filtered out rather than shown as a false "no change".
+function renderLeaderboard() {
+  const list = DATASET === "ev" ? evRegions : regionData;
+  const unit = DATASET === "ev" ? "EVs" : "installs";
+  const rows = (list || [])
+    .filter(r => r.change != null)
+    .slice()
+    .sort((a, b) => b.change - a.change)
+    .slice(0, 10);
+  if (!rows.length) {
+    leaderboardViewEl.innerHTML = `<div class="leaderboard-empty">No comparison data yet -- check back after next month's update.</div>`;
+    return;
+  }
+  leaderboardViewEl.innerHTML = `<div class="leaderboard-list">` + rows.map((r, i) => {
+    const sign = r.change > 0 ? "+" : "";
+    const pctSign = r.changePct > 0 ? "+" : "";
+    const dir = r.change > 0 ? "up" : (r.change < 0 ? "down" : "");
+    return `<div class="lb-row">` +
+      `<span class="lb-rank">${i + 1}</span>` +
+      `<span class="lb-name">${r.name}</span>` +
+      `<span class="lb-change ${dir}">${sign}${fmt(r.change)} ${unit} <small>(${pctSign}${r.changePct.toFixed(1)}%)</small></span>` +
+      `</div>`;
+  }).join("") + `</div>`;
+}
+
 async function renderFocusChart() {
+  trendViewEl.classList.toggle("hidden", chartMode === "leaderboard");
+  leaderboardViewEl.classList.toggle("hidden", chartMode !== "leaderboard");
+  if (chartMode === "leaderboard") { renderLeaderboard(); return; }
   if (DATASET === "ev") {
     populateEvChartSelect(currentFocus);
     renderEvChartSelection();
@@ -1658,6 +1728,14 @@ async function renderFocusChart() {
   chartLegendEl.innerHTML = `<span><i class="swatch installs"></i>Solar installs</span>` +
     `<span><i class="swatch battery"></i>% of installs with a battery</span>`;
 }
+
+chartTabsEl.addEventListener("click", e => {
+  const btn = e.target.closest(".chart-tab");
+  if (!btn || btn.dataset.mode === chartMode) return;
+  chartMode = btn.dataset.mode;
+  chartTabsEl.querySelectorAll(".chart-tab").forEach(b => b.classList.toggle("active", b === btn));
+  renderFocusChart();
+});
 
 // Clicking a region/district on the map, while the chart is open, jumps
 // the chart+topbar to it too -- same underlying state (currentFocus) the

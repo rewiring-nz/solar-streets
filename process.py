@@ -20,6 +20,7 @@ import os
 import re
 import sys
 import time
+import unicodedata
 from datetime import datetime, timezone
 
 import requests
@@ -166,6 +167,14 @@ OUT_TRENDS = "docs/trends.json"
 OUT_REGION_BOUNDARIES = "docs/region_boundaries.geojson"
 OUT_TOWN_BOUNDARIES = "docs/town_boundaries.geojson"
 
+# Last run's town/TLA totals, kept purely so this run can attach a
+# month-over-month change/changePct to each region/town/district (the
+# leaderboard's data) -- see attach_changes(). Not used for anything
+# else, so unlike road_cache/sa2_areas these hold only the small summary
+# numbers, not full geometry.
+PREV_TOWN_TOTALS = "previous_town_totals.json"
+PREV_EV_TOTALS = "previous_ev_totals.json"
+
 # EMI's "Installed distributed generation trends" report (GUEHMT) --
 # monthly ICP-count history since 2014, exportable as CSV per fuel type
 # and region granularity, keyless. Same report the rest of this pipeline
@@ -293,10 +302,23 @@ def normalise(name):
     plain "Dryland Track". Verified live: 184 of 188 Northland (PVT)
     streets that were otherwise completely unmatched turned out to
     already be in OSM under their plain name.
+
+    Many OSM way names carry macrons on te reo Māori words ("Kākāpō
+    Street") while EMI's own street field never does ("Kakapo Street") --
+    NFD-decomposing and dropping the combining-mark codepoints (the same
+    technique the frontend's own place search already uses for e.g.
+    "Wanaka"/"Wānaka") folds a macron vowel down to its plain letter
+    *before* the character-class filter below, which would otherwise
+    silently blank out each accented letter into a space and mangle the
+    whole word (e.g. "KĀKĀPŌ" -> "K K P", never matching anything).
+    Verified live: every one of Ahipara's unmatched bird-named streets
+    (Kaka/Kakapo/Kokopu/Korora/Kotare) turned out to be exactly this --
+    already in OSM, just spelled with macrons.
     """
     if not name:
         return ""
     name = re.sub(r"\(PVT\)\s*$", "", name.strip(), flags=re.IGNORECASE)
+    name = "".join(c for c in unicodedata.normalize("NFD", name) if unicodedata.category(c) != "Mn")
     words = re.sub(r"[^A-Z0-9 ]", " ", name.upper()).split()
     return " ".join(
         ABBREV[w] if (i == len(words) - 1 and w in ABBREV) else w
@@ -309,6 +331,21 @@ def load(path, default):
         with open(path) as fh:
             return json.load(fh)
     return default
+
+
+def _change(current, previous):
+    """(change, changePct) against a prior run's total for the same
+    area -- the leaderboard's whole data source. None/None (rather than
+    treating a missing previous total as 0) both on this area's very
+    first appearance, and on the very first run this feature has ever
+    seen -- either way there's no real prior number to compare against,
+    and claiming e.g. "+100%" against a fabricated zero baseline would be
+    a fake signal, not a real one.
+    """
+    if not previous:
+        return None, None
+    change = current - previous
+    return change, round(change / previous * 100, 1)
 
 
 def save(path, obj, indent=None):
@@ -1761,6 +1798,26 @@ def main():
                 tlas, tla_region, tla_centroids, council_bounds,
                 overall_ev, overall_total, ev_categories, ev_years, ev_trend_series,
             )
+
+            # Month-over-month change, for the leaderboard -- see
+            # _change() and PREV_EV_TOTALS. TLA totals compare directly
+            # against last run's own snapshot; each region's previous
+            # total is summed from that same snapshot grouped by *this*
+            # run's tla_region (regions are static, so last run's real
+            # per-TLA numbers grouped today are equivalent to -- and
+            # simpler than -- also having archived last run's grouping).
+            prev_ev = load(PREV_EV_TOTALS, {})
+            for row in ev_tlas:
+                row["change"], row["changePct"] = _change(row["ev"], prev_ev.get(row["name"], {}).get("ev"))
+            prev_region_ev = {}
+            for row in ev_tlas:
+                prev = prev_ev.get(row["name"])
+                if prev:
+                    prev_region_ev[row["region"]] = prev_region_ev.get(row["region"], 0) + prev["ev"]
+            for row in ev_regions:
+                row["change"], row["changePct"] = _change(row["ev"], prev_region_ev.get(row["name"]))
+            save(PREV_EV_TOTALS, {row["name"]: {"ev": row["ev"]} for row in ev_tlas})
+
             save(OUT_EV, {
                 "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 "categories": [name for name, _ in EV_CATEGORIES],
@@ -1820,6 +1877,24 @@ def main():
     council_pct = {r["name"]: r["pct"] for r in region_tree}
     for t in towns:
         t["councilPct"] = council_pct.get(t["council"], 0)
+
+    # Month-over-month change, for the leaderboard -- see _change() and
+    # PREV_TOWN_TOTALS. Each council's previous total is summed from last
+    # run's own per-town snapshot grouped by *this* run's town->council
+    # assignment (real council boundaries barely ever move, so that's
+    # equivalent to -- and simpler than -- also archiving last run's
+    # grouping).
+    prev_towns = load(PREV_TOWN_TOTALS, {})
+    for t in towns:
+        t["change"], t["changePct"] = _change(t["icps"], prev_towns.get(t["name"], {}).get("icps"))
+    prev_council_icps = {}
+    for t in towns:
+        prev = prev_towns.get(t["name"])
+        if prev and t["council"]:
+            prev_council_icps[t["council"]] = prev_council_icps.get(t["council"], 0) + prev["icps"]
+    for r in region_tree:
+        r["change"], r["changePct"] = _change(r["icps"], prev_council_icps.get(r["name"]))
+    save(PREV_TOWN_TOTALS, {t["name"]: {"icps": t["icps"]} for t in towns})
 
     # Census dwellings / ANZSIC ratio: fetched once here and shared by
     # both write_region_boundaries (TLA-level estPct) and
