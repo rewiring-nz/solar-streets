@@ -323,13 +323,25 @@ def get_areas():
     # data references a mix of SA2 vintages, including codes retired in
     # the 2023 boundary revision. Querying every year and keeping the
     # newest boundary per code covers current *and* legacy codes.
+    #
+    # No maxAllowableOffset -- full precision matters here (same reasoning
+    # as fetch_territorial_authorities): this geometry is only ever
+    # reduced to a bbox below, but a *simplified* polygon's bbox can be
+    # meaningfully smaller than the real one, not just coarser-looking.
+    # Verified live: with the previous maxAllowableOffset=500,
+    # Wellington's tiny "Ngaio North" SA2 cached a bbox barely half the
+    # true one's height, silently rejecting every real geocoded match
+    # near its (wrongly-cut-off) southern edge. The bbox is all this
+    # function keeps, so the extra precision costs nothing downstream --
+    # just a heavier one-time fetch (cached to disk afterwards, same as
+    # every other boundary layer in this file).
     print("Fetching SA2 boundaries from Stats NZ (all vintages)...")
     areas, offset = {}, 0
     while True:
         r = session.get(SA2_SERVICE, timeout=180, params={
             "where": "1=1", "orderByFields": "dataset_year ASC",
             "outFields": "SA2_code,SA2_name,dataset_year",
-            "returnGeometry": "true", "maxAllowableOffset": 500,
+            "returnGeometry": "true",
             "geometryPrecision": 5, "f": "geojson",
             "resultOffset": offset, "resultRecordCount": 1000,
         })
@@ -1487,24 +1499,40 @@ def overpass(query):
 
 
 def roads_in_bbox(bbox):
-    """Every named-highway way centre in a (possibly large) bbox, grouped
-    by normalised name but deliberately NOT collapsed to one point -- a
-    name can be several distinct real streets (NZ has a lot of Queen
-    Streets), so every candidate location is kept and disambiguated later
-    by which SA2 it actually falls inside.
+    """Every named-highway way's full node geometry (not just its centre)
+    in a (possibly large) bbox, grouped by normalised name but
+    deliberately NOT collapsed to one point -- a name can be several
+    distinct real streets (NZ has a lot of Queen Streets), so every
+    candidate way's geometry is kept and disambiguated later by which
+    SA2 it actually falls inside.
+
+    Full geometry, not a single centre point per way, because a real
+    street is often one long OSM way spanning several SA2s (a
+    residential street straddling two suburbs, a road running the
+    length of a gorge) -- that way's overall centre can land outside
+    the specific SA2 an install is actually in, even though part of
+    the very same way genuinely passes through it. Verified live: in
+    one real case (Chelmsford Street, Wellington) a single 68-node way
+    had 28 nodes in one SA2 and 56 in the neighbouring one, so its
+    centre fell only in the second -- the first SA2's real install
+    would go unmatched under the old centre-only approach. Keeping
+    every node lets geocode() place a street using only the nodes that
+    actually fall inside the SA2 in question.
     """
     s, w, n, e = bbox
     data = overpass(
         f'[out:json][timeout:180];way["highway"]["name"]({s},{w},{n},{e});'
-        "out center tags;"
+        "out geom tags;"
     )
     by_name = {}
     for el in data.get("elements", []):
         name = el.get("tags", {}).get("name")
-        centre = el.get("center")
-        if not name or not centre:
+        geom = el.get("geometry")
+        if not name or not geom:
             continue
-        by_name.setdefault(normalise(name), []).append((centre["lon"], centre["lat"]))
+        pts = [(pt["lon"], pt["lat"]) for pt in geom if "lon" in pt and "lat" in pt]
+        if pts:
+            by_name.setdefault(normalise(name), []).append(pts)
     return by_name
 
 
@@ -1512,11 +1540,11 @@ def geocode(records, areas, council_bounds):
     """One Overpass query per regional council (~16), not per SA2
     (~2,100). Batching by a much larger area cuts network round-trips by
     two orders of magnitude -- verified live: a whole-council query
-    (Otago, ~9,200 roads) took 3.5s, the same order as a single small
-    per-SA2 query used to take.
+    (Wellington, ~18,800 roads, full node geometry) took 24s, comfortably
+    inside the pipeline's budget even at that scale.
 
     Each SA2's roads are then matched from its council's result set by
-    keeping only the candidate points that fall inside *that SA2's own
+    keeping only the candidate *nodes* that fall inside *that SA2's own
     bbox* -- the same containment check the old per-SA2 design relied on,
     just done locally instead of via a separate network call, so multiple
     same-named streets in different towns still resolve correctly.
@@ -1568,19 +1596,26 @@ def geocode(records, areas, council_bounds):
             _, s, w, n, e = areas[code]
             local = {}
             for name in names_by_code.get(code, ()):
-                pts = [(lng, lat) for lng, lat in by_name.get(name, ())
-                       if w <= lng <= e and s <= lat <= n]
+                # Only the nodes of each candidate way that actually fall
+                # inside this SA2's own bbox -- not the way's overall
+                # centre, which can sit outside it for a way that spans
+                # multiple SA2s (see roads_in_bbox). A street real in
+                # this SA2 is placed at the average of just its own
+                # portion of the way, not dragged toward wherever the
+                # rest of a long way happens to run.
+                pts = [(lng, lat) for way in by_name.get(name, ())
+                       for lng, lat in way if w <= lng <= e and s <= lat <= n]
                 if not pts:
-                    # Exact name has no candidate in this SA2 at all --
-                    # try again without a trailing street-type word
-                    # (see _strip_street_type) before giving up. Only
-                    # reached when the exact match found literally
-                    # nothing, so a real "Queen Street" is never at risk
-                    # of being pulled toward an unrelated "Queen".
+                    # Exact name has no node in this SA2 at all -- try
+                    # again without a trailing street-type word (see
+                    # _strip_street_type) before giving up. Only reached
+                    # when the exact match found literally nothing, so a
+                    # real "Queen Street" is never at risk of being
+                    # pulled toward an unrelated "Queen".
                     stripped = _strip_street_type(name)
                     if stripped:
-                        pts = [(lng, lat) for lng, lat in by_name.get(stripped, ())
-                               if w <= lng <= e and s <= lat <= n]
+                        pts = [(lng, lat) for way in by_name.get(stripped, ())
+                               for lng, lat in way if w <= lng <= e and s <= lat <= n]
                 if pts:
                     local[name] = [round(sum(p[0] for p in pts) / len(pts), 5),
                                     round(sum(p[1] for p in pts) / len(pts), 5)]
