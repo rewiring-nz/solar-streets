@@ -242,6 +242,16 @@ TLA_REGION_OVERRIDES = {
     "Rotorua District": "Bay of Plenty",
 }
 
+# GUEHMT (fetch_trends' battery-count source) spells one council's name
+# without macrons, unlike every other real council name used throughout
+# this file -- verified live: "Manawatu-Wanganui" (GUEHMT) vs the real
+# "Manawatū-Whanganui" is the only mismatch across all 16 councils, and
+# without this it would silently drop that one council's real battery
+# data (see council_battery/main()).
+GUEHMT_COUNCIL_ALIASES = {
+    "Manawatu-Wanganui": "Manawatū-Whanganui",
+}
+
 SUPPRESSED = 2       # EMI's "3 or less" counted as this many
 
 session = requests.Session()
@@ -1272,6 +1282,8 @@ def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_r
                 "name": name, "council": row["council"],
                 "icps": row["icps"], "kW": row["kW"], "councilPct": row.get("councilPct"),
                 "estPct": row.get("estPct"),
+                "councilBattInstalls": row.get("councilBattInstalls"),
+                "councilBattPct": row.get("councilBattPct"),
             },
         })
 
@@ -1872,6 +1884,7 @@ def main():
         print(f"Town names unavailable ({exc}) -- town-level grouping will be omitted")
         town_anchors = {}
 
+    council_battery = {}   # {council: {"installs": N, "battery": N, "pct": N}} -- see below
     try:
         trends = fetch_trends()
         # So the frontend can offer "drill into a network region within
@@ -1897,6 +1910,25 @@ def main():
             for name, row in networks.items()
         }
         save(OUT_TRENDS, trends)
+
+        # Real council-level battery counts, for the region list/popups
+        # (see below, after region_tree/towns exist). The most recent
+        # month of the same real EMI series the trend chart already
+        # draws on -- installs and battery come from the same GUEHMT
+        # pull here, so the % is a real join, not a number paired across
+        # two different sources (which is exactly the kind of mismatch
+        # that caused the Nelson estPct bug elsewhere in this file).
+        # Only council granularity is published, not per-TLA/town, so
+        # those show this same council figure labelled as such rather
+        # than a number of their own that doesn't exist.
+        for name, series in trends["councils"].items():
+            name = GUEHMT_COUNCIL_ALIASES.get(name, name)
+            installs, battery = series["installs"][-1], series["battery"][-1]
+            if installs:
+                council_battery[name] = {
+                    "installs": installs, "battery": battery,
+                    "pct": round(battery / installs * 100, 1),
+                }
     except Exception as exc:                       # noqa: BLE001
         print(f"Trend history unavailable ({exc}) -- charts will be omitted")
 
@@ -1988,6 +2020,19 @@ def main():
     council_pct = {r["name"]: r["pct"] for r in region_tree}
     for t in towns:
         t["councilPct"] = council_pct.get(t["council"], 0)
+
+    # Real battery counts (see council_battery, above) -- council-level
+    # only, attached directly to region_tree entries (regions' own real
+    # numbers) and as labelled council context on towns, same pattern as
+    # councilPct just above.
+    for r in region_tree:
+        cb = council_battery.get(r["name"])
+        if cb:
+            r["battInstalls"], r["battPct"] = cb["battery"], cb["pct"]
+    for t in towns:
+        cb = council_battery.get(t["council"])
+        if cb:
+            t["councilBattInstalls"], t["councilBattPct"] = cb["battery"], cb["pct"]
 
     # Month-over-month change, for the leaderboard -- see _change() and
     # PREV_TOWN_TOTALS. Each council's previous total is summed from last

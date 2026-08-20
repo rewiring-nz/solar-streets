@@ -973,10 +973,18 @@ function loadSolarTownsLayer() {
         const pctLine = pct != null
           ? `<div class="popup-pct">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
           : "";
+        // Battery counts only exist at council granularity (EMI's GUEHMT
+        // report, not per-street) -- councilBattInstalls/councilBattPct
+        // are the parent council's own real, current numbers, same as
+        // councilPct just below, not a per-town figure that doesn't exist.
+        const battLine = p.councilBattPct != null
+          ? `<span class="popup-sub">With batteries: <strong>${fmt(p.councilBattInstalls)}</strong> &nbsp;|&nbsp; ${(+p.councilBattPct).toFixed(1)}%</span><br>`
+          : "";
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
           `<strong>${p.name}</strong><br>` + pctLine +
-          `<span class="popup-sub">${fmt(p.icps)} installs &middot; ${fmtMW(p.kW)} MW</span>` +
-          (p.councilPct != null ? `<br><span class="popup-sub">${p.council} region: ${(+p.councilPct).toFixed(1)}%</span>` : "")
+          `<span class="popup-sub">Total solar installs: <strong>${fmt(p.icps)}</strong> &nbsp;|&nbsp; ${fmtMW(p.kW)} MW</span><br>` +
+          battLine +
+          (p.councilPct != null ? `<span class="popup-sub">${p.council} region: ${(+p.councilPct).toFixed(1)}%</span>` : "")
         ).addTo(map);
       });
       let hoveredTownId = null;
@@ -1074,10 +1082,18 @@ function loadSolarRegionsLayer() {
         const pctLine = pct != null
           ? `<div class="popup-pct">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
           : "";
+        // Battery counts only exist at council granularity (EMI's GUEHMT
+        // report, not per-street) -- r.battInstalls/r.battPct are the
+        // parent council's own real, current numbers, same as r.pct
+        // just below, not a per-TLA figure that doesn't exist.
+        const battLine = r.battPct != null
+          ? `<span class="popup-sub">With batteries: <strong>${fmt(r.battInstalls)}</strong> &nbsp;|&nbsp; ${r.battPct.toFixed(1)}%</span><br>`
+          : "";
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
           districtLine + pctLine +
-          `<span class="popup-sub">${fmt(p.icps)} installs &middot; ${fmtMW(p.kW)} MW</span>` +
-          (r.pct != null ? `<br><span class="popup-sub">${r.name} region: ${r.pct.toFixed(1)}% of connections</span>` : "")
+          `<span class="popup-sub">Total solar installs: <strong>${fmt(p.icps)}</strong> &nbsp;|&nbsp; ${fmtMW(p.kW)} MW</span><br>` +
+          battLine +
+          (r.pct != null ? `<span class="popup-sub">${r.name} region: ${r.pct.toFixed(1)}% of connections</span>` : "")
         ).addTo(map);
         // Solar's real trend data only goes down to council/region level
         // (see solarFocusFor), not per-TLA, so a click always jumps the
@@ -1142,6 +1158,12 @@ function visibleRegions() {
 }
 
 function solarRegionRowHTML(r, rank) {
+  // Real EMI battery count/% for this council (see council_battery/
+  // process.py) -- same real-join granularity as everything else in
+  // this row, not an estimate.
+  const battLine = r.battPct != null
+    ? `<span class="detail">${fmt(r.battInstalls)} with battery (${r.battPct.toFixed(1)}%)</span>`
+    : "";
   return `
     <div class="row-main">
       <span class="row-rank">${rank}</span>
@@ -1151,6 +1173,7 @@ function solarRegionRowHTML(r, rank) {
       <div class="row-metric">
         <span class="headline">${fmt(r.icps)} installs</span>
         <span class="detail">${fmtMW(r.kW)} MW${r.pct != null ? ` · ${r.pct.toFixed(1)}%` : ""}</span>
+        ${battLine}
       </div>
     </div>`;
 }
