@@ -266,6 +266,10 @@
   body.dataset-ev .chart-tab.active { background: var(--cyan); color: #062229; }
   .chart-tab:not(.active):hover { color: var(--text); }
 
+  .lb-month {
+    font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+    color: var(--dim); margin-bottom: 8px;
+  }
   .leaderboard-list { display: flex; flex-direction: column; }
   .lb-row {
     display: flex; align-items: baseline; gap: 8px; padding: 7px 0;
@@ -276,7 +280,6 @@
   .lb-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; }
   .lb-change { font-size: 12px; font-weight: 700; white-space: nowrap; }
   .lb-change.up { color: var(--up); }
-  .lb-change.down { color: #f87171; }
   .lb-change small { font-weight: 600; opacity: .8; }
   .leaderboard-empty { padding: 10px 0; font-size: 12px; color: var(--dim); }
 
@@ -656,6 +659,7 @@ let SOLAR_MODE = "points";
 const fmt = n => n.toLocaleString();
 const fmtMW = kW => (kW / 1000).toLocaleString(undefined, { maximumFractionDigits: kW >= 10000 ? 0 : 1 });
 const MONTHS3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 // Small towns have no real per-town ICP total to divide by (EMI only
 // publishes that at network-region granularity) -- estPct is a
@@ -1135,7 +1139,16 @@ function isChartOpen() { return topbarEl.classList.contains("expanded"); }
 // to trigger a natural re-render, so clicking twice in a row before
 // any pan left it stuck on the stale label from the first click.
 function closeChartPanel() { topbarEl.classList.remove("expanded"); renderTopbar(); }
-function openChartPanel() { topbarEl.classList.add("expanded"); renderTopbar(); }
+// Always opens on Trend, Leaderboard sitting there as the unselected tab
+// to click into -- rather than reopening on whichever tab was last
+// picked, which would leave a returning visitor looking at last week's
+// leaderboard tab with no clue why the trend chart didn't come up.
+function openChartPanel() {
+  chartMode = "trend";
+  chartTabsEl.querySelectorAll(".chart-tab").forEach(b => b.classList.toggle("active", b.dataset.mode === "trend"));
+  topbarEl.classList.add("expanded");
+  renderTopbar();
+}
 function openRegionsPanel() { setDashHidden(false); }
 function closeRegionsPanel() { setDashHidden(true); }
 
@@ -1690,27 +1703,41 @@ function renderEvChartSelection() {
 // to compare (see _change()'s doc comment), so rows without a change
 // are filtered out rather than shown as a false "no change".
 function renderLeaderboard() {
-  const list = DATASET === "ev" ? evRegions : regionData;
-  const unit = DATASET === "ev" ? "EVs" : "installs";
+  const isEv = DATASET === "ev";
+  const list = isEv ? evRegions : regionData;
+  const unit = isEv ? "EVs" : "installs";
+  // The data's own month, not "this month" -- the pipeline runs weekly
+  // but EMI/NZTA only republish monthly, so metaUpdated/evUpdated is
+  // whichever month the current snapshot actually reflects.
+  const asOf = isEv ? evUpdated : metaUpdated;
+  const monthLine = asOf
+    ? `<div class="lb-month">In the month of ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()}</div>`
+    : "";
   const rows = (list || [])
-    .filter(r => r.change != null)
+    // A leaderboard is for "what grew" -- a negative figure here is more
+    // likely a reporting/attribution quirk (an EV re-registered to a new
+    // owner's district, an ICP counted under a different network this
+    // month) than a real solar system being torn out or a real EV
+    // parked up, so decliners are left off entirely rather than shown
+    // as a false "this fell" signal.
+    .filter(r => r.change != null && r.change > 0)
     .slice()
     .sort((a, b) => b.change - a.change)
     .slice(0, 10);
   if (!rows.length) {
-    leaderboardViewEl.innerHTML = `<div class="leaderboard-empty">No comparison data yet -- check back after next month's update.</div>`;
+    leaderboardViewEl.innerHTML = monthLine +
+      `<div class="leaderboard-empty">No comparison data yet -- check back after next month's update.</div>`;
     return;
   }
-  leaderboardViewEl.innerHTML = `<div class="leaderboard-list">` + rows.map((r, i) => {
-    const sign = r.change > 0 ? "+" : "";
-    const pctSign = r.changePct > 0 ? "+" : "";
-    const dir = r.change > 0 ? "up" : (r.change < 0 ? "down" : "");
-    return `<div class="lb-row">` +
+  // Every row that survives the filter above is a real gain, so the
+  // sign/colour is always the "up" case -- no down/flat branch needed.
+  leaderboardViewEl.innerHTML = monthLine + `<div class="leaderboard-list">` + rows.map((r, i) =>
+    `<div class="lb-row">` +
       `<span class="lb-rank">${i + 1}</span>` +
       `<span class="lb-name">${r.name}</span>` +
-      `<span class="lb-change ${dir}">${sign}${fmt(r.change)} ${unit} <small>(${pctSign}${r.changePct.toFixed(1)}%)</small></span>` +
-      `</div>`;
-  }).join("") + `</div>`;
+      `<span class="lb-change up">+${fmt(r.change)} ${unit} <small>(+${r.changePct.toFixed(1)}%)</small></span>` +
+    `</div>`
+  ).join("") + `</div>`;
 }
 
 async function renderFocusChart() {
