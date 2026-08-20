@@ -830,7 +830,14 @@ function loadSolarTownsLayer() {
         id: "solar-town-boundaries-fill", type: "fill", source: "solar-town-boundaries",
         layout: { visibility: "none" },
         paint: {
-          "fill-color": DOT_COLOR,
+          // Same light-yellow-to-dark-orange scale as Regions mode,
+          // by this town's own estPct -- falling back to its council's
+          // real % only for the few small-sample towns with no
+          // estimate at all.
+          "fill-color": [
+            "interpolate", ["linear"], ["coalesce", ["get", "estPct"], ["get", "councilPct"], 0],
+            0, "#fff6d6", 2, "#ffe08a", 4, "#ffb703", 8, "#c2410c",
+          ],
           // Full opacity under the cursor -- same hover cue as solar's
           // Regions mode -- scaled up from the base opacity.
           "fill-opacity": ["case", ["boolean", ["feature-state", "hover"], false], .7, .4],
@@ -920,7 +927,7 @@ function loadSolarRegionsLayer() {
             "case", ["==", ["get", "estPct"], null], "",
             ["concat", ["number-format", ["get", "estPct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
           ],
-          "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": true,
+          "text-font": ["Noto Sans Bold"], "text-size": 11, "text-allow-overlap": true,
         },
         paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0,0,0,.45)", "text-halo-width": 1 },
       });
@@ -942,6 +949,11 @@ function loadSolarRegionsLayer() {
           `Solar installs: <strong>${fmt(p.icps)}</strong><br>${fmtMW(p.kW)} MW${estBadge(p.estPct != null ? +p.estPct : null)}` +
           (r.pct != null ? `<br><span style="opacity:.6;font-size:.85em">${r.name} region: ${r.pct.toFixed(1)}% of connections</span>` : "")
         ).addTo(map);
+        // Solar's real trend data only goes down to council/region level
+        // (see solarFocusFor), not per-TLA, so a click always jumps the
+        // chart to the clicked district's parent council -- r.name, not
+        // p.tla/p.name.
+        if (isChartOpen()) applyFocusFromMap("council", r.name);
       });
       let hoveredRegionId = null;
       map.on("mousemove", "solar-regions-fill", e => {
@@ -1220,6 +1232,10 @@ function addEvLayer(boundaries) {
         (t.pct != null ? ` <small class="muted">(${t.pct.toFixed(1)}% of the local fleet)</small>` : "") +
         `<div class="ev-categories" style="padding-left:0;margin-top:6px">${catLines}</div>`
       ).addTo(map);
+    // Unlike solar, EV trend data is real down to district (TLA) level
+    // (evTrends.tlas), so a click jumps the chart straight to the
+    // clicked district itself rather than up to its region.
+    if (isChartOpen()) applyFocusFromMap("tla", t.name);
   });
   let hoveredEvId = null;
   map.on("mousemove", "ev-fill", e => {
@@ -1518,6 +1534,18 @@ function populateEvChartSelect(focus) {
     for (const t of evTlas) {
       if (t.region === focus.name) html += `<option value="tla:${t.name}">${t.name}</option>`;
     }
+  } else if (focus.level === "tla") {
+    // A map click on a district lands here directly (its own region-level
+    // trend still exists to fly back up to, unlike solar's networks --
+    // see solarFocusFor/click handler below), so the dropdown needs to
+    // show the parent region's whole list with this district marked, not
+    // just the one option.
+    const t = evTlas.find(x => x.name === focus.name);
+    const region = t && t.region;
+    html += `<option value="region:${region || ""}"${region ? "" : " selected"}>${region || focus.name} (region)</option>`;
+    for (const tt of evTlas) {
+      if (tt.region === region) html += `<option value="tla:${tt.name}"${tt.name === focus.name ? " selected" : ""}>${tt.name}</option>`;
+    }
   }
   chartSelectEl.innerHTML = html;
 }
@@ -1580,6 +1608,28 @@ async function renderFocusChart() {
   renderChartSelection(td, chartSelectEl.value);
   chartLegendEl.innerHTML = `<span><i class="swatch installs"></i>Solar installs</span>` +
     `<span><i class="swatch battery"></i>% of installs with a battery</span>`;
+}
+
+// Clicking a region/district on the map, while the chart is open, jumps
+// the chart+topbar to it too -- same underlying state (currentFocus) the
+// dropdown drives, just triggered from the map instead. Unlike the
+// dropdown's own change handler, this DOES repopulate the dropdown first
+// (see populateChartSelect/populateEvChartSelect), because the click
+// didn't come through the dropdown itself -- its displayed value would
+// otherwise silently disagree with what the chart just switched to.
+async function applyFocusFromMap(level, name) {
+  if (DATASET === "ev") {
+    currentFocus = evFocusFor(level, name);
+    populateEvChartSelect(currentFocus);
+    renderEvTopbarStats();
+    renderEvChartSelection();
+  } else {
+    const td = await loadTrends();
+    currentFocus = solarFocusFor(level, name, td);
+    populateChartSelect(td, currentFocus);
+    renderTopbarStats();
+    renderChartSelection(td, chartSelectEl.value);
+  }
 }
 
 topbarStatsEl.addEventListener("click", e => {
