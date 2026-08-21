@@ -1437,65 +1437,114 @@ def _fmt_vehicle(make, model):
 
 
 def fetch_ev_vehicle_models(tla_names):
-    """Real Make/Model breakdown of the current electric fleet, per TLA.
+    """Real Make/Model breakdown of the current electric fleet, per TLA,
+    alongside each vehicle's VEHICLE_TYPE/BODY_TYPE -- everything
+    EV_CATEGORIES' clauses key off, so _ev_category_for can bucket
+    every row into a category client-side without 7 more queries.
 
-    One groupBy(MAKE, MODEL) query per TLA, rather than a single
-    TLA x MAKE x MODEL query -- verified live that the MVR server
-    silently truncates any single grouped query at 2000 rows
-    (exceededTransferLimit) once that 3-way combination is requested,
-    while even Auckland alone (the single biggest TLA) returns a
-    complete, untruncated 839 rows when queried on its own. Getting
-    each TLA's *full* breakdown (not just a truncated top slice)
-    matters because region/national totals below are summed from
-    these per-TLA results rather than fetched separately.
+    One groupBy(VEHICLE_TYPE, BODY_TYPE, MAKE, MODEL) query per TLA,
+    rather than a single TLA x MAKE x MODEL query -- verified live that
+    the MVR server silently truncates any single grouped query at 2000
+    rows (exceededTransferLimit) once that 3-way combination is
+    requested, while even Auckland alone (the single biggest TLA)
+    returns a complete, untruncated 951 rows on the 4-field group
+    queried on its own -- one MAKE/MODEL is practically always the same
+    VEHICLE_TYPE/BODY_TYPE, so adding those two fields barely raises
+    the row count. Getting each TLA's *full* breakdown (not just a
+    truncated top slice) matters because region/national totals below
+    are summed from these per-TLA results rather than fetched
+    separately.
     """
     print("Fetching EV make/model breakdown from the Motor Vehicle Register...")
     by_tla = {}
     for raw, name in tla_names.items():
         escaped = raw.replace("'", "''")   # e.g. "Central Hawke's Bay District"
-        rows = _mvr_query(f"MOTIVE_POWER = 'ELECTRIC' AND TLA = '{escaped}'", "MAKE,MODEL")
+        rows = _mvr_query(
+            f"MOTIVE_POWER = 'ELECTRIC' AND TLA = '{escaped}'",
+            "VEHICLE_TYPE,BODY_TYPE,MAKE,MODEL",
+        )
         models = []
         for r in rows:
             a = r["attributes"]
             make, model = a.get("MAKE"), a.get("MODEL")
             if make and model:
-                models.append((make, model, a["cnt"]))
+                models.append((a.get("VEHICLE_TYPE"), a.get("BODY_TYPE"), make, model, a["cnt"]))
         by_tla[name] = models
     return by_tla
 
 
 TOP_VEHICLES_N = 50
+VEHICLE_CATEGORY_ALL = "All"
+
+
+def _ev_category_for(vehicle_type, body_type):
+    """Classify one vehicle's VEHICLE_TYPE/BODY_TYPE into the same
+    category a given EV_CATEGORIES clause would match -- hand-ported
+    from those SQL clauses (kept in sync with them by hand, since
+    they're simple enough that a real SQL-clause evaluator would be
+    overkill) rather than 7 separate per-category queries.
+    """
+    if vehicle_type == "PASSENGER CAR/VAN" and body_type not in ("LIGHT VAN", "HEAVY VAN"):
+        return "Cars"
+    if body_type == "UTILITY":
+        return "Utes"
+    if body_type in ("LIGHT VAN", "HEAVY VAN"):
+        return "Vans"
+    if vehicle_type in ("MOTORCYCLE", "MOPED"):
+        return "Motorbikes"
+    if body_type in ("FLAT-DECK TRUCK", "ARTICULATED TRUCK", "OTHER TRUCK", "CAB AND CHASSIS ONLY"):
+        return "Trucks"
+    if vehicle_type == "BUS":
+        return "Buses"
+    if vehicle_type == "TRACTOR":
+        return "Tractors"
+    return None   # e.g. ATVs -- not one of EV_CATEGORIES' buckets, and left out of "All" too
 
 
 def build_top_vehicles(tla_models, tla_region):
     """National + per-region + per-TLA "most popular vehicle" lists,
+    each keyed by category ("All" plus every name in EV_CATEGORIES) --
     rolled up from fetch_ev_vehicle_models' real per-TLA counts (never
     a separate national/region query -- see that function's docstring
     for why summing here is the accurate path, not just the
     convenient one).
     """
-    def top(counter):
-        items = sorted(counter.items(), key=lambda kv: kv[1], reverse=True)[:TOP_VEHICLES_N]
-        return [{"make": make, "model": model, "count": c} for (make, model), c in items]
+    categories = [VEHICLE_CATEGORY_ALL] + [name for name, _ in EV_CATEGORIES]
 
-    tlas_out, region_acc, national_acc = {}, {}, {}
+    def empty_counters():
+        return {cat: {} for cat in categories}
+
+    def top_all(counters):
+        return {
+            cat: [
+                {"make": make, "model": model, "count": c}
+                for (make, model), c in sorted(counter.items(), key=lambda kv: kv[1], reverse=True)[:TOP_VEHICLES_N]
+            ]
+            for cat, counter in counters.items()
+        }
+
+    tlas_out, region_acc, national_acc = {}, {}, empty_counters()
     for tla, models in tla_models.items():
-        counter = {}
-        for make, model, cnt in models:
+        counters = empty_counters()
+        for vehicle_type, body_type, make, model, cnt in models:
             key = _fmt_vehicle(make, model)
-            counter[key] = counter.get(key, 0) + cnt
-        tlas_out[tla] = top(counter)
+            counters[VEHICLE_CATEGORY_ALL][key] = counters[VEHICLE_CATEGORY_ALL].get(key, 0) + cnt
+            cat = _ev_category_for(vehicle_type, body_type)
+            if cat:
+                counters[cat][key] = counters[cat].get(key, 0) + cnt
+        tlas_out[tla] = top_all(counters)
 
         region = tla_region.get(tla)
-        racc = region_acc.setdefault(region, {}) if region else None
-        for key, cnt in counter.items():
-            if racc is not None:
-                racc[key] = racc.get(key, 0) + cnt
-            national_acc[key] = national_acc.get(key, 0) + cnt
+        racc = region_acc.setdefault(region, empty_counters()) if region else None
+        for cat, counter in counters.items():
+            for key, cnt in counter.items():
+                if racc is not None:
+                    racc[cat][key] = racc[cat].get(key, 0) + cnt
+                national_acc[cat][key] = national_acc[cat].get(key, 0) + cnt
 
     return {
-        "national": top(national_acc),
-        "regions": {name: top(acc) for name, acc in region_acc.items()},
+        "national": top_all(national_acc),
+        "regions": {name: top_all(acc) for name, acc in region_acc.items()},
         "tlas": tlas_out,
     }
 

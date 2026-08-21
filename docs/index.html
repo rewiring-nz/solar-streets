@@ -351,10 +351,12 @@
   /* Make/model breakdown only exists for the EV dataset -- solar has no
      equivalent, so the tab isn't just inert there, it's absent. */
   body:not(.dataset-ev) #vehicleDetailsTab { display: none; }
+  #vehicleCategorySelect { margin-bottom: 8px; }
   /* Up to 50 rows (see TOP_VEHICLES_N in process.py) -- far more than
-     the panel's fixed 420px can show at once, so this scrolls on its
-     own rather than the whole chart panel just clipping the rest. */
-  #vehicleDetailsView { max-height: 300px; overflow-y: auto; }
+     the panel's fixed 420px can show at once, so the list scrolls on
+     its own (the category select above stays put) rather than the
+     whole chart panel just clipping the rest. */
+  #vehicleDetailsList { max-height: 250px; overflow-y: auto; }
 
   .lb-month {
     font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
@@ -428,7 +430,10 @@
             </div>
           </div>
           <div id="leaderboardView" class="hidden"></div>
-          <div id="vehicleDetailsView" class="hidden"></div>
+          <div id="vehicleDetailsView" class="hidden">
+            <select id="vehicleCategorySelect" class="chart-select"></select>
+            <div id="vehicleDetailsList"></div>
+          </div>
           <div class="data-sources">
             Solar: EMI (Electricity Authority) · EVs: NZTA Motor Vehicle Register ·
             Streets: OpenStreetMap contributors · Areas: Stats NZ · Towns: LINZ
@@ -1517,7 +1522,10 @@ const chartTabsEl = document.getElementById("chartTabs");
 const trendViewEl = document.getElementById("trendView");
 const leaderboardViewEl = document.getElementById("leaderboardView");
 const vehicleDetailsViewEl = document.getElementById("vehicleDetailsView");
+const vehicleCategorySelectEl = document.getElementById("vehicleCategorySelect");
+const vehicleDetailsListEl = document.getElementById("vehicleDetailsList");
 let chartMode = "trend";   // "trend" | "leaderboard" | "vehicles" -- which view topbarChart's panel shows
+let vehicleCategoryFilter = "All";   // persists across focus changes, like chartMode
 
 // Fixed stacking order (largest category at the base) and a colour per
 // category for the chart's stacked areas, the map choropleth legend
@@ -2080,6 +2088,10 @@ function renderLeaderboard() {
 // full, unfiltered query result, not a separate national/region fetch).
 // Solar has no vehicle data, so this is only ever reachable under the
 // EV dataset (see #vehicleDetailsTab's CSS).
+// Returns { All: [...], Cars: [...], Utes: [...], ... } for the given
+// level/name -- see build_top_vehicles in process.py, which buckets
+// each TLA's real vehicles into these same categories (kept in sync
+// with EV_CATEGORIES there) alongside the unfiltered "All" list.
 function vehiclesFor(level, name) {
   if (!evTopVehicles) return null;
   if (level === "region") return evTopVehicles.regions[name] || null;
@@ -2088,14 +2100,34 @@ function vehiclesFor(level, name) {
 }
 
 function renderVehicleDetails() {
-  const list = vehiclesFor(currentFocus.level, currentFocus.name);
+  const byCategory = vehiclesFor(currentFocus.level, currentFocus.name);
   const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
-  const total = stats && stats.ev;
-  if (!list || !list.length) {
-    vehicleDetailsViewEl.innerHTML = `<div class="leaderboard-empty">No vehicle data yet for this area.</div>`;
+  if (!byCategory) {
+    vehicleCategorySelectEl.innerHTML = "";
+    vehicleDetailsListEl.innerHTML = `<div class="leaderboard-empty">No vehicle data yet for this area.</div>`;
     return;
   }
-  vehicleDetailsViewEl.innerHTML = `<div class="leaderboard-list">` + list.map((v, i) => {
+  // Only offer categories that actually have a real vehicle here --
+  // an empty "Tractors" option in a city district would just be a
+  // dead end to click.
+  const available = ["All", ...EV_CHART_ORDER].filter(cat => (byCategory[cat] || []).length);
+  if (!available.includes(vehicleCategoryFilter)) vehicleCategoryFilter = "All";
+  vehicleCategorySelectEl.innerHTML = available.map(cat =>
+    `<option value="${cat}"${cat === vehicleCategoryFilter ? " selected" : ""}>${cat}</option>`
+  ).join("");
+
+  const list = byCategory[vehicleCategoryFilter] || [];
+  // % is of that category's own real total (e.g. % of buses), not all
+  // EVs, once a specific category is picked -- against the overall EV
+  // count, a popular bus model would misleadingly read as ~0%.
+  const total = vehicleCategoryFilter === "All"
+    ? stats && stats.ev
+    : stats && stats.categories && stats.categories[vehicleCategoryFilter] && stats.categories[vehicleCategoryFilter].ev;
+  if (!list.length) {
+    vehicleDetailsListEl.innerHTML = `<div class="leaderboard-empty">No vehicles in this category here.</div>`;
+    return;
+  }
+  vehicleDetailsListEl.innerHTML = `<div class="leaderboard-list">` + list.map((v, i) => {
     const pct = total ? ` <small>(${(v.count / total * 100).toFixed(1)}%)</small>` : "";
     return `<div class="lb-row">` +
       `<span class="lb-rank">${i + 1}</span>` +
@@ -2104,6 +2136,11 @@ function renderVehicleDetails() {
     `</div>`;
   }).join("") + `</div>`;
 }
+
+vehicleCategorySelectEl.addEventListener("change", () => {
+  vehicleCategoryFilter = vehicleCategorySelectEl.value;
+  renderVehicleDetails();
+});
 
 async function renderFocusChart() {
   trendViewEl.classList.toggle("hidden", chartMode !== "trend");
