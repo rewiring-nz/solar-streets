@@ -30,25 +30,6 @@
    "changePct": 0.0
   },
   {
-   "name": "Northland",
-   "icps": 6916,
-   "kW": 89172.5,
-   "totalIcps": 98676,
-   "pct": 6.47,
-   "bbox": [
-    -36.396324,
-    172.635244,
-    -34.39263,
-    174.783576
-   ],
-   "lat": -35.4128,
-   "lng": 173.8927,
-   "battInstalls": 1039,
-   "battPct": 16.2,
-   "change": 0,
-   "changePct": 0.0
-  },
-  {
    "name": "Marlborough",
    "icps": 1870,
    "kW": 48749.6,
@@ -64,6 +45,25 @@
    "lng": 173.9068,
    "battInstalls": 372,
    "battPct": 21.4,
+   "change": 0,
+   "changePct": 0.0
+  },
+  {
+   "name": "Northland",
+   "icps": 6916,
+   "kW": 89172.5,
+   "totalIcps": 98676,
+   "pct": 6.47,
+   "bbox": [
+    -36.396324,
+    172.635244,
+    -34.39263,
+    174.783576
+   ],
+   "lat": -35.4128,
+   "lng": 173.8927,
+   "battInstalls": 1039,
+   "battPct": 16.2,
    "change": 0,
    "changePct": 0.0
   },
