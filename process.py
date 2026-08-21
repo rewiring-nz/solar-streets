@@ -1421,6 +1421,85 @@ def fetch_ev_snapshot(tla_names):
     return overall_ev, overall_total, categories
 
 
+def _fmt_vehicle_word(w):
+    """NZTA's MAKE/MODEL come back shouting ("TESLA", "MODEL Y"). Title-
+    case each word for display, except short tokens/anything with a
+    digit -- brand initialisms (BMW, MG, BYD) and model codes (EV6,
+    ID.4) read wrong title-cased ("Bmw", "Ev6"), so those are left as
+    the register spells them.
+    """
+    return w if len(w) <= 3 or any(c.isdigit() for c in w) else w.capitalize()
+
+
+def _fmt_vehicle(make, model):
+    return (" ".join(_fmt_vehicle_word(w) for w in make.split()),
+            " ".join(_fmt_vehicle_word(w) for w in model.split()))
+
+
+def fetch_ev_vehicle_models(tla_names):
+    """Real Make/Model breakdown of the current electric fleet, per TLA.
+
+    One groupBy(MAKE, MODEL) query per TLA, rather than a single
+    TLA x MAKE x MODEL query -- verified live that the MVR server
+    silently truncates any single grouped query at 2000 rows
+    (exceededTransferLimit) once that 3-way combination is requested,
+    while even Auckland alone (the single biggest TLA) returns a
+    complete, untruncated 839 rows when queried on its own. Getting
+    each TLA's *full* breakdown (not just a truncated top slice)
+    matters because region/national totals below are summed from
+    these per-TLA results rather than fetched separately.
+    """
+    print("Fetching EV make/model breakdown from the Motor Vehicle Register...")
+    by_tla = {}
+    for raw, name in tla_names.items():
+        escaped = raw.replace("'", "''")   # e.g. "Central Hawke's Bay District"
+        rows = _mvr_query(f"MOTIVE_POWER = 'ELECTRIC' AND TLA = '{escaped}'", "MAKE,MODEL")
+        models = []
+        for r in rows:
+            a = r["attributes"]
+            make, model = a.get("MAKE"), a.get("MODEL")
+            if make and model:
+                models.append((make, model, a["cnt"]))
+        by_tla[name] = models
+    return by_tla
+
+
+TOP_VEHICLES_N = 10
+
+
+def build_top_vehicles(tla_models, tla_region):
+    """National + per-region + per-TLA "most popular vehicle" lists,
+    rolled up from fetch_ev_vehicle_models' real per-TLA counts (never
+    a separate national/region query -- see that function's docstring
+    for why summing here is the accurate path, not just the
+    convenient one).
+    """
+    def top(counter):
+        items = sorted(counter.items(), key=lambda kv: kv[1], reverse=True)[:TOP_VEHICLES_N]
+        return [{"make": make, "model": model, "count": c} for (make, model), c in items]
+
+    tlas_out, region_acc, national_acc = {}, {}, {}
+    for tla, models in tla_models.items():
+        counter = {}
+        for make, model, cnt in models:
+            key = _fmt_vehicle(make, model)
+            counter[key] = counter.get(key, 0) + cnt
+        tlas_out[tla] = top(counter)
+
+        region = tla_region.get(tla)
+        racc = region_acc.setdefault(region, {}) if region else None
+        for key, cnt in counter.items():
+            if racc is not None:
+                racc[key] = racc.get(key, 0) + cnt
+            national_acc[key] = national_acc.get(key, 0) + cnt
+
+    return {
+        "national": top(national_acc),
+        "regions": {name: top(acc) for name, acc in region_acc.items()},
+        "tlas": tlas_out,
+    }
+
+
 def fetch_ev_trends(tla_names):
     """Yearly EV history per TLA, overall and per category -- "vehicles
     first registered in NZ in year Y that are still on the road today",
@@ -1941,6 +2020,8 @@ def main():
                 tlas, tla_region, tla_centroids, council_bounds,
                 overall_ev, overall_total, ev_categories, ev_years, ev_trend_series,
             )
+            ev_vehicle_models = fetch_ev_vehicle_models(tla_names)
+            top_vehicles = build_top_vehicles(ev_vehicle_models, tla_region)
 
             # Month-over-month change, for the leaderboard -- see
             # _change() and PREV_EV_TOTALS. TLA totals compare directly
@@ -1968,6 +2049,7 @@ def main():
                 "regions": ev_regions,
                 "tlas": ev_tlas,
                 "trends": ev_trends,
+                "topVehicles": top_vehicles,
             })
             write_ev_boundaries(ev_tlas)
         except Exception as exc:                       # noqa: BLE001

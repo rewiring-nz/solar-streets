@@ -348,6 +348,9 @@
   .chart-tab.active { background: var(--amber); color: #241a00; }
   body.dataset-ev .chart-tab.active { background: var(--cyan); color: #062229; }
   .chart-tab:not(.active):hover { color: var(--text); }
+  /* Make/model breakdown only exists for the EV dataset -- solar has no
+     equivalent, so the tab isn't just inert there, it's absent. */
+  body:not(.dataset-ev) #vehicleDetailsTab { display: none; }
 
   .lb-month {
     font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
@@ -365,6 +368,8 @@
   .lb-change.up { color: var(--up); }
   .lb-change small { font-weight: 600; opacity: .8; }
   .leaderboard-empty { padding: 10px 0; font-size: 12px; color: var(--dim); }
+  .lb-count { font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--cyan); }
+  .lb-count small { font-weight: 600; opacity: .8; color: var(--dim); }
 
   .chart-select {
     background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--text);
@@ -408,6 +413,7 @@
           <div class="chart-tabs" id="chartTabs">
             <button type="button" class="chart-tab active" data-mode="trend">Trend</button>
             <button type="button" class="chart-tab" data-mode="leaderboard">Leaderboard</button>
+            <button type="button" class="chart-tab" data-mode="vehicles" id="vehicleDetailsTab">Vehicle Details</button>
           </div>
           <div id="trendView">
             <select id="chartSelect" class="chart-select"></select>
@@ -418,6 +424,7 @@
             </div>
           </div>
           <div id="leaderboardView" class="hidden"></div>
+          <div id="vehicleDetailsView" class="hidden"></div>
           <div class="data-sources">
             Solar: EMI (Electricity Authority) · EVs: NZTA Motor Vehicle Register ·
             Streets: OpenStreetMap contributors · Areas: Stats NZ · Towns: LINZ
@@ -1505,7 +1512,8 @@ const chartLegendEl = document.getElementById("chartLegend");
 const chartTabsEl = document.getElementById("chartTabs");
 const trendViewEl = document.getElementById("trendView");
 const leaderboardViewEl = document.getElementById("leaderboardView");
-let chartMode = "trend";   // "trend" | "leaderboard" -- which view topbarChart's panel shows
+const vehicleDetailsViewEl = document.getElementById("vehicleDetailsView");
+let chartMode = "trend";   // "trend" | "leaderboard" | "vehicles" -- which view topbarChart's panel shows
 
 // Fixed stacking order (largest category at the base) and a colour per
 // category for the chart's stacked areas, the map choropleth legend
@@ -1520,6 +1528,7 @@ let evNational = null;
 let evRegions = [];
 let evTlas = [];
 let evTrends = null;
+let evTopVehicles = null;
 let evCategoryNames = [];
 let evUpdated = null;
 let evLoadPromise = null;
@@ -1535,6 +1544,7 @@ function loadEvData() {
       evRegions = ev.regions;
       evTlas = ev.tlas;
       evTrends = ev.trends;
+      evTopVehicles = ev.topVehicles || null;
       evCategoryNames = ev.categories || [];
       evUpdated = ev.updated ? new Date(ev.updated + "T00:00:00Z") : null;
       addEvLayer(boundaries);
@@ -2060,10 +2070,43 @@ function renderLeaderboard() {
   ).join("") + `</div>`;
 }
 
+// Real NZTA Make/Model counts for whichever region/district/national
+// level is currently focused -- see vehiclesFor/build_top_vehicles in
+// process.py for how these lists are built (summed from each TLA's own
+// full, unfiltered query result, not a separate national/region fetch).
+// Solar has no vehicle data, so this is only ever reachable under the
+// EV dataset (see #vehicleDetailsTab's CSS).
+function vehiclesFor(level, name) {
+  if (!evTopVehicles) return null;
+  if (level === "region") return evTopVehicles.regions[name] || null;
+  if (level === "tla") return evTopVehicles.tlas[name] || null;
+  return evTopVehicles.national;
+}
+
+function renderVehicleDetails() {
+  const list = vehiclesFor(currentFocus.level, currentFocus.name);
+  const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
+  const total = stats && stats.ev;
+  if (!list || !list.length) {
+    vehicleDetailsViewEl.innerHTML = `<div class="leaderboard-empty">No vehicle data yet for this area.</div>`;
+    return;
+  }
+  vehicleDetailsViewEl.innerHTML = `<div class="leaderboard-list">` + list.map((v, i) => {
+    const pct = total ? ` <small>(${(v.count / total * 100).toFixed(1)}%)</small>` : "";
+    return `<div class="lb-row">` +
+      `<span class="lb-rank">${i + 1}</span>` +
+      `<span class="lb-name">${v.make} ${v.model}</span>` +
+      `<span class="lb-count">${fmt(v.count)}${pct}</span>` +
+    `</div>`;
+  }).join("") + `</div>`;
+}
+
 async function renderFocusChart() {
-  trendViewEl.classList.toggle("hidden", chartMode === "leaderboard");
+  trendViewEl.classList.toggle("hidden", chartMode !== "trend");
   leaderboardViewEl.classList.toggle("hidden", chartMode !== "leaderboard");
+  vehicleDetailsViewEl.classList.toggle("hidden", chartMode !== "vehicles");
   if (chartMode === "leaderboard") { renderLeaderboard(); return; }
+  if (chartMode === "vehicles") { renderVehicleDetails(); return; }
   if (DATASET === "ev") {
     populateEvChartSelect(currentFocus);
     renderEvChartSelection();
@@ -2096,7 +2139,10 @@ async function applyFocusFromMap(level, name) {
     currentFocus = evFocusFor(level, name);
     populateEvChartSelect(currentFocus);
     renderEvTopbarStats();
-    renderEvChartSelection();
+    // Not renderEvChartSelection() directly -- that's trend-only, and
+    // would silently no-op the Vehicle Details tab if that's what's
+    // currently open when a district is clicked on the map.
+    renderFocusChart();
   } else {
     const td = await loadTrends();
     currentFocus = solarFocusFor(level, name, td);
