@@ -1,6 +1,6 @@
 {
  "updated": "2026-08-20",
- "streets": 36041,
+ "streets": 36039,
  "streetsTotal": 36979,
  "matchRate": 97.5,
  "national": {
@@ -30,25 +30,6 @@
    "changePct": 0.0
   },
   {
-   "name": "Northland",
-   "icps": 6916,
-   "kW": 89172.5,
-   "totalIcps": 98676,
-   "pct": 6.47,
-   "bbox": [
-    -36.396324,
-    172.635244,
-    -34.39263,
-    174.783576
-   ],
-   "lat": -35.4128,
-   "lng": 173.8927,
-   "battInstalls": 1039,
-   "battPct": 16.2,
-   "change": 0,
-   "changePct": 0.0
-  },
-  {
    "name": "Marlborough",
    "icps": 1870,
    "kW": 48749.6,
@@ -68,9 +49,28 @@
    "changePct": 0.0
   },
   {
+   "name": "Northland",
+   "icps": 6916,
+   "kW": 89172.5,
+   "totalIcps": 98676,
+   "pct": 6.47,
+   "bbox": [
+    -36.396324,
+    172.635244,
+    -34.39263,
+    174.783576
+   ],
+   "lat": -35.4128,
+   "lng": 173.8927,
+   "battInstalls": 1039,
+   "battPct": 16.2,
+   "change": 0,
+   "changePct": 0.0
+  },
+  {
    "name": "Hawke's Bay",
-   "icps": 5183,
-   "kW": 40020.9,
+   "icps": 5179,
+   "kW": 40004.9,
    "totalIcps": 75832,
    "pct": 6.31,
    "bbox": [
@@ -83,8 +83,8 @@
    "lng": 176.9539,
    "battInstalls": 1778,
    "battPct": 36.2,
-   "change": 0,
-   "changePct": 0.0
+   "change": -4,
+   "changePct": -0.1
   },
   {
    "name": "Bay of Plenty",
@@ -4393,15 +4393,15 @@
   {
    "name": "Havelock North",
    "council": "Hawke's Bay",
-   "icps": 982,
-   "kW": 6781.8,
+   "icps": 978,
+   "kW": 6765.8,
    "lat": -39.6712,
    "lng": 176.8872,
    "councilPct": 6.31,
    "councilBattInstalls": 1778,
    "councilBattPct": 36.2,
-   "change": 0,
-   "changePct": 0.0,
+   "change": -4,
+   "changePct": -0.4,
    "estPct": 5.7
   },
   {
