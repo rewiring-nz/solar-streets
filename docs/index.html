@@ -1028,8 +1028,9 @@ function renderTopbarStats() {
   html += `<div class="stat-line">${segs.join("")}</div>`;
   html += `<div class="topbar-actions">`;
   html += `<button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button>`;
+  const MODE_LABELS = { points: "Show Streets", towns: "Towns", regions: "Districts" };
   html += ["points", "towns", "regions"].map(mode =>
-    `<button type="button" class="map-mode-btn${SOLAR_MODE === mode ? " active" : ""}" data-mode="${mode}">Show ${mode[0].toUpperCase()}${mode.slice(1)}</button>`
+    `<button type="button" class="map-mode-btn${SOLAR_MODE === mode ? " active" : ""}" data-mode="${mode}">${MODE_LABELS[mode]}</button>`
   ).join("");
   html += `</div>`;
   topbarStatsEl.innerHTML = html;
@@ -1345,7 +1346,7 @@ function setSolarMode(mode) {
   if (mode === SOLAR_MODE) return;
   const go = () => {
     SOLAR_MODE = mode;
-    listCaptionEl.textContent = mode === "regions" ? "Regions within map view" : "Towns within map view";
+    listCaptionEl.textContent = mode === "regions" ? "Districts within map view" : "Towns within map view";
     applySolarLayers(mode);
     renderBoard();
   };
@@ -1740,7 +1741,7 @@ function setDataset(name) {
     } else {
       // Returning to solar restores whichever map mode was last picked
       // (points/towns/regions), rather than always resetting to points.
-      listCaptionEl.textContent = SOLAR_MODE === "regions" ? "Regions within map view" : "Towns within map view";
+      listCaptionEl.textContent = SOLAR_MODE === "regions" ? "Districts within map view" : "Towns within map view";
       applySolarLayers(SOLAR_MODE);
     }
     setEvLayerVisible(name === "ev");
