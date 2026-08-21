@@ -1172,6 +1172,9 @@ function loadSolarTownsLayer() {
       });
       map.addLayer({
         id: "solar-town-labels", type: "symbol", source: "solar-town-label-points",
+        // Below this, 585 towns' labels overlap into an unreadable mess --
+        // wait until the viewer has zoomed in past a national/regional view.
+        minzoom: 7,
         layout: {
           visibility: "none",
           "text-field": [
