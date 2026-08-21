@@ -281,6 +281,8 @@
   .popup-solar { color: var(--amber); }
   .popup-battery { color: var(--cyan); }
   .popup-section { margin-top: 8px; }
+  .popup-divider { border: none; border-top: 1px solid rgba(255,255,255,.35); margin: 10px 0 8px; }
+  .popup-region-header { font-weight: 700; color: var(--text); font-size: 12.5px; margin-bottom: 4px; }
 
   /* ============ Methodology button + popup ============ */
   #methodologyBtn {
@@ -818,20 +820,39 @@ const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this to
 // council's own real % is shown instead, explicitly labelled as the
 // council's rate and captioned "of solar installs" so it's never misread
 // as this shape's own count.
-function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, contextLines }) {
+function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, contextLines, regionSection }) {
   const pctLine = pct != null
     ? `<div class="popup-pct popup-solar">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
     : "";
-  const battLine = battPct != null
-    ? `<div class="popup-section"><span class="popup-sub"><strong class="popup-battery">${battPct.toFixed(1)}%</strong> of solar installs have a battery ` +
-      `<span style="opacity:.75">(${battLabel})</span></span></div>`
-    : "";
+  let lower;
+  if (regionSection) {
+    // Town popups: a visibly separate block for the parent region's own
+    // real figures, under its own heading -- rather than interleaving
+    // them with this town's numbers, so it's never ambiguous which shape
+    // a given line describes (see the header comment above).
+    const lines = [];
+    if (regionSection.pct != null) lines.push(`${regionSection.pct.toFixed(1)}% of connections`);
+    if (regionSection.battPct != null) {
+      lines.push(`<strong class="popup-battery">${regionSection.battPct.toFixed(1)}%</strong> of solar installs have a battery`);
+    }
+    lower = lines.length
+      ? `<hr class="popup-divider">` +
+        `<div class="popup-region-header">${regionSection.name}</div>` +
+        lines.map(l => `<span class="popup-sub">${l}</span>`).join("<br>")
+      : "";
+  } else {
+    const battLine = battPct != null
+      ? `<div class="popup-section"><span class="popup-sub"><strong class="popup-battery">${battPct.toFixed(1)}%</strong> of solar installs have a battery ` +
+        `<span style="opacity:.75">(${battLabel})</span></span></div>`
+      : "";
+    lower = battLine +
+      (contextLines.length ? `<div class="popup-section">${contextLines.map(l => `<span class="popup-sub">${l}</span>`).join("<br>")}</div>` : "");
+  }
   return `<strong>${name}</strong><br>` +
     (subtitle ? `<span style="opacity:.7">${subtitle}</span><br>` : "") +
     pctLine +
     `<span class="popup-sub">Total solar installs: <strong class="popup-solar">${fmt(icps)}</strong> &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
-    battLine +
-    (contextLines.length ? `<div class="popup-section">${contextLines.map(l => `<span class="popup-sub">${l}</span>`).join("<br>")}</div>` : "");
+    lower;
 }
 
 function bboxIntersects(b, view) {
@@ -1162,16 +1183,18 @@ function loadSolarTownsLayer() {
       });
       map.on("click", "solar-town-boundaries-fill", e => {
         const p = e.features[0].properties;
-        const contextLines = [];
-        if (p.councilPct != null) contextLines.push(`${p.council} region: ${(+p.councilPct).toFixed(1)}% of connections`);
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(solarPopupHTML({
           name: p.name, subtitle: null,
           pct: p.estPct != null ? +p.estPct : null,
           icps: p.icps, kW: p.kW,
-          // Council granularity, not this town's own -- see solarPopupHTML.
-          battPct: p.councilBattPct != null ? +p.councilBattPct : null,
-          battLabel: `${p.council} region`,
-          contextLines,
+          // A visibly separate block, not interleaved with the town's own
+          // numbers above -- councilPct/councilBattPct are the parent
+          // region's own real figures, not this town's.
+          regionSection: {
+            name: `${p.council} region`,
+            pct: p.councilPct != null ? +p.councilPct : null,
+            battPct: p.councilBattPct != null ? +p.councilBattPct : null,
+          },
         })).addTo(map);
       });
       let hoveredTownId = null;
