@@ -30,25 +30,6 @@
    "changePct": 0.0
   },
   {
-   "name": "Marlborough",
-   "icps": 1870,
-   "kW": 48749.6,
-   "totalIcps": 26886,
-   "pct": 6.47,
-   "bbox": [
-    -42.488122,
-    172.71853,
-    -40.663445,
-    174.446824
-   ],
-   "lat": -41.2717,
-   "lng": 173.9068,
-   "battInstalls": 372,
-   "battPct": 21.4,
-   "change": 0,
-   "changePct": 0.0
-  },
-  {
    "name": "Northland",
    "icps": 6916,
    "kW": 89172.5,
@@ -68,6 +49,25 @@
    "changePct": 0.0
   },
   {
+   "name": "Marlborough",
+   "icps": 1870,
+   "kW": 48749.6,
+   "totalIcps": 26886,
+   "pct": 6.47,
+   "bbox": [
+    -42.488122,
+    172.71853,
+    -40.663445,
+    174.446824
+   ],
+   "lat": -41.2717,
+   "lng": 173.9068,
+   "battInstalls": 372,
+   "battPct": 21.4,
+   "change": 0,
+   "changePct": 0.0
+  },
+  {
    "name": "Hawke's Bay",
    "icps": 5179,
    "kW": 40004.9,
@@ -83,8 +83,8 @@
    "lng": 176.9539,
    "battInstalls": 1778,
    "battPct": 36.2,
-   "change": -4,
-   "changePct": -0.1
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Bay of Plenty",
@@ -4400,8 +4400,8 @@
    "councilPct": 6.31,
    "councilBattInstalls": 1778,
    "councilBattPct": 36.2,
-   "change": -4,
-   "changePct": -0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.7
   },
   {
