@@ -1464,7 +1464,7 @@ def fetch_ev_vehicle_models(tla_names):
     return by_tla
 
 
-TOP_VEHICLES_N = 10
+TOP_VEHICLES_N = 50
 
 
 def build_top_vehicles(tla_models, tla_region):

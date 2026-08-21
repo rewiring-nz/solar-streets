@@ -351,6 +351,10 @@
   /* Make/model breakdown only exists for the EV dataset -- solar has no
      equivalent, so the tab isn't just inert there, it's absent. */
   body:not(.dataset-ev) #vehicleDetailsTab { display: none; }
+  /* Up to 50 rows (see TOP_VEHICLES_N in process.py) -- far more than
+     the panel's fixed 420px can show at once, so this scrolls on its
+     own rather than the whole chart panel just clipping the rest. */
+  #vehicleDetailsView { max-height: 300px; overflow-y: auto; }
 
   .lb-month {
     font-size: 9.5px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
