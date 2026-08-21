@@ -273,9 +273,14 @@
 
   /* Map-click popups: % of connections leads as the headline figure --
      it's the number that actually answers "how much uptake here",
-     installs/MW are supporting detail underneath. */
+     installs/MW are supporting detail underneath. Solar figures in
+     amber, battery figures in the same cyan as the EV dashboard, so the
+     two are visually distinct at a glance, not just by wording. */
   .popup-pct { font-size: 16px; font-weight: 700; color: var(--amber); margin: 2px 0; }
   .popup-sub { font-size: 12px; color: var(--dim); }
+  .popup-solar { color: var(--amber); }
+  .popup-battery { color: var(--cyan); }
+  .popup-section { margin-top: 8px; }
 
   /* ============ Methodology button + popup ============ */
   #methodologyBtn {
@@ -802,6 +807,33 @@ const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this to
   "connections estimate using its council's real residential/business mix (EMI). " +
   "Unlike the region %, this isn't a direct EMI figure.";
 
+// Shared by both the region/TLA and town map-click popups -- same
+// structure, just fed real numbers from a different granularity.
+// Deliberately never shows a battery *count* here: EMI's GUEHMT report
+// only publishes that at council level, so pairing it with a smaller
+// TLA/town install count could show a battery count *larger* than the
+// installs sitting right above it -- not a data error, just two real
+// numbers from two different-sized areas, but confusing enough to read
+// as one (verified live: this happened for real in Westport). Only the
+// council's own real % is shown instead, explicitly labelled as the
+// council's rate and captioned "of solar installs" so it's never misread
+// as this shape's own count.
+function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, contextLines }) {
+  const pctLine = pct != null
+    ? `<div class="popup-pct popup-solar">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
+    : "";
+  const battLine = battPct != null
+    ? `<div class="popup-section"><span class="popup-sub"><strong class="popup-battery">${battPct.toFixed(1)}%</strong> of solar installs have a battery ` +
+      `<span style="opacity:.75">(${battLabel})</span></span></div>`
+    : "";
+  return `<strong>${name}</strong><br>` +
+    (subtitle ? `<span style="opacity:.7">${subtitle}</span><br>` : "") +
+    pctLine +
+    `<span class="popup-sub">Total solar installs: <strong class="popup-solar">${fmt(icps)}</strong> &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
+    battLine +
+    (contextLines.length ? `<div class="popup-section">${contextLines.map(l => `<span class="popup-sub">${l}</span>`).join("<br>")}</div>` : "");
+}
+
 function bboxIntersects(b, view) {
   if (!b) return true;   // no boundary data -- never hide it
   const [s, w, n, e] = b;
@@ -1130,25 +1162,17 @@ function loadSolarTownsLayer() {
       });
       map.on("click", "solar-town-boundaries-fill", e => {
         const p = e.features[0].properties;
-        const pct = p.estPct != null ? +p.estPct : null;
-        // % leads as the focus -- it's the number that actually answers
-        // "how much uptake here"; installs/MW are supporting detail.
-        const pctLine = pct != null
-          ? `<div class="popup-pct">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
-          : "";
-        // Battery counts only exist at council granularity (EMI's GUEHMT
-        // report, not per-street) -- councilBattInstalls/councilBattPct
-        // are the parent council's own real, current numbers, same as
-        // councilPct just below, not a per-town figure that doesn't exist.
-        const battLine = p.councilBattPct != null
-          ? `<span class="popup-sub">With batteries: <strong>${fmt(p.councilBattInstalls)}</strong> &nbsp;|&nbsp; ${(+p.councilBattPct).toFixed(1)}%</span><br>`
-          : "";
-        new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
-          `<strong>${p.name}</strong><br>` + pctLine +
-          `<span class="popup-sub">Total solar installs: <strong>${fmt(p.icps)}</strong> &nbsp;|&nbsp; ${fmtMW(p.kW)} MW</span><br>` +
-          battLine +
-          (p.councilPct != null ? `<span class="popup-sub">${p.council} region: ${(+p.councilPct).toFixed(1)}%</span>` : "")
-        ).addTo(map);
+        const contextLines = [];
+        if (p.councilPct != null) contextLines.push(`${p.council} region: ${(+p.councilPct).toFixed(1)}% of connections`);
+        new maplibregl.Popup().setLngLat(e.lngLat).setHTML(solarPopupHTML({
+          name: p.name, subtitle: null,
+          pct: p.estPct != null ? +p.estPct : null,
+          icps: p.icps, kW: p.kW,
+          // Council granularity, not this town's own -- see solarPopupHTML.
+          battPct: p.councilBattPct != null ? +p.councilBattPct : null,
+          battLabel: `${p.council} region`,
+          contextLines,
+        })).addTo(map);
       });
       let hoveredTownId = null;
       map.on("mousemove", "solar-town-boundaries-fill", e => {
@@ -1236,27 +1260,19 @@ function loadSolarRegionsLayer() {
         // council total. p.estPct is a modelled estimate (same
         // methodology as the Towns mode -- see EST_PCT_TITLE); r.pct is
         // the real council-wide % shown for context underneath.
-        const districtLine = (p.tla && p.tla !== r.name)
-          ? `<strong>${p.tla}</strong><br><span style="opacity:.7">${r.name} region</span><br>`
-          : `<strong>${r.name}</strong><br>`;
-        const pct = p.estPct != null ? +p.estPct : null;
-        // % leads as the focus -- it's the number that actually answers
-        // "how much uptake here"; installs/MW are supporting detail.
-        const pctLine = pct != null
-          ? `<div class="popup-pct">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
-          : "";
-        // Battery counts only exist at council granularity (EMI's GUEHMT
-        // report, not per-street) -- r.battInstalls/r.battPct are the
-        // parent council's own real, current numbers, same as r.pct
-        // just below, not a per-TLA figure that doesn't exist.
-        const battLine = r.battPct != null
-          ? `<span class="popup-sub">With batteries: <strong>${fmt(r.battInstalls)}</strong> &nbsp;|&nbsp; ${r.battPct.toFixed(1)}%</span><br>`
-          : "";
-        new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
-          districtLine + pctLine +
-          `<span class="popup-sub">Total solar installs: <strong>${fmt(p.icps)}</strong> &nbsp;|&nbsp; ${fmtMW(p.kW)} MW</span><br>` +
-          battLine +
-          (r.pct != null ? `<span class="popup-sub">${r.name} region: ${r.pct.toFixed(1)}% of connections</span>` : "")
+        const isDistrict = p.tla && p.tla !== r.name;
+        const contextLines = [];
+        if (r.pct != null) contextLines.push(`${r.name} region: ${r.pct.toFixed(1)}% of connections`);
+        new maplibregl.Popup().setLngLat(e.lngLat).setHTML(solarPopupHTML({
+          name: isDistrict ? p.tla : r.name,
+          subtitle: isDistrict ? `${r.name} region` : null,
+          pct: p.estPct != null ? +p.estPct : null,
+          icps: p.icps, kW: p.kW,
+          // Council granularity, not this TLA's own -- see solarPopupHTML.
+          battPct: r.battPct != null ? r.battPct : null,
+          battLabel: `${r.name} region`,
+          contextLines,
+        })
         ).addTo(map);
         // Solar's real trend data only goes down to council/region level
         // (see solarFocusFor), not per-TLA, so a click always jumps the
@@ -1323,9 +1339,13 @@ function visibleRegions() {
 function solarRegionRowHTML(r, rank) {
   // Real EMI battery count/% for this council (see council_battery/
   // process.py) -- same real-join granularity as everything else in
-  // this row, not an estimate.
+  // this row (unlike the town/TLA popups, a council row's own installs
+  // and its own battery count share the same denominator, so showing
+  // both here is never misleading the way it would be at a finer
+  // granularity -- see solarPopupHTML). Cyan to match the EV dashboard,
+  // so battery reads as a distinct figure from the amber solar ones.
   const battLine = r.battPct != null
-    ? `<span class="detail">${fmt(r.battInstalls)} with battery (${r.battPct.toFixed(1)}%)</span>`
+    ? `<span class="detail" style="color:var(--cyan)">${fmt(r.battInstalls)} with battery (${r.battPct.toFixed(1)}% of installs)</span>`
     : "";
   return `
     <div class="row-main">
