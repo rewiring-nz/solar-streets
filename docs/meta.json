@@ -1,11 +1,11 @@
 {
- "updated": "2026-08-22",
+ "updated": "2026-08-23",
  "streets": 36055,
  "streetsTotal": 36996,
  "matchRate": 97.5,
  "national": {
-  "icps": 90353,
-  "kW": 1209300.4,
+  "icps": 90354,
+  "kW": 1209306.3,
   "totalIcps": 2362776,
   "pct": 3.82
  },
@@ -26,7 +26,26 @@
    "lng": 172.7194,
    "battInstalls": 800,
    "battPct": 33.7,
-   "change": 1,
+   "change": 0,
+   "changePct": 0.0
+  },
+  {
+   "name": "Marlborough",
+   "icps": 1870,
+   "kW": 48754.6,
+   "totalIcps": 26886,
+   "pct": 6.48,
+   "bbox": [
+    -42.488122,
+    172.71853,
+    -40.663445,
+    174.446824
+   ],
+   "lat": -41.2717,
+   "lng": 173.9068,
+   "battInstalls": 373,
+   "battPct": 21.4,
+   "change": 0,
    "changePct": 0.0
   },
   {
@@ -45,25 +64,6 @@
    "lng": 173.8927,
    "battInstalls": 1040,
    "battPct": 16.2,
-   "change": 13,
-   "changePct": 0.2
-  },
-  {
-   "name": "Marlborough",
-   "icps": 1870,
-   "kW": 48754.6,
-   "totalIcps": 26886,
-   "pct": 6.47,
-   "bbox": [
-    -42.488122,
-    172.71853,
-    -40.663445,
-    174.446824
-   ],
-   "lat": -41.2717,
-   "lng": 173.9068,
-   "battInstalls": 373,
-   "battPct": 21.4,
    "change": 0,
    "changePct": 0.0
   },
@@ -102,13 +102,13 @@
    "lng": 176.7985,
    "battInstalls": 2748,
    "battPct": 35.6,
-   "change": 4,
+   "change": 0,
    "changePct": 0.0
   },
   {
    "name": "Otago",
    "icps": 6578,
-   "kW": 44477.5,
+   "kW": 44480.7,
    "totalIcps": 121322,
    "pct": 4.64,
    "bbox": [
@@ -121,13 +121,13 @@
    "lng": 169.8972,
    "battInstalls": 956,
    "battPct": 16.0,
-   "change": 10,
-   "changePct": 0.2
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Canterbury",
-   "icps": 16810,
-   "kW": 149710.0,
+   "icps": 16811,
+   "kW": 149714.0,
    "totalIcps": 350445,
    "pct": 4.52,
    "bbox": [
@@ -140,8 +140,8 @@
    "lng": 172.2093,
    "battInstalls": 2442,
    "battPct": 15.8,
-   "change": 11,
-   "changePct": 0.1
+   "change": 1,
+   "changePct": 0.0
   },
   {
    "name": "Taranaki",
@@ -159,8 +159,8 @@
    "lng": 174.5568,
    "battInstalls": 1024,
    "battPct": 36.4,
-   "change": 7,
-   "changePct": 0.2
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Waikato",
@@ -178,8 +178,8 @@
    "lng": 175.3002,
    "battInstalls": 3549,
    "battPct": 35.4,
-   "change": 6,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Manawat\u016b-Whanganui",
@@ -197,8 +197,8 @@
    "lng": 175.4434,
    "battInstalls": 1261,
    "battPct": 29.3,
-   "change": 7,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Wellington",
@@ -216,8 +216,8 @@
    "lng": 175.3351,
    "battInstalls": 1560,
    "battPct": 19.6,
-   "change": 9,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Gisborne",
@@ -254,7 +254,7 @@
    "lng": 174.7025,
    "battInstalls": 2312,
    "battPct": 13.8,
-   "change": 4,
+   "change": 0,
    "changePct": 0.0
   },
   {
@@ -273,8 +273,8 @@
    "lng": 167.4494,
    "battInstalls": 166,
    "battPct": 16.2,
-   "change": 2,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "West Coast",
@@ -311,8 +311,8 @@
    "lng": 173.4173,
    "battInstalls": 556,
    "battPct": 30.7,
-   "change": 1,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   }
  ],
  "towns": [
@@ -323,7 +323,7 @@
    "kW": 2015.3,
    "lat": -41.7499,
    "lng": 173.2472,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -337,7 +337,7 @@
    "kW": 90.0,
    "lat": -41.1049,
    "lng": 173.6372,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -424,8 +424,8 @@
    "councilPct": 7.83,
    "councilBattInstalls": 800,
    "councilBattPct": 33.7,
-   "change": 1,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 16.9
   },
   {
@@ -435,7 +435,7 @@
    "kW": 421.0,
    "lat": -41.5829,
    "lng": 173.8674,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -466,8 +466,8 @@
    "councilPct": 4.64,
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
-   "change": 4,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 16.0
   },
   {
@@ -816,8 +816,8 @@
    "councilPct": 4.64,
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
-   "change": 2,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 12.7
   },
   {
@@ -858,8 +858,8 @@
    "councilPct": 6.47,
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
-   "change": 4,
-   "changePct": 2.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 12.4
   },
   {
@@ -953,7 +953,7 @@
    "kW": 20944.6,
    "lat": -41.5395,
    "lng": 174.022,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -1166,8 +1166,8 @@
    "councilPct": 6.47,
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
-   "change": 2,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 10.8
   },
   {
@@ -1303,7 +1303,7 @@
    "kW": 242.3,
    "lat": -41.2618,
    "lng": 173.9058,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -1390,8 +1390,8 @@
    "councilPct": 6.47,
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
-   "change": 1,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 10.2
   },
   {
@@ -1457,7 +1457,7 @@
    "kW": 1182.6,
    "lat": -41.5115,
    "lng": 173.7855,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -1569,7 +1569,7 @@
    "kW": 106.1,
    "lat": -41.5112,
    "lng": 174.0152,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -1642,8 +1642,8 @@
    "councilPct": 4.52,
    "councilBattInstalls": 2442,
    "councilBattPct": 15.8,
-   "change": 2,
-   "changePct": 3.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.7
   },
   {
@@ -1793,7 +1793,7 @@
    "kW": 822.6,
    "lat": -41.4618,
    "lng": 173.9908,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -1838,8 +1838,8 @@
    "councilPct": 3.34,
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
-   "change": 2,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.3
   },
   {
@@ -1908,8 +1908,8 @@
    "councilPct": 5.06,
    "councilBattInstalls": 2748,
    "councilBattPct": 35.6,
-   "change": 2,
-   "changePct": 1.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.2
   },
   {
@@ -1964,8 +1964,8 @@
    "councilPct": 4.64,
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
-   "change": 2,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.0
   },
   {
@@ -2199,7 +2199,7 @@
    "kW": 105.9,
    "lat": -41.3161,
    "lng": 173.9731,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -2538,8 +2538,8 @@
    "councilPct": 4.64,
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.9
   },
   {
@@ -2563,7 +2563,7 @@
    "kW": 4264.2,
    "lat": -41.6988,
    "lng": 174.0126,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -2594,8 +2594,8 @@
    "councilPct": 5.06,
    "councilBattInstalls": 2748,
    "councilBattPct": 35.6,
-   "change": -1,
-   "changePct": -0.9,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.8
   },
   {
@@ -2888,8 +2888,8 @@
    "councilPct": 4.52,
    "councilBattInstalls": 2442,
    "councilBattPct": 15.8,
-   "change": 1,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.5
   },
   {
@@ -2997,7 +2997,7 @@
    "kW": 9042.6,
    "lat": -41.8481,
    "lng": 174.0717,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -3056,8 +3056,8 @@
    "councilPct": 4.52,
    "councilBattInstalls": 2442,
    "councilBattPct": 15.8,
-   "change": 2,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.2
   },
   {
@@ -3210,8 +3210,8 @@
    "councilPct": 3.82,
    "councilBattInstalls": 3549,
    "councilBattPct": 35.4,
-   "change": 2,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.0
   },
   {
@@ -3249,7 +3249,7 @@
    "kW": 315.6,
    "lat": -41.3148,
    "lng": 173.7642,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -3277,7 +3277,7 @@
    "kW": 7915.6,
    "lat": -41.5169,
    "lng": 173.9563,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -3319,7 +3319,7 @@
    "kW": 130.6,
    "lat": -41.105,
    "lng": 173.7683,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -3336,8 +3336,8 @@
    "councilPct": null,
    "councilBattInstalls": 556,
    "councilBattPct": 30.7,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.8
   },
   {
@@ -3476,8 +3476,8 @@
    "councilPct": 4.51,
    "councilBattInstalls": 1024,
    "councilBattPct": 36.4,
-   "change": 1,
-   "changePct": 2.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.7
   },
   {
@@ -3809,7 +3809,7 @@
    "kW": 79.4,
    "lat": -41.2091,
    "lng": 173.6258,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -3840,8 +3840,8 @@
    "councilPct": 6.47,
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
-   "change": 2,
-   "changePct": 1.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.3
   },
   {
@@ -3882,8 +3882,8 @@
    "councilPct": 6.47,
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
-   "change": 1,
-   "changePct": 1.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.3
   },
   {
@@ -4036,8 +4036,8 @@
    "councilPct": 3.82,
    "councilBattInstalls": 3549,
    "councilBattPct": 35.4,
-   "change": 2,
-   "changePct": 0.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.1
   },
   {
@@ -4064,8 +4064,8 @@
    "councilPct": 6.47,
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
-   "change": 3,
-   "changePct": 1.8,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.1
   },
   {
@@ -4131,7 +4131,7 @@
    "kW": 65.2,
    "lat": -41.4611,
    "lng": 173.3595,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -4162,8 +4162,8 @@
    "councilPct": 4.52,
    "councilBattInstalls": 2442,
    "councilBattPct": 15.8,
-   "change": 3,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.9
   },
   {
@@ -4204,8 +4204,8 @@
    "councilPct": 4.52,
    "councilBattInstalls": 2442,
    "councilBattPct": 15.8,
-   "change": 2,
-   "changePct": 3.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.9
   },
   {
@@ -4274,8 +4274,8 @@
    "councilPct": 5.06,
    "councilBattInstalls": 2748,
    "councilBattPct": 35.6,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.8
   },
   {
@@ -4596,8 +4596,8 @@
    "councilPct": 4.52,
    "councilBattInstalls": 2442,
    "councilBattPct": 15.8,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.6
   },
   {
@@ -4610,8 +4610,8 @@
    "councilPct": 5.06,
    "councilBattInstalls": 2748,
    "councilBattPct": 35.6,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.6
   },
   {
@@ -4624,8 +4624,8 @@
    "councilPct": 4.51,
    "councilBattInstalls": 1024,
    "councilBattPct": 36.4,
-   "change": 3,
-   "changePct": 0.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.6
   },
   {
@@ -4666,8 +4666,8 @@
    "councilPct": 4.64,
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
-   "change": 1,
-   "changePct": 1.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.6
   },
   {
@@ -5181,7 +5181,7 @@
    "kW": 770.0,
    "lat": -41.3065,
    "lng": 174.0141,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -5380,8 +5380,8 @@
    "councilPct": 3.34,
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
-   "change": 2,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.9
   },
   {
@@ -5394,8 +5394,8 @@
    "councilPct": 3.34,
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
-   "change": 1,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.9
   },
   {
@@ -5646,8 +5646,8 @@
    "councilPct": 2.45,
    "councilBattInstalls": 2312,
    "councilBattPct": 13.8,
-   "change": 1,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.6
   },
   {
@@ -5800,8 +5800,8 @@
    "councilPct": 5.06,
    "councilBattInstalls": 2748,
    "councilBattPct": 35.6,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.5
   },
   {
@@ -5884,8 +5884,8 @@
    "councilPct": 4.51,
    "councilBattInstalls": 1024,
    "councilBattPct": 36.4,
-   "change": 3,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.4
   },
   {
@@ -6158,7 +6158,7 @@
    "name": "Oamaru",
    "council": "Otago",
    "icps": 336,
-   "kW": 2209.8,
+   "kW": 2213.0,
    "lat": -45.0675,
    "lng": 170.9904,
    "councilPct": 4.64,
@@ -6178,8 +6178,8 @@
    "councilPct": 3.82,
    "councilBattInstalls": 3549,
    "councilBattPct": 35.4,
-   "change": 2,
-   "changePct": 0.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.1
   },
   {
@@ -6304,8 +6304,8 @@
    "councilPct": 3.34,
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
-   "change": 2,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.0
   },
   {
@@ -6514,8 +6514,8 @@
    "councilPct": 3.48,
    "councilBattInstalls": 1261,
    "councilBattPct": 29.3,
-   "change": 5,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.8
   },
   {
@@ -6605,15 +6605,15 @@
   {
    "name": "Lyttelton",
    "council": "Canterbury",
-   "icps": 1690,
-   "kW": 10351.7,
+   "icps": 1691,
+   "kW": 10355.7,
    "lat": -43.5993,
    "lng": 172.7249,
    "councilPct": 4.52,
    "councilBattInstalls": 2442,
    "councilBattPct": 15.8,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.1,
    "estPct": 3.7
   },
   {
@@ -6640,8 +6640,8 @@
    "councilPct": 2.45,
    "councilBattInstalls": 2312,
    "councilBattPct": 13.8,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.7
   },
   {
@@ -6668,8 +6668,8 @@
    "councilPct": 3.48,
    "councilBattInstalls": 1261,
    "councilBattPct": 29.3,
-   "change": 2,
-   "changePct": 0.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.7
   },
   {
@@ -6906,8 +6906,8 @@
    "councilPct": 2.45,
    "councilBattInstalls": 2312,
    "councilBattPct": 13.8,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.4
   },
   {
@@ -6987,7 +6987,7 @@
    "kW": 241.0,
    "lat": -41.7446,
    "lng": 173.5251,
-   "councilPct": 6.47,
+   "councilPct": 6.48,
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "change": 0,
@@ -7774,8 +7774,8 @@
    "councilPct": 3.34,
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
-   "change": 2,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.2
   },
   {
@@ -7830,7 +7830,7 @@
    "councilPct": 2.45,
    "councilBattInstalls": 2312,
    "councilBattPct": 13.8,
-   "change": 1,
+   "change": 0,
    "changePct": 0.0,
    "estPct": 2.1
   },
@@ -7928,8 +7928,8 @@
    "councilPct": 1.87,
    "councilBattInstalls": 166,
    "councilBattPct": 16.2,
-   "change": 2,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.0
   },
   {
