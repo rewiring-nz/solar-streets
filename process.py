@@ -2119,6 +2119,7 @@ def main():
         town_anchors = {}
 
     council_battery = {}   # {council: {"installs": N, "battery": N, "pct": N}} -- see below
+    national_battery = None   # same, for the whole country
     try:
         trends = fetch_trends()
         # So the frontend can offer "drill into a network region within
@@ -2163,6 +2164,18 @@ def main():
                     "installs": installs, "battery": battery,
                     "pct": round(battery / installs * 100, 1),
                 }
+
+        # Whole-country equivalent, for the topbar's national view --
+        # GUEHMT's own national series (itself the sum of its councils,
+        # see fetch_trends), so it carries the same base/percentage
+        # relationship as the per-council figures above.
+        nat_installs = trends["national"]["installs"][-1]
+        nat_battery = trends["national"]["battery"][-1]
+        if nat_installs:
+            national_battery = {
+                "installs": nat_installs, "battery": nat_battery,
+                "pct": round(nat_battery / nat_installs * 100, 1),
+            }
     except Exception as exc:                       # noqa: BLE001
         note_failure("Trend history / battery counts", exc, "charts and battery figures will be omitted")
 
@@ -2219,6 +2232,10 @@ def main():
     if totals and national_total:
         totals["totalIcps"] = national_total
         totals["pct"] = round(totals["icps"] / national_total * 100, 2)
+    if totals and national_battery:
+        totals["battInstalls"] = national_battery["battery"]
+        totals["battPct"] = national_battery["pct"]
+        totals["battBase"] = national_battery["installs"]
 
     cache = geocode(records, areas, council_bounds)
 
@@ -2259,21 +2276,37 @@ def main():
     # Each town's parent council's real % of ICPs, attached as labelled
     # regional context -- not a town-specific figure (see build_towns).
     council_pct = {r["name"]: r["pct"] for r in region_tree}
+    council_icps = {r["name"]: r["icps"] for r in region_tree}
     for t in towns:
         t["councilPct"] = council_pct.get(t["council"], 0)
+        t["councilIcps"] = council_icps.get(t["council"])
 
     # Real battery counts (see council_battery, above) -- council-level
     # only, attached directly to region_tree entries (regions' own real
     # numbers) and as labelled council context on towns, same pattern as
     # councilPct just above.
+    #
+    # battBase is the install count GUEHMT itself counted the batteries
+    # against, and it is NOT the same as this region's "icps" -- the two
+    # come from different EMI reports that group ICPs by council
+    # differently (SolarInstallationsByRegion rolled up through
+    # NETWORK_TO_COUNCIL, whose networks straddle council lines, versus
+    # GUEHMT's own REG_COUNCIL classification). Verified live across all
+    # 16 councils: GUEHMT runs lower nearly everywhere, e.g. Otago 5,960
+    # vs 6,578, so battInstalls/icps gives 14.5% where the real, reported
+    # rate is 16.0%. Publishing the base lets the UI show where the
+    # percentage actually comes from instead of inviting a division that
+    # silently disagrees with it.
     for r in region_tree:
         cb = council_battery.get(r["name"])
         if cb:
             r["battInstalls"], r["battPct"] = cb["battery"], cb["pct"]
+            r["battBase"] = cb["installs"]
     for t in towns:
         cb = council_battery.get(t["council"])
         if cb:
             t["councilBattInstalls"], t["councilBattPct"] = cb["battery"], cb["pct"]
+            t["councilBattBase"] = cb["installs"]
 
     # Month-over-month change, for the leaderboard -- see _change() and
     # PREV_TOWN_TOTALS. Each council's previous total is summed from last

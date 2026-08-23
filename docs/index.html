@@ -145,6 +145,9 @@
   }
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
+  .stat-line-batt { color: var(--cyan); margin-top: 2px; }
+  .stat-line-batt strong { color: var(--cyan); }
+  .stat-line-batt .batt-base { cursor: help; border-bottom: 1px dotted rgba(122,224,255,.5); }
   .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
   .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; white-space: nowrap; flex: none; }
 
@@ -265,6 +268,16 @@
   .row-sub { font-size: 10.5px; color: var(--dim); line-height: 1.3; }
   .row-region { cursor: pointer; }
   .row-region:hover { color: var(--text); text-decoration: underline; }
+  /* Battery figures in cyan throughout, matching the EV dashboard, so
+     they read as a distinct measure from the amber solar ones. */
+  .row-batt { font-size: 10.5px; color: var(--cyan); line-height: 1.3; }
+  .row-batt .batt-base { cursor: help; border-bottom: 1px dotted rgba(122,224,255,.5); }
+  /* Whole-row click target for district/town rows that fly the map. */
+  .row-main.row-clickable { cursor: pointer; }
+  .row-main.row-clickable:hover { background: rgba(255,255,255,.06); }
+  .row-nz .row-name { color: var(--amber); }
+  body.dataset-ev .row-nz .row-name { color: var(--cyan); }
+  .row-nz-sep { border: none; border-top: 1px solid var(--border); margin: 8px 4px 4px; }
   .row-metric { flex: none; text-align: right; }
   .row-metric .headline { font-size: 13.5px; font-weight: 700; color: var(--amber); text-shadow: 0 0 10px rgba(255,183,3,.4); white-space: nowrap; }
   .row-metric .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
@@ -530,6 +543,14 @@ const GESTURES_LOCKED = IN_IFRAME && GESTURES_PARAM !== "free";
 const usingLinz = LINZ_API_KEY.trim().length > 0;
 
 const NZ_VIEW = { center: [172.8, -41.0], zoom: 4.7 };
+
+// Percentage labels on the district choropleths (solar's Districts mode
+// and the EV dashboard) only once zoomed past roughly a multi-region
+// view. All 67 at the national zoom of 4.7 collide into unreadable
+// clutter. Lower than the towns layer's 7 (see solar-town-labels)
+// because districts are far larger and far fewer, so they stay legible
+// while still zoomed well out.
+const DISTRICT_LABEL_MINZOOM = 6;
 
 const map = new maplibregl.Map({
   container: "map",
@@ -825,6 +846,25 @@ const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this to
   "connections estimate using its council's real residential/business mix (EMI). " +
   "Unlike the region %, this isn't a direct EMI figure.";
 
+// Battery counts come from EMI's distributed-generation trends report
+// (GUEHMT), which classifies each ICP by its real regional council.
+// The install counts everywhere else come from EMI's installs-by-region
+// file, rolled up from network reporting regions -- and several
+// networks straddle council lines. Nationally the two agree to within
+// 0.07% (90,287 vs 90,353), but per-council they diverge by up to ~30%,
+// so dividing the battery count by the install count shown next to it
+// gives a number that disagrees with the reported rate. Naming the base
+// the percentage was actually measured against keeps that honest
+// instead of hiding it.
+function battBaseTitle(area, battInstalls, base) {
+  return base
+    ? `${fmt(battInstalls)} of ${fmt(base)} ${area} solar installs have a battery. `
+      + `That base comes from EMI's distributed-generation trends report, which groups `
+      + `connections by council slightly differently from the install count shown above, `
+      + `so this isn't a straight division of it.`
+    : `${fmt(battInstalls)} ${area} solar installs have a battery (EMI).`;
+}
+
 // Shared by both the region/TLA and town map-click popups -- same
 // structure, just fed real numbers from a different granularity.
 // Deliberately never shows a battery *count* here: EMI's GUEHMT report
@@ -1042,6 +1082,17 @@ function renderTopbarStats() {
   }
   html += `</div>`;
   html += `<div class="stat-line">${segs.join("")}</div>`;
+  // Battery figures on their own line rather than appended to the solar
+  // stats above -- they're measured against a different base (see
+  // battBaseTitle), so running them into the same line would read as
+  // one continuous set of numbers that divide into each other.
+  if (stats.battInstalls != null && stats.battPct != null) {
+    html += `<div class="stat-line stat-line-batt">` +
+      `<span class="stat-seg">Battery installs: <strong>${fmt(stats.battInstalls)}</strong></span>` +
+      `<span class="stat-seg"><strong>${stats.battPct.toFixed(1)}%</strong> ` +
+      `<span class="batt-base" title="${battBaseTitle(currentFocus.name, stats.battInstalls, stats.battBase)}">of solar installs</span></span>` +
+      `</div>`;
+  }
   html += `<div class="topbar-actions">`;
   html += `<button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button>`;
   const MODE_LABELS = { points: "Show Streets", towns: "Towns", regions: "Districts" };
@@ -1065,12 +1116,23 @@ function rowHTML(t, rank) {
   // figure at town granularity to compute an honest town-specific one) --
   // labelled "region" so it's never read as this town's own adoption rate.
   // Clickable (if we know the region's bounds) to fly the map there.
-  const label = (t.councilPct != null)
-    ? `${t.council} region: ${t.councilPct.toFixed(1)}%`
-    : t.council;
+  const bits = [];
+  if (t.councilPct != null) bits.push(`${t.councilPct.toFixed(1)}%`);
+  if (t.councilIcps != null) bits.push(`${fmt(t.councilIcps)} installs`);
+  const label = bits.length ? `${t.council} region: ${bits.join(" | ")}` : t.council;
   const region = t.council
     ? `<span class="row-region" data-council="${t.council}">${label}</span>`
     : label;
+  // The battery count comes from a different EMI report than the
+  // install count above it (see battBase in process.py), so the two
+  // don't divide out -- Otago reads 16.0% here while 956/6,578 is
+  // 14.5%. Rather than drop one or quietly imply the wrong ratio, the
+  // percentage's own base is on the tooltip.
+  const battery = (t.councilBattPct != null && t.councilBattInstalls != null)
+    ? `<div class="row-batt">${t.councilBattPct.toFixed(1)}% ` +
+      `<span class="batt-base" title="${battBaseTitle(t.council, t.councilBattInstalls, t.councilBattBase)}">` +
+      `(${fmt(t.councilBattInstalls)})</span> have batteries</div>`
+    : "";
   // % of connections is the more meaningful figure than a raw install
   // count (a big town and a small one can have the same % uptake), so
   // it leads as the bold headline -- installs/MW are still shown, just
@@ -1083,11 +1145,12 @@ function rowHTML(t, rank) {
     : `<span class="headline">${fmt(t.icps)} installs</span>
        <span class="detail">${fmtMW(t.kW)} MW</span>`;
   return `
-    <div class="row-main">
+    <div class="row-main row-clickable" data-town="${encodeURIComponent(t.name)}">
       <span class="row-rank">${rank}</span>
       <div class="row-body">
         <div class="row-name">${t.name}</div>
         <div class="row-sub">${region}</div>
+        ${battery}
       </div>
       <div class="row-metric">${metric}</div>
     </div>`;
@@ -1108,24 +1171,73 @@ function renderBoard() {
     return;
   }
 
-  boardEl.innerHTML = visible.map((t, i) => rowHTML(t, i + 1)).join("");
+  boardEl.innerHTML = visible.map((t, i) => rowHTML(t, i + 1)).join("") + nzRowHTML();
 }
 
 // Clicking a row's region label flies the map to that region's real
 // bounds (regionData's/evRegions' bbox, from actual council boundaries)
 // rather than just the row's own point -- delegated since rows are
 // re-rendered wholesale on every pan/zoom.
+function flyToBbox(bbox) {
+  if (!bbox) return;
+  const [s, w, n, e] = bbox;
+  map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 800 });
+}
+
+function flyToNZ() {
+  map.flyTo({ center: NZ_VIEW.center, zoom: NZ_VIEW.zoom, duration: 800 });
+}
+
+// Row clicks fly the map. Checked most-specific first: a town row's
+// inline region label ([data-council]) has to win over the row it sits
+// inside ([data-town]), otherwise clicking "Otago region" on a Wānaka
+// row would fly to Wānaka instead of Otago.
 boardEl.addEventListener("click", e => {
-  const solarEl = e.target.closest("[data-council]");
-  const evEl = e.target.closest("[data-ev-region]");
-  if (!solarEl && !evEl) return;
-  const list = solarEl ? regionData : evRegions;
-  const name = solarEl ? solarEl.getAttribute("data-council") : evEl.getAttribute("data-ev-region");
-  const r = list.find(x => x.name === name);
-  if (!r || !r.bbox) return;
-  const [s, w, n, e2] = r.bbox;
-  map.fitBounds([[w, s], [e2, n]], { padding: 40, duration: 800 });
+  if (e.target.closest("[data-nz]")) { flyToNZ(); return; }
+
+  const councilEl = e.target.closest("[data-council]");
+  if (councilEl) {
+    const r = regionData.find(x => x.name === councilEl.getAttribute("data-council"));
+    if (r) flyToBbox(r.bbox);
+    return;
+  }
+  const evRegionEl = e.target.closest("[data-ev-region]");
+  if (evRegionEl) {
+    const r = evRegions.find(x => x.name === evRegionEl.getAttribute("data-ev-region"));
+    if (r) flyToBbox(r.bbox);
+    return;
+  }
+  const evTlaEl = e.target.closest("[data-ev-tla]");
+  if (evTlaEl) {
+    const t = evTlas.find(x => x.name === evTlaEl.getAttribute("data-ev-tla"));
+    if (t) flyToBbox(t.bbox);
+    return;
+  }
+  const townEl = e.target.closest("[data-town]");
+  if (townEl) {
+    // Towns are points, not polygons (see build_towns), so there's no
+    // bbox to fit -- zoom to the town's own real centroid instead.
+    const name = decodeURIComponent(townEl.getAttribute("data-town"));
+    const t = townData.find(x => x.name === name);
+    if (t && t.lat != null && t.lng != null) {
+      map.flyTo({ center: [t.lng, t.lat], zoom: 12, duration: 800 });
+    }
+  }
 });
+
+// Closing row on every list: a way back out to the whole country from
+// wherever you've drilled to, without hunting for the "back to NZ"
+// button up in the corner.
+function nzRowHTML() {
+  return `<hr class="row-nz-sep">
+    <div class="row-main row-clickable row-nz" data-nz="1">
+      <span class="row-rank">&#8629;</span>
+      <div class="row-body">
+        <div class="row-name">New Zealand</div>
+        <div class="row-sub">Zoom back out to the whole country</div>
+      </div>
+    </div>`;
+}
 
 /* ================= SOLAR MAP MODES (points / towns / regions) ================= */
 /* "Regions" mirrors the EV dashboard's district choropleth almost
@@ -1283,6 +1395,9 @@ function loadSolarRegionsLayer() {
       });
       map.addLayer({
         id: "solar-region-labels", type: "symbol", source: "solar-region-label-points",
+        // See DISTRICT_LABEL_MINZOOM -- 67 districts' labels all at once
+        // over the whole country is unreadable clutter.
+        minzoom: DISTRICT_LABEL_MINZOOM,
         layout: {
           visibility: "none",
           "text-field": [
@@ -1381,17 +1496,19 @@ function visibleRegions() {
 
 function solarRegionRowHTML(r, rank) {
   // Real EMI battery count/% for this council (see council_battery/
-  // process.py) -- same real-join granularity as everything else in
-  // this row (unlike the town/TLA popups, a council row's own installs
-  // and its own battery count share the same denominator, so showing
-  // both here is never misleading the way it would be at a finer
-  // granularity -- see solarPopupHTML). Cyan to match the EV dashboard,
-  // so battery reads as a distinct figure from the amber solar ones.
+  // process.py). These do NOT divide out against the install count in
+  // this same row: they come from EMI's trends report, which groups
+  // connections by council differently from the installs-by-region file
+  // (see battBaseTitle). The tooltip names the base they were actually
+  // measured against. Cyan to match the EV dashboard, so battery reads
+  // as a distinct figure from the amber solar ones.
   const battLine = r.battPct != null
-    ? `<span class="detail" style="color:var(--cyan)">${fmt(r.battInstalls)} with battery (${r.battPct.toFixed(1)}% of installs)</span>`
+    ? `<span class="detail" style="color:var(--cyan)">${r.battPct.toFixed(1)}% ` +
+      `<span class="batt-base" title="${battBaseTitle(r.name, r.battInstalls, r.battBase)}">` +
+      `(${fmt(r.battInstalls)})</span> have batteries</span>`
     : "";
   return `
-    <div class="row-main">
+    <div class="row-main row-clickable" data-council="${r.name}">
       <span class="row-rank">${rank}</span>
       <div class="row-body">
         <div class="row-name">${r.name}</div>
@@ -1416,7 +1533,7 @@ function renderSolarRegionBoard() {
     boardEl.innerHTML = `<div class="empty-note">No regions in this view — zoom out or pan to New Zealand.</div>`;
     return;
   }
-  boardEl.innerHTML = visible.map((r, i) => solarRegionRowHTML(r, i + 1)).join("");
+  boardEl.innerHTML = visible.map((r, i) => solarRegionRowHTML(r, i + 1)).join("") + nzRowHTML();
 }
 
 // The chart-toggle-btn / map-mode-btn delegation lives on topbarStatsEl
@@ -1607,6 +1724,7 @@ function addEvLayer(boundaries) {
   });
   map.addLayer({
     id: "ev-labels", type: "symbol", source: "ev-label-points",
+    minzoom: DISTRICT_LABEL_MINZOOM,   // same clutter as solar's districts
     layout: {
       visibility: "none",
       "text-field": [
@@ -1700,7 +1818,7 @@ function evRowHTML(t, rank) {
   }).join("");
   return `
     <div class="ev-row">
-      <div class="ev-row-head">
+      <div class="ev-row-head row-clickable" data-ev-tla="${t.name}">
         <span class="row-rank">${rank}</span>
         <div class="row-body">
           <div class="row-name">${t.name}</div>
@@ -1727,7 +1845,7 @@ function renderEvBoard() {
     boardEl.innerHTML = `<div class="empty-note">No districts in this view — zoom out or pan to New Zealand.</div>`;
     return;
   }
-  boardEl.innerHTML = visible.map((t, i) => evRowHTML(t, i + 1)).join("");
+  boardEl.innerHTML = visible.map((t, i) => evRowHTML(t, i + 1)).join("") + nzRowHTML();
 }
 
 // See renderTopbarStats() -- same idea, pure render from currentFocus.
@@ -2261,7 +2379,17 @@ chartSelectEl.addEventListener("change", async () => {
     regionData = (meta && meta.regions) || [];
     townData = (meta && meta.towns) || [];
     const nat = meta && meta.national;
-    metaNational = nat ? { icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0 } : { icps: 0, kW: 0, pct: 0 };
+    // Battery fields stay null (not 0) when absent -- renderTopbarStats
+    // omits the whole line on null, where a 0 would claim a real "0%
+    // have batteries" that was never measured.
+    metaNational = nat
+      ? {
+          icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0,
+          battInstalls: nat.battInstalls != null ? nat.battInstalls : null,
+          battPct: nat.battPct != null ? nat.battPct : null,
+          battBase: nat.battBase != null ? nat.battBase : null,
+        }
+      : { icps: 0, kW: 0, pct: 0, battInstalls: null, battPct: null, battBase: null };
     metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
 
     renderBoard();
