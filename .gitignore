@@ -1,0 +1,9 @@
+# Written every run by process.py's report_failures() and read by the
+# workflow's final step to decide whether to fail the job. Purely a
+# within-run signal -- committing it would just add noise to every
+# data commit.
+build_status.json
+
+__pycache__/
+*.pyc
+.DS_Store

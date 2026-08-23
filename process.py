@@ -190,10 +190,23 @@ GUEHMT_URL = "https://www.emi.ea.govt.nz/Retail/Download/DataReport/CSV/GUEHMT"
 # figures, just aggregated by us instead of them.
 # ----------------------------------------------------------------------
 
-MVR_SERVICE = (
+# NZTA names each published MVR service after the month they stood it
+# up -- "MVR_Mar26", and "MVR_May23" before that. The current one *is*
+# refreshed in place (verified live: MVR_Mar26 carries registrations
+# through Jul 2026), so the name is a birth date, not a data vintage --
+# but the day NZTA stands up the next one, a pinned name either 404s or,
+# worse, keeps quietly serving a frozen copy. So resolve it by searching
+# ArcGIS for whatever NZTA currently publishes, and keep the known-good
+# name only as a fallback for when that search is unreachable.
+MVR_SEARCH = "https://www.arcgis.com/sharing/rest/search"
+MVR_SEARCH_QUERY = 'owner:Open.Data_NZTA title:"Motor Vehicle Register" type:"Feature Service"'
+MVR_SERVICE_FALLBACK = (
     "https://services.arcgis.com/CXBb7LAjgIIdcsPt/arcgis/rest/services/"
     "MVR_Mar26/FeatureServer/0/query"
 )
+# Resolved once per run by resolve_mvr_service(); every _mvr_query reads
+# this rather than re-searching.
+MVR_SERVICE = MVR_SERVICE_FALLBACK
 
 # Real Territorial Authority (district/city council) boundaries -- the
 # MVR tags every vehicle with its owner's TLA directly, so unlike solar
@@ -364,6 +377,44 @@ def load(path, default):
         with open(path) as fh:
             return json.load(fh)
     return default
+
+
+# Datasets that failed this run. Every optional source below is wrapped
+# in its own try/except so one upstream outage can't take the whole
+# build down -- but each of those saves sits *inside* its try, so a
+# failure means that file simply isn't rewritten and the previously
+# committed copy keeps being served. That's the right behaviour (stale
+# real data beats no data), but on its own it's invisible: the run still
+# goes green and the site still looks fine, so an upstream that broke in
+# March wouldn't be noticed in August. Recording failures here lets the
+# workflow surface them and go red *after* committing whatever did
+# succeed. See BUILD_STATUS / report_failures().
+FAILURES = []
+BUILD_STATUS = "build_status.json"
+
+
+def note_failure(dataset, exc, consequence):
+    """Record (and print) an optional dataset failing, so the run can be
+    marked failed at the end without losing the data that did build.
+    """
+    FAILURES.append({"dataset": dataset, "error": str(exc), "consequence": consequence})
+    print(f"{dataset} unavailable ({exc}) -- {consequence}")
+
+
+def report_failures():
+    """Write the run's failure list and emit a GitHub Actions error
+    annotation per failure. Doesn't exit -- main() must still return
+    normally so the workflow's commit step runs and publishes whatever
+    did build; the workflow fails the job afterwards off this file.
+    """
+    save(BUILD_STATUS, {
+        "ran": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "failures": FAILURES,
+    }, indent=2)
+    for f in FAILURES:
+        print(f"::error title=Stale dataset: {f['dataset']}::"
+              f"{f['error']} -- {f['consequence']} "
+              f"(the previously committed file is still being served)")
 
 
 def _change(current, previous):
@@ -575,6 +626,24 @@ def read_regions(text):
     return totals, networks
 
 
+def newest_dated_link(page, link_re):
+    """The newest YYYYMMDD-stamped file matching link_re on an EMI page,
+    as an absolute URL -- or None if the page has none.
+
+    Picks by the date *in the filename* rather than trusting the page to
+    list newest-first. EMI does currently list newest-first, so
+    .search()'s first match happens to be right today -- but that's a
+    presentation detail that could change without notice, and silently
+    pulling last year's ICP totals would skew every "% of connections"
+    on the map with nothing obviously broken to notice.
+    """
+    matches = link_re.findall(page)
+    if not matches:
+        return None
+    newest = max(matches, key=lambda href: re.search(r"\d{8}", href).group(0))
+    return "https://www.emi.ea.govt.nz" + newest if newest.startswith("/") else newest
+
+
 def fetch_total_icps():
     """Total (not just solar) ICPs per network reporting region.
 
@@ -582,14 +651,10 @@ def fetch_total_icps():
     link off the EMI page rather than hardcoding a filename that expires.
     """
     page = get(ICP_TOTALS_PAGE, timeout=60).text
-    m = ICP_TOTALS_LINK_RE.search(page)
-    if not m:
+    url = newest_dated_link(page, ICP_TOTALS_LINK_RE)
+    if not url:
         print("  ! Couldn't find the ICP totals CSV link -- skipping % of ICPs")
         return {}
-
-    url = m.group(1)
-    if url.startswith("/"):
-        url = "https://www.emi.ea.govt.nz" + url
 
     import csv
     import io
@@ -617,14 +682,10 @@ def fetch_anzsic_ratios():
     guessed multiplier.
     """
     page = get(ICP_TOTALS_PAGE, timeout=60).text
-    m = ANZSIC_LINK_RE.search(page)
-    if not m:
+    url = newest_dated_link(page, ANZSIC_LINK_RE)
+    if not url:
         print("  ! Couldn't find the ANZSIC breakdown CSV link -- skipping town % estimates")
         return {}
-
-    url = m.group(1)
-    if url.startswith("/"):
-        url = "https://www.emi.ea.govt.nz" + url
 
     import csv
     import io
@@ -1364,6 +1425,51 @@ def fetch_trends():
 # EV dashboard
 # ----------------------------------------------------------------------
 
+def resolve_mvr_service():
+    """Point MVR_SERVICE at whatever Motor Vehicle Register service NZTA
+    currently publishes, and return that service's real data vintage
+    (its layer's dataLastEditDate) as YYYY-MM-DD.
+
+    The vintage is the EV equivalent of fetch_data_date's Last-Modified
+    for the solar CSVs: when NZTA last refreshed the register, not when
+    this pipeline happened to run. Without it a frozen upstream would
+    still be stamped with today's date and look perfectly fresh.
+
+    Falls back to the pinned MVR_SERVICE_FALLBACK (and a None vintage)
+    if the search is unreachable -- a search outage shouldn't take the
+    EV dashboard down while the service it would have found is fine.
+    """
+    global MVR_SERVICE
+    try:
+        r = get(MVR_SEARCH, timeout=60, params={
+            "q": MVR_SEARCH_QUERY, "f": "json", "num": 25,
+            "sortField": "created", "sortOrder": "desc",
+        })
+        results = r.json().get("results") or []
+        base = results[0]["url"].rstrip("/") if results else None
+    except Exception as exc:                           # noqa: BLE001
+        MVR_SERVICE = MVR_SERVICE_FALLBACK
+        print(f"  ! MVR service lookup failed ({exc}) -- using pinned {MVR_SERVICE_FALLBACK}")
+        return None
+
+    if not base:
+        MVR_SERVICE = MVR_SERVICE_FALLBACK
+        print(f"  ! MVR service lookup found nothing -- using pinned {MVR_SERVICE_FALLBACK}")
+        return None
+
+    MVR_SERVICE = f"{base}/0/query"
+    print(f"MVR service: {base.rsplit('/', 2)[-2]}")
+
+    try:
+        info = get(f"{base}/0", timeout=60, params={"f": "json"}).json()
+        edited = (info.get("editingInfo") or {}).get("dataLastEditDate")
+        if edited:
+            return datetime.fromtimestamp(edited / 1000, timezone.utc).date().isoformat()
+    except Exception as exc:                           # noqa: BLE001
+        print(f"  ! Couldn't read MVR data vintage ({exc})")
+    return None
+
+
 def _mvr_query(where, group_fields=None):
     """One query against the Motor Vehicle Register -- either a plain
     count, or a server-side grouped count (never raw rows: the table is
@@ -1982,13 +2088,13 @@ def main():
     try:
         totals, networks = read_regions(fetch_csv(REGION_CSV))
     except Exception as exc:                       # noqa: BLE001
-        print(f"Region file unavailable ({exc}) -- continuing without it")
+        note_failure("Region file", exc, "region totals continue from the previous run")
         totals, networks = {}, {}
 
     try:
         total_icps = fetch_total_icps()
     except Exception as exc:                       # noqa: BLE001
-        print(f"ICP totals unavailable ({exc}) -- % of ICPs will be omitted")
+        note_failure("ICP totals", exc, "% of connections will be omitted")
         total_icps = {}
 
     council_bounds = fetch_regional_councils()
@@ -2003,13 +2109,13 @@ def main():
         tlas = fetch_territorial_authorities()
         tla_region, tla_centroids = assign_tla_regions(tlas, council_bounds)
     except Exception as exc:                       # noqa: BLE001
-        print(f"TLA boundaries unavailable ({exc}) -- EV dashboard and solar's Regions mode will be omitted")
+        note_failure("TLA boundaries", exc, "EV dashboard and solar's Districts mode will be omitted")
         tlas, tla_region, tla_centroids = {}, {}, {}
 
     try:
         town_anchors = fetch_town_anchors()
     except Exception as exc:                       # noqa: BLE001
-        print(f"Town names unavailable ({exc}) -- town-level grouping will be omitted")
+        note_failure("Town names", exc, "town-level grouping will be omitted")
         town_anchors = {}
 
     council_battery = {}   # {council: {"installs": N, "battery": N, "pct": N}} -- see below
@@ -2058,11 +2164,12 @@ def main():
                     "pct": round(battery / installs * 100, 1),
                 }
     except Exception as exc:                       # noqa: BLE001
-        print(f"Trend history unavailable ({exc}) -- charts will be omitted")
+        note_failure("Trend history / battery counts", exc, "charts and battery figures will be omitted")
 
     if tlas:
         try:
             tla_names = {name.upper(): name for name in tlas}
+            ev_data_date = resolve_mvr_service()
             overall_ev, overall_total, ev_categories = fetch_ev_snapshot(tla_names)
             ev_years, ev_trend_series = fetch_ev_trends(tla_names)
             ev_national, ev_regions, ev_tlas, ev_trends = build_ev_data(
@@ -2092,7 +2199,10 @@ def main():
             save(PREV_EV_TOTALS, {row["name"]: {"ev": row["ev"]} for row in ev_tlas})
 
             save(OUT_EV, {
-                "updated": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                # NZTA's own last-refresh date, not this run's -- same
+                # honest "how fresh is the data" framing as solar's
+                # fetch_data_date. Today's date only as a last resort.
+                "updated": ev_data_date or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
                 "categories": [name for name, _ in EV_CATEGORIES],
                 "national": ev_national,
                 "regions": ev_regions,
@@ -2102,7 +2212,7 @@ def main():
             })
             write_ev_boundaries(ev_tlas)
         except Exception as exc:                       # noqa: BLE001
-            print(f"EV data unavailable ({exc}) -- EV dashboard will be omitted")
+            note_failure("EV data", exc, "EV dashboard will be omitted")
 
     region_tree = build_region_tree(networks, total_icps, council_bounds) if networks else []
     national_total = sum(total_icps.values())
@@ -2189,25 +2299,25 @@ def main():
     try:
         sa1_dwellings = fetch_sa1_dwellings()
     except Exception as exc:                       # noqa: BLE001
-        print(f"Census dwelling data unavailable ({exc}) -- district/town % estimates will be omitted")
+        note_failure("Census dwellings", exc, "district/town % estimates will be omitted")
         sa1_dwellings = []
     try:
         anzsic_ratios = fetch_anzsic_ratios()
     except Exception as exc:                       # noqa: BLE001
-        print(f"ANZSIC ICP breakdown unavailable ({exc}) -- district/town % estimates will be omitted")
+        note_failure("ANZSIC ICP breakdown", exc, "district/town % estimates will be omitted")
         anzsic_ratios = {}
 
     if region_tree and tla_region:
         try:
             write_region_boundaries(region_tree, tla_region, towns, sa1_dwellings, anzsic_ratios)
         except Exception as exc:                       # noqa: BLE001
-            print(f"Region boundaries unavailable ({exc}) -- solar's Regions map mode will be omitted")
+            note_failure("Region boundaries", exc, "solar's Districts map mode will be omitted")
 
     if towns:
         try:
             write_town_boundaries(towns, town_anchors, sa1_dwellings, anzsic_ratios)
         except Exception as exc:                       # noqa: BLE001
-            print(f"Town boundaries unavailable ({exc}) -- solar's Towns map mode will fall back to dots")
+            note_failure("Town boundaries", exc, "solar's Towns map mode will fall back to dots")
 
     # Re-sort now that estPct exists (build_towns sorted by installs,
     # before write_town_boundaries had computed it) -- % of connections
@@ -2242,6 +2352,17 @@ def main():
     if matched < total * 0.5:
         print("Match rate below 50% -- failing so the bad build isn't published")
         sys.exit(1)
+
+    # Deliberately last, and deliberately not an exit code: everything
+    # that did build is already written above and should still be
+    # committed. The workflow reads BUILD_STATUS after committing and
+    # fails the job there, so a partial build publishes real data *and*
+    # shows up red rather than passing quietly with a stale file.
+    report_failures()
+    if FAILURES:
+        print(f"\n{len(FAILURES)} dataset(s) failed -- see the errors above")
+    else:
+        print("\nAll datasets refreshed successfully")
 
 
 if __name__ == "__main__":

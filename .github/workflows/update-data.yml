@@ -77,3 +77,26 @@ jobs:
           done
           echo "::error::Failed to push after 5 attempts"
           exit 1
+
+      # Runs after the commit above on purpose. process.py keeps going
+      # when an optional upstream (EV, batteries, census, ...) fails, so
+      # that one outage can't block the datasets that did refresh -- but
+      # a failed dataset just leaves its previously committed file in
+      # place, which looks identical to success from the outside. This
+      # turns that into a red run, without having thrown away the data
+      # that did build.
+      - name: Fail if any dataset went stale
+        if: always()
+        run: |
+          if [ ! -f build_status.json ]; then
+            echo "::error::build_status.json missing -- process.py exited before finishing"
+            exit 1
+          fi
+          # process.py already logged a ::error:: annotation naming each
+          # failed dataset, so this only has to decide the exit code.
+          count=$(python -c "import json;print(len(json.load(open('build_status.json'))['failures']))")
+          if [ "$count" != "0" ]; then
+            echo "::error::$count dataset(s) failed to refresh -- their previously committed files are still being served. See the annotations above."
+            exit 1
+          fi
+          echo "All datasets refreshed."
