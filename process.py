@@ -89,6 +89,26 @@ SA1_CENSUS_SERVICE = (
 )
 SA1_CENSUS_CACHE = "sa1_dwellings.json"
 
+# Stats NZ's official urban/rural classification, used to tell a farm
+# apart from a business inside a rural town. Its own categories already
+# draw exactly that line: a small town's built-up area (supermarket and
+# all) is a "Small urban area" or "Rural settlement", while the paddocks
+# around it are "Rural other". Verified live -- Methven and Darfield
+# townships classify urban, points a few km out classify rural.
+#
+# Only the *non*-rural polygons are fetched: rural is everything else.
+# That's 597 small areas rather than 68 enormous ones covering 96% of
+# the country, and it makes "is this rural?" a single negative test.
+# Geometry is simplified to ~11m, which cuts the cache from 46.6MB to
+# 1.6MB and (verified) classifies every test point identically.
+URBAN_AREAS_SERVICE = (
+    "https://services2.arcgis.com/vKb0s8tBIA3bdocZ/arcgis/rest/services/"
+    "Urban_Rural_Areas_2026/FeatureServer/0/query"
+)
+URBAN_AREAS_CACHE = "urban_areas.json"
+URBAN_CLASSES = ("11", "12", "13", "14", "21")   # major/large/medium/small urban, rural settlement
+URBAN_SIMPLIFY_DEG = 0.0001                      # ~11m
+
 # EMI's 39 "network reporting regions" (real distributor footprints, not
 # fabricated) grouped under their NZ regional council. A handful of
 # networks straddle a council boundary -- those are marked, and the
@@ -261,9 +281,20 @@ TLA_REGION_OVERRIDES = {
 # "Manawatū-Whanganui" is the only mismatch across all 16 councils, and
 # without this it would silently drop that one council's real battery
 # data (see council_battery/main()).
-GUEHMT_COUNCIL_ALIASES = {
+# EMI spells one council without macrons across *every* one of its
+# datasets -- GUEHMT and the installs-by-region file both say
+# "Manawatu-Wanganui" where the real council name (and Stats NZ's
+# boundaries) say "Manawatū-Whanganui". Verified live: it is the only
+# mismatch across all 16 councils in both sources. Applied at every EMI
+# council-name boundary, not just the one where it was first noticed.
+EMI_COUNCIL_ALIASES = {
     "Manawatu-Wanganui": "Manawatū-Whanganui",
 }
+
+
+def emi_council(name):
+    """EMI's spelling of a council name -> the real one."""
+    return EMI_COUNCIL_ALIASES.get(name, name)
 
 SUPPRESSED = 2       # EMI's "3 or less" counted as this many
 
@@ -399,6 +430,82 @@ def note_failure(dataset, exc, consequence):
     """
     FAILURES.append({"dataset": dataset, "error": str(exc), "consequence": consequence})
     print(f"{dataset} unavailable ({exc}) -- {consequence}")
+
+
+def reconcile(totals, region_tree, towns):
+    """Check the figures about to be published against the source they
+    claim to come from, and record a failure if they disagree.
+
+    This exists because the pipeline has two kinds of number and it is
+    easy to mix them up: figures EMI publishes directly (exact, and
+    expected to add up), and figures derived from the privacy-suppressed
+    street file (necessarily approximate -- 82% of its rows are "3 or
+    less"). A regression that quietly starts summing the second kind
+    where the first kind belongs is invisible in the UI but makes the
+    whole dashboard irreconcilable, which is exactly what happened
+    before this check existed.
+
+    Anything reported here is a real disagreement to explain, not a
+    tolerance to widen.
+    """
+    checks = []
+
+    def check(name, got, expected):
+        """Exact identity. Used only where the source guarantees one."""
+        ok = expected is not None and got is not None and got == expected
+        checks.append((name, f"{got:,}" if isinstance(got, int) else got,
+                       f"{expected:,}" if isinstance(expected, int) else expected, ok))
+        return ok
+
+    # Identities EMI's own file guarantees, so any drift is our bug.
+    if totals.get("resIcps") is not None and totals.get("busIcps") is not None:
+        check("national residential + business == national total",
+              totals["resIcps"] + totals["busIcps"], totals.get("icps"))
+    for r in region_tree:
+        if "resIcps" in r and "busIcps" in r:
+            if not check(f"{r['name']}: residential + business == total",
+                         r["resIcps"] + r["busIcps"], r["icps"]):
+                break   # one example is enough to diagnose; don't flood the log
+
+    print("\nReconciliation against EMI's published figures:")
+    for name, got, expected, ok in checks:
+        print(f"  [{'ok' if ok else 'FAIL'}] {name}: {got} vs {expected}")
+
+    # EMI's own aggregations don't perfectly agree with each other: its
+    # NZ row, its 16 regional-council rows and its 39 network rows are
+    # each internally consistent but differ slightly, because a small
+    # number of connections aren't attributed to a council or network.
+    # Measured live at 67 of 90,416 (0.07%). So this is reported as a
+    # residual rather than asserted to zero -- but a threshold well
+    # above it still catches the failure mode that matters: summing the
+    # privacy-suppressed street file instead, which overstated the
+    # country by 10.7%.
+    RESIDUAL_LIMIT_PCT = 1.0
+    if totals.get("icps") and region_tree:
+        region_sum = sum(r["icps"] for r in region_tree)
+        gap = totals["icps"] - region_sum
+        pct = abs(gap) / totals["icps"] * 100
+        verdict = "ok" if pct <= RESIDUAL_LIMIT_PCT else "FAIL"
+        print(f"  [{verdict}] region sum {region_sum:,} vs EMI's NZ row {totals['icps']:,} "
+              f"-- residual {gap:+,} ({pct:.2f}%, limit {RESIDUAL_LIMIT_PCT}%): "
+              f"connections EMI doesn't attribute to any council")
+        if pct > RESIDUAL_LIMIT_PCT:
+            checks.append(("region sum vs national", f"{region_sum:,}", f"{totals['icps']:,}", False))
+
+    bad = [c for c in checks if not c[3]]
+    if bad:
+        note_failure(
+            "Reconciliation", f"{len(bad)} of {len(checks)} checks failed",
+            "published figures disagree with EMI's own totals",
+        )
+    # Towns are street-derived and cannot reconcile -- reported so the
+    # gap stays a known quantity rather than becoming a surprise.
+    if towns and totals.get("icps"):
+        town_sum = sum(t["icps"] for t in towns)
+        print(f"  [info] town install sum {town_sum:,} vs EMI's {totals['icps']:,} "
+              f"({town_sum / totals['icps'] * 100:.1f}%) -- expected high: each suppressed street "
+              f"row counts as {SUPPRESSED}. Town figures are published as approximate.")
+    return not bad
 
 
 def report_failures():
@@ -606,24 +713,45 @@ def read_streets(text):
 
 
 def read_regions(text):
-    """National and per-network-region solar totals for the dashboard."""
+    """National and per-network-region solar totals for the dashboard,
+    including EMI's own residential/business split.
+
+    Res and Bus are real published rows, not an apportionment: verified
+    live that Res + Bus equals the All row exactly for every region.
+    """
     import csv
     import io
 
-    totals, networks = {}, {}
+    totals, networks, councils = {}, {}, {}
     for row in csv.DictReader(io.StringIO(text)):
-        if row.get("MarketSegment") != "All":
+        seg = row.get("MarketSegment")
+        if seg not in ("All", "Res", "Bus"):
             continue
         n, _ = icp_value(row.get("ICPs"))
         try:
-            kw = float(row.get("GenerationCapacityKilowattsSum") or 0)
+            kw = round(float(row.get("GenerationCapacityKilowattsSum") or 0), 1)
         except ValueError:
             kw = 0.0
         if row.get("RegionType") == "NZ":
-            totals = {"icps": n, "kW": round(kw, 1)}
+            bucket = totals
         elif row.get("RegionType") == "NWK_REPORTING_REGION":
-            networks[row.get("Region")] = {"icps": n, "kW": round(kw, 1)}
-    return totals, networks
+            bucket = networks.setdefault(row.get("Region"), {})
+        elif row.get("RegionType") == "REG_COUNCIL":
+            # EMI's own council attribution. Preferred over rolling the
+            # network regions up ourselves via NETWORK_TO_COUNCIL: it is
+            # the publisher's own mapping, it sums exactly to the NZ row,
+            # and it gets the embedded-network cases (Nelson) right
+            # without needing a geographic workaround.
+            bucket = councils.setdefault(emi_council(row.get("Region")), {})
+        else:
+            continue
+        if seg == "All":
+            bucket["icps"], bucket["kW"] = n, kw
+        elif seg == "Res":
+            bucket["resIcps"], bucket["resKW"] = n, kw
+        else:
+            bucket["busIcps"], bucket["busKW"] = n, kw
+    return totals, networks, councils
 
 
 def newest_dated_link(page, link_re):
@@ -726,6 +854,60 @@ def fetch_anzsic_ratios():
     if total_res:
         ratios["__national__"] = sum(totals.values()) / total_res
     return ratios
+
+
+def fetch_urban_areas():
+    """Stats NZ's urban areas and rural settlements as GeoJSON -- the
+    footprints that a solar install must fall *outside* of to count as
+    rural. See URBAN_AREAS_SERVICE for why it's the negative set.
+    """
+    cached = load(URBAN_AREAS_CACHE, None)
+    if cached is not None:
+        print(f"Urban/settlement areas: {len(cached.get('features', []))} (cached)")
+        return cached
+
+    print("Fetching Stats NZ urban/rural areas...")
+    where = "IUR2026_V1_00 IN (" + ",".join(f"'{c}'" for c in URBAN_CLASSES) + ")"
+    features, offset = [], 0
+    while True:
+        r = get(URBAN_AREAS_SERVICE, timeout=180, params={
+            "where": where, "outFields": "IUR2026_V1_00,UR2026_V1_00_NAME",
+            "returnGeometry": "true", "outSR": 4326,
+            "maxAllowableOffset": URBAN_SIMPLIFY_DEG,
+            "f": "geojson", "resultOffset": offset, "resultRecordCount": 200,
+        })
+        got = r.json().get("features", [])
+        if not got:
+            break
+        features += got
+        offset += len(got)
+        if len(got) < 200:
+            break
+
+    if not features:
+        raise RuntimeError("Urban/rural areas query returned nothing")
+    out = {"type": "FeatureCollection", "features": features}
+    save(URBAN_AREAS_CACHE, out)
+    print(f"Urban/settlement areas: {len(features)}")
+    return out
+
+
+def rural_test_fn(urban_geojson):
+    """A fn(lng, lat) -> True when that point is rural -- i.e. outside
+    every urban area and rural settlement. R-tree indexed, because this
+    runs once per geocoded street (~36,000 points).
+    """
+    from shapely.geometry import Point, shape
+    from shapely.strtree import STRtree
+
+    polys = [shape(f["geometry"]) for f in urban_geojson["features"] if f.get("geometry")]
+    tree = STRtree(polys)
+
+    def is_rural(lng, lat):
+        p = Point(lng, lat)
+        return not any(polys[i].contains(p) for i in tree.query(p))
+
+    return is_rural
 
 
 def fetch_sa1_dwellings():
@@ -1126,8 +1308,14 @@ def build_region_tree(networks, total_icps, council_bounds):
             continue
         s = networks.get(name, {"icps": 0, "kW": 0.0})
         total = total_icps.get(name, 0)
-        acc = councils.setdefault(council, {"icps": 0, "kW": 0.0, "totalIcps": 0})
+        acc = councils.setdefault(council, {"icps": 0, "kW": 0.0, "totalIcps": 0,
+                                            "resIcps": 0, "resKW": 0.0,
+                                            "busIcps": 0, "busKW": 0.0})
         acc["icps"] += s["icps"]; acc["kW"] += s["kW"]; acc["totalIcps"] += total
+        # EMI's own Res/Bus rows for this network (see read_regions), so
+        # the split is published rather than apportioned.
+        for k in ("resIcps", "resKW", "busIcps", "busKW"):
+            acc[k] += s.get(k, 0)
 
     tree = []
     for council, acc in councils.items():
@@ -1139,6 +1327,8 @@ def build_region_tree(networks, total_icps, council_bounds):
             "kW": round(acc["kW"], 1),
             "totalIcps": acc["totalIcps"],
             "pct": round(acc["icps"] / acc["totalIcps"] * 100, 2) if acc["totalIcps"] else 0,
+            "resIcps": acc["resIcps"], "resKW": round(acc["resKW"], 1),
+            "busIcps": acc["busIcps"], "busKW": round(acc["busKW"], 1),
             "bbox": bounds.get("bbox") if bounds else None,
             "lat": round(lat, 4) if lat is not None else None,
             "lng": round(lng, 4) if lng is not None else None,
@@ -1872,7 +2062,7 @@ def _nearest_town_fn(town_anchors):
     return nearest_town
 
 
-def build_towns(features, town_anchors, council_bounds):
+def build_towns(features, town_anchors, council_bounds, rural_known=False):
     """Group placed streets into real towns (nearest named-locality
     centre) -- e.g. "Wanaka" and "Queenstown" as separate entries -- each
     tagged with the regional council it falls inside and its own
@@ -1894,18 +2084,38 @@ def build_towns(features, town_anchors, council_bounds):
         p = f["properties"]
         lng, lat = f["geometry"]["coordinates"]
         name = nearest_town(lat, lng)
-        t = towns.setdefault(name, {"icps": 0, "kW": 0.0})
+        t = towns.setdefault(name, {"icps": 0, "kW": 0.0, "res": 0, "bus": 0,
+                                    "ruralBus": 0, "ruralBusKW": 0.0, "rural": False})
         t["icps"] += p["icps"]; t["kW"] += p["kW"]
+        t["res"] += p.get("res", 0); t["bus"] += p.get("bus", 0)
+        if p.get("rural"):
+            t["rural"] = True
+            t["ruralBus"] += p.get("bus", 0)
+            # Apportion this street's capacity to its business share --
+            # EMI publishes one kW total per street, not one per market
+            # segment, so a business-only split isn't directly available
+            # at street level. busShare is that street's own real
+            # Bus/(Res+Bus) ratio, not a national assumption.
+            t["ruralBusKW"] += p["kW"] * p.get("busShare", 0)
 
     out = []
     for name, t in towns.items():
         alat, alng = town_anchors[name]
         council = council_of_point(alat, alng, council_bounds)
-        out.append({
+        row = {
             "name": name, "council": council,
             "icps": t["icps"], "kW": round(t["kW"], 1),
+            "res": t["res"], "bus": t["bus"],
             "lat": round(alat, 4), "lng": round(alng, 4),
-        })
+        }
+        # Only when a rural classifier actually ran (see build()) --
+        # absent means unknown, which the UI must not render as zero. A
+        # wholly urban town still gets a real 0 here, which is a
+        # different statement from "we couldn't tell".
+        if rural_known:
+            row["ruralBus"] = t["ruralBus"]
+            row["ruralBusKW"] = round(t["ruralBusKW"], 1)
+        out.append(row)
 
     out.sort(key=lambda x: x["icps"], reverse=True)
     return out
@@ -2072,7 +2282,7 @@ def geocode(records, areas, council_bounds):
 # Step 4 - Build the GeoJSON
 # ----------------------------------------------------------------------
 
-def build(records, cache, areas, previous):
+def build(records, cache, areas, previous, is_rural=None):
     features, missing = [], 0
 
     for (code, norm), rec in records.items():
@@ -2100,6 +2310,12 @@ def build(records, cache, areas, previous):
             "kW": round(rec["kW"], 1),
             "busShare": round(rec["bus"] / known, 2) if known else 0,
         }
+        # Rural means outside every urban area and rural settlement
+        # (see fetch_urban_areas). Only flagged, never inferred: with no
+        # classifier available the key is simply absent rather than
+        # defaulting to a guess.
+        if is_rural is not None and is_rural(lng, lat):
+            props["rural"] = 1
         if rec["est"]:
             props["est"] = 1
         # Growth since the last build, so the map can show what's moving.
@@ -2139,10 +2355,10 @@ def main():
     data_date = fetch_data_date(STREET_CSV) or datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     try:
-        totals, networks = read_regions(fetch_csv(REGION_CSV))
+        totals, networks, emi_councils = read_regions(fetch_csv(REGION_CSV))
     except Exception as exc:                       # noqa: BLE001
         note_failure("Region file", exc, "region totals continue from the previous run")
-        totals, networks = {}, {}
+        totals, networks, emi_councils = {}, {}, {}
 
     try:
         total_icps = fetch_total_icps()
@@ -2210,7 +2426,7 @@ def main():
         # those show this same council figure labelled as such rather
         # than a number of their own that doesn't exist.
         for name, series in trends["councils"].items():
-            name = GUEHMT_COUNCIL_ALIASES.get(name, name)
+            name = emi_council(name)
             installs, battery = series["installs"][-1], series["battery"][-1]
             if installs:
                 council_battery[name] = {
@@ -2292,39 +2508,90 @@ def main():
 
     cache = geocode(records, areas, council_bounds)
 
+    # Optional, like every other enrichment here -- if Stats NZ is
+    # unreachable the streets still build, just without the rural flag,
+    # and the UI omits the rural breakdown rather than guessing.
+    is_rural = None
+    try:
+        is_rural = rural_test_fn(fetch_urban_areas())
+    except Exception as exc:                       # noqa: BLE001
+        note_failure("Urban/rural areas", exc, "the rural business breakdown will be omitted")
+
     previous = load("previous_counts.json", {})
-    features, missing = build(records, cache, areas, previous)
+    features, missing = build(records, cache, areas, previous, is_rural)
 
-    towns = build_towns(features, town_anchors, council_bounds)
+    towns = build_towns(features, town_anchors, council_bounds, is_rural is not None)
 
-    # region_tree's installs/kW come from EMI's network-operator join,
-    # which mismatches the real council polygon for a handful of small
-    # embedded networks -- "Nelson (Nelson Electricity)" covers only a
-    # few blocks, while "Tasman (Network Tasman)" actually serves most
-    # of Nelson city (see NETWORK_TO_COUNCIL). towns are placed by real
-    # geography instead (council_of_point), so summing them per council
-    # gives the true figure -- e.g. Nelson's real installs, not its tiny
-    # embedded network's. Overriding here keeps every council's stats
-    # consistent with the town rows shown underneath it.
-    geo_by_council = {}
-    for t in towns:
-        if not t["council"]:
-            continue
-        acc = geo_by_council.setdefault(t["council"], {"icps": 0, "kW": 0.0})
-        acc["icps"] += t["icps"]; acc["kW"] += t["kW"]
+    # Region installs/kW/Res/Bus come from EMI's own per-council rows,
+    # not from summing the geocoded streets underneath them.
+    #
+    # The street file exists to place installs on a map, and 82% of its
+    # rows are privacy-suppressed ("3 or less", counted as SUPPRESSED
+    # each), so summing it overstates the country by ~11% -- verified
+    # live: 100,054 against EMI's published 90,416. Publishing that as a
+    # region's install count made the dashboard irreconcilable with its
+    # own source, and put a count next to a percentage that was computed
+    # from a different (correct) numerator.
+    #
+    # Using EMI's council rows also removes the reason the old override
+    # existed: it was there because rolling networks up through
+    # NETWORK_TO_COUNCIL mis-assigns embedded networks (most of Nelson
+    # city is served by Network Tasman). EMI's own council attribution
+    # already handles that -- Nelson reads 1,810 rather than its 14-ICP
+    # embedded network -- so the geographic workaround is no longer
+    # needed for these figures.
     for r in region_tree:
-        geo = geo_by_council.get(r["name"])
-        if not geo:
+        emi_row = emi_councils.get(r["name"])
+        if not emi_row:
             continue
-        r["icps"] = geo["icps"]
-        r["kW"] = round(geo["kW"], 1)
-        # The % denominator is still the network's total ICPs, which for
-        # these same mismatched networks can be smaller than the real
-        # (geographic) install count just replaced above -- a logical
-        # impossibility that's the tell the denominator doesn't cover
-        # the real area. Omit rather than show a nonsense/misleading %.
+        r["icps"] = emi_row["icps"]
+        r["kW"] = emi_row["kW"]
+        for k in ("resIcps", "resKW", "busIcps", "busKW"):
+            if k in emi_row:
+                r[k] = emi_row[k]
+        # totalIcps is still only published per network reporting
+        # region, so its council rollup keeps the embedded-network
+        # problem the numerator no longer has: Nelson's denominator is
+        # 14 connections while Tasman's silently includes Nelson city.
+        # Omit the % rather than publish one built on that.
         if r["totalIcps"] and r["icps"] > r["totalIcps"]:
             r["pct"] = None
+        elif r["totalIcps"]:
+            r["pct"] = round(r["icps"] / r["totalIcps"] * 100, 2)
+
+    # Rural business installs. Deliberately NOT a sum of the street
+    # rows: 98% of the street file's business rows are privacy-
+    # suppressed ("3 or less"), so summing them nationally gives 12,443
+    # against EMI's published 8,150 -- 53% high. What the street points
+    # can support is the *share* of business installs that sit outside
+    # any town, and that share is then applied to EMI's own published
+    # business count for the council. Every published figure therefore
+    # still reconciles to EMI's totals; only the rural/urban split is
+    # ours, and it is labelled an estimate wherever it appears.
+    if is_rural is not None:
+        weights = {}   # council -> [rural business weight, total business weight]
+        for t in towns:
+            c = t.get("council")
+            if not c or t.get("ruralBus") is None:
+                continue
+            w = weights.setdefault(c, [0, 0])
+            w[0] += t["ruralBus"]
+            w[1] += t.get("bus", 0)
+        national_rural = 0
+        for r in region_tree:
+            rural_w, total_w = weights.get(r["name"], [0, 0])
+            if not total_w:
+                r["ruralBus"], r["ruralBusShare"] = 0, 0.0
+                continue
+            share = rural_w / total_w
+            r["ruralBusShare"] = round(share * 100, 1)
+            r["ruralBus"] = round(r["busIcps"] * share)
+            national_rural += r["ruralBus"]
+        if totals:
+            totals["ruralBus"] = national_rural
+            totals["ruralBusShare"] = (
+                round(national_rural / totals["busIcps"] * 100, 1) if totals.get("busIcps") else 0.0
+            )
 
     # Each town's parent council's real % of ICPs, attached as labelled
     # regional context -- not a town-specific figure (see build_towns).
@@ -2444,6 +2711,8 @@ def main():
     # committed. The workflow reads BUILD_STATUS after committing and
     # fails the job there, so a partial build publishes real data *and*
     # shows up red rather than passing quietly with a stale file.
+    reconcile(totals, region_tree, towns)
+
     report_failures()
     if FAILURES:
         print(f"\n{len(FAILURES)} dataset(s) failed -- see the errors above")
