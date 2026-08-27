@@ -352,7 +352,18 @@
   .loading-note { padding: 16px; font-size: 12.5px; color: var(--dim); }
 
   /* ============ Trend chart (inline, inside the top bar) ============ */
-  .chart-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
+  .chart-tabs { display: flex; gap: 4px; margin-bottom: 8px; align-items: center; }
+  .csv-btn {
+    border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--dim);
+    font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 7px;
+    cursor: pointer; letter-spacing: .2px; white-space: nowrap; font-family: inherit;
+  }
+  .csv-btn:hover { color: var(--text); background: rgba(255,255,255,.12); }
+  /* Pushed to the far end of the tab row so it never reads as a
+     fourth view to switch to. */
+  .csv-btn-chart { margin-left: auto; }
+  .popup-actions { margin-top: 9px; }
+  .maplibregl-popup-content .csv-btn { background: rgba(0,0,0,.25); }
   .chart-tab {
     border: none; background: rgba(255,255,255,.06); color: var(--dim);
     font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 7px;
@@ -433,6 +444,8 @@
             <button type="button" class="chart-tab active" data-mode="trend">Trend</button>
             <button type="button" class="chart-tab" data-mode="leaderboard">Leaderboard</button>
             <button type="button" class="chart-tab" data-mode="vehicles" id="vehicleDetailsTab">Vehicle Details</button>
+            <button type="button" class="csv-btn csv-btn-chart" data-csv-kind="chart"
+                    title="Download the data behind this view as a CSV">&#8681; CSV</button>
           </div>
           <div id="trendView">
             <select id="chartSelect" class="chart-select"></select>
@@ -876,7 +889,60 @@ function battBaseTitle(area, battInstalls, base) {
 // council's own real % is shown instead, explicitly labelled as the
 // council's rate and captioned "of solar installs" so it's never misread
 // as this shape's own count.
-function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, contextLines, regionSection }) {
+/* ================= CSV EXPORT ================= */
+/* Every download hands over exactly the real numbers on screen -- no
+   rounding beyond what's displayed, no derived columns the data can't
+   support -- plus the source and its vintage as a trailing note, so a
+   downloaded file can still be traced back to the EMI/NZTA release it
+   came from once it's detached from the site. */
+
+function csvEscape(v) {
+  if (v == null) return "";
+  const s = String(v);
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function csvSlug(s) {
+  return (s || "data").normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "data";
+}
+
+function downloadCSV(nameParts, headers, rows, note) {
+  const lines = [headers, ...rows].map(r => r.map(csvEscape).join(","));
+  if (note) lines.push("", [note].map(csvEscape).join(","));
+  // A UTF-8 BOM, specifically because NZ place names carry macrons
+  // (Wānaka, Ōkiwi Bay, Māpua, Manawatū-Whanganui). Excel assumes the
+  // system codepage for a BOM-less CSV and renders those as mojibake;
+  // the BOM makes it read UTF-8. Harmless everywhere else.
+  const blob = new Blob(["\uFEFF" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nameParts.filter(Boolean).map(csvSlug).join("-") + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  // Revoked on the next tick rather than immediately -- Safari aborts
+  // the download if the object URL is released in the same task.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+  return true;
+}
+
+function sourceNote() {
+  const d = DATASET === "ev" ? evUpdated : metaUpdated;
+  const src = DATASET === "ev"
+    ? "NZTA Motor Vehicle Register"
+    : "EMI (Electricity Authority)";
+  const when = d ? `${MONTHS3[d.getUTCMonth()]} ${d.getUTCFullYear()}` : "unknown";
+  return `Source: ${src}, data as at ${when}. Downloaded from ${location.origin}${location.pathname}`;
+}
+
+function downloadBtnHTML(kind, key, title) {
+  return `<button type="button" class="csv-btn" data-csv-kind="${kind}" ` +
+    `data-csv-key="${encodeURIComponent(key || "")}" title="${title}">&#8681; CSV</button>`;
+}
+
+function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, contextLines, regionSection, csv }) {
   const pctLine = pct != null
     ? `<div class="popup-pct popup-solar">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
     : "";
@@ -904,11 +970,14 @@ function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, con
     lower = battLine +
       (contextLines.length ? `<div class="popup-section">${contextLines.map(l => `<span class="popup-sub">${l}</span>`).join("<br>")}</div>` : "");
   }
+  const dl = csv
+    ? `<div class="popup-actions">${downloadBtnHTML(csv.kind, csv.key, `Download ${name}'s figures as a CSV`)}</div>`
+    : "";
   return `<strong>${name}</strong><br>` +
     (subtitle ? `<span style="opacity:.7">${subtitle}</span><br>` : "") +
     pctLine +
     `<span class="popup-sub">Total solar installs: <strong class="popup-solar">${fmt(icps)}</strong> &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
-    lower;
+    lower + dl;
 }
 
 function bboxIntersects(b, view) {
@@ -1327,6 +1396,7 @@ function loadSolarTownsLayer() {
             pct: p.councilPct != null ? +p.councilPct : null,
             battPct: p.councilBattPct != null ? +p.councilBattPct : null,
           },
+          csv: { kind: "town", key: p.name },
         })).addTo(map);
       });
       let hoveredTownId = null;
@@ -1430,6 +1500,7 @@ function loadSolarRegionsLayer() {
           battPct: r.battPct != null ? r.battPct : null,
           battLabel: `${r.name} region`,
           contextLines,
+          csv: { kind: "region", key: r.name },
         })
         ).addTo(map);
         // Solar's real trend data only goes down to council/region level
@@ -1755,7 +1826,8 @@ function addEvLayer(boundaries) {
         `<strong>${t.name}</strong><br><small class="muted">${t.region || ""}</small><br>` +
         `Electric vehicles: <strong>${fmt(t.ev)}</strong>` +
         (t.pct != null ? ` <small class="muted">(${t.pct.toFixed(1)}% of the local fleet)</small>` : "") +
-        `<div class="ev-categories" style="padding-left:0;margin-top:6px">${catLines}</div>`
+        `<div class="ev-categories" style="padding-left:0;margin-top:6px">${catLines}</div>` +
+        `<div class="popup-actions">${downloadBtnHTML("ev", t.name, `Download ${t.name}'s EV figures as a CSV`)}</div>`
       ).addTo(map);
     // Unlike solar, EV trend data is real down to district (TLA) level
     // (evTrends.tlas), so a click jumps the chart straight to the
@@ -2279,11 +2351,190 @@ async function renderFocusChart() {
 }
 
 chartTabsEl.addEventListener("click", e => {
+  if (e.target.closest(".csv-btn")) return;   // handled by the CSV delegate
   const btn = e.target.closest(".chart-tab");
   if (!btn || btn.dataset.mode === chartMode) return;
   chartMode = btn.dataset.mode;
   chartTabsEl.querySelectorAll(".chart-tab").forEach(b => b.classList.toggle("active", b === btn));
   renderFocusChart();
+});
+
+/* ---- What each view exports ---- */
+
+// Solar trend: the real monthly GUEHMT series behind the line chart.
+// Battery % is computed against that same series' own install count --
+// the pair share a denominator here, unlike the region cards (see
+// battBaseTitle), so the column is safe to derive.
+async function exportSolarTrend() {
+  // Awaited rather than read from a cache: the Trend tab is the default
+  // view, so by the time its download button can be clicked loadTrends()
+  // has already resolved and this is just handing back the same promise.
+  const td = await loadTrends();
+  if (!td) return false;
+  const [level, ...rest] = chartSelectEl.value.split(":");
+  const name = rest.join(":") || "New Zealand";
+  const s = level === "national" ? td.national : trendSeries(td, level, name);
+  if (!s) return false;
+  const rows = td.dates.map((d, i) => {
+    const inst = s.installs[i], batt = s.battery[i];
+    return [d, inst, batt, inst ? (batt / inst * 100).toFixed(1) : ""];
+  });
+  return downloadCSV(
+    ["nz-solar", level === "national" ? "new-zealand" : name, "monthly"],
+    ["Month end", "Solar installs", "Installs with battery", "% with battery"],
+    rows, sourceNote(),
+  );
+}
+
+// EV trend: cumulative vehicles on the road by first-registration year,
+// one column per category -- the stacked bands, as numbers.
+function exportEvTrend() {
+  if (!evTrends) return false;
+  const [level, ...rest] = chartSelectEl.value.split(":");
+  const name = rest.join(":") || "New Zealand";
+  const cats = EV_CHART_ORDER.filter(c => evTrendSeries(level, name, c));
+  const rows = evTrends.dates.map((d, i) =>
+    [d, ...cats.map(c => evTrendSeries(level, name, c)[i])]);
+  return downloadCSV(
+    ["nz-ev", level === "national" ? "new-zealand" : name, "by-year"],
+    ["Year", ...cats], rows, sourceNote(),
+  );
+}
+
+function exportLeaderboard() {
+  const isEv = DATASET === "ev";
+  const list = (isEv ? evRegions : regionData) || [];
+  const rows = list.filter(r => r.change != null && r.change > 0)
+    .slice().sort((a, b) => b.change - a.change)
+    .map((r, i) => [i + 1, r.name, r.change, r.changePct]);
+  if (!rows.length) return false;
+  const unit = isEv ? "EVs" : "solar installs";
+  return downloadCSV(
+    ["nz", isEv ? "ev" : "solar", "leaderboard"],
+    ["Rank", "Region", `Change in ${unit}`, "Change %"], rows, sourceNote(),
+  );
+}
+
+function exportVehicleDetails() {
+  const byCategory = vehiclesFor(currentFocus.level, currentFocus.name);
+  if (!byCategory) return false;
+  const list = byCategory[vehicleCategoryFilter] || [];
+  if (!list.length) return false;
+  const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
+  // Same denominator rule the on-screen list uses: once a category is
+  // picked the % is of that category's own total, not of all EVs.
+  const total = vehicleCategoryFilter === "All"
+    ? stats && stats.ev
+    : stats && stats.categories && stats.categories[vehicleCategoryFilter]
+      && stats.categories[vehicleCategoryFilter].ev;
+  const pctLabel = vehicleCategoryFilter === "All"
+    ? "% of all EVs here" : `% of ${vehicleCategoryFilter.toLowerCase()} here`;
+  const rows = list.map((v, i) =>
+    [i + 1, v.make, v.model, v.count, total ? (v.count / total * 100).toFixed(1) : ""]);
+  return downloadCSV(
+    ["nz-ev", currentFocus.name, vehicleCategoryFilter, "models"],
+    ["Rank", "Make", "Model", "Count", pctLabel], rows, sourceNote(),
+  );
+}
+
+function exportCurrentChart() {
+  if (chartMode === "leaderboard") return exportLeaderboard();
+  if (chartMode === "vehicles") return exportVehicleDetails();
+  return DATASET === "ev" ? exportEvTrend() : exportSolarTrend();
+}
+
+/* ---- Map card (popup) exports ---- */
+
+// Shared column set so a region file and a town file open the same way
+// and can be concatenated. Blank cells where a figure genuinely doesn't
+// exist at that granularity (a town has no measured % of connections;
+// a region has no estimate) rather than a zero that would read as real.
+const AREA_CSV_HEADERS = [
+  "Name", "Level", "Region", "Solar installs", "Capacity (MW)",
+  "% of connections (measured)", "% of connections (estimated)",
+  "Installs with battery", "% with battery", "Battery figure measured against",
+];
+
+function regionCsvRow(r) {
+  return [r.name, "Region", "", r.icps, (r.kW / 1000).toFixed(2),
+    r.pct != null ? r.pct : "", "",
+    r.battInstalls != null ? r.battInstalls : "",
+    r.battPct != null ? r.battPct : "",
+    r.battBase != null ? r.battBase : ""];
+}
+
+function townCsvRow(t) {
+  return [t.name, "Town", t.council || "", t.icps, (t.kW / 1000).toFixed(2),
+    "", t.estPct != null ? t.estPct : "",
+    t.councilBattInstalls != null ? t.councilBattInstalls : "",
+    t.councilBattPct != null ? t.councilBattPct : "",
+    t.councilBattBase != null ? t.councilBattBase : ""];
+}
+
+// Battery columns on a town row are its *council's* figures, not the
+// town's own -- EMI publishes no battery count at town granularity (see
+// council_battery in process.py). Spelled out in the file so a
+// downloaded row can't be mistaken for a town-level measurement.
+const TOWN_BATT_NOTE = "Note: battery columns on Town rows are that town's parent region's figures; " +
+  "EMI publishes no battery count at town level.";
+
+function exportRegionCard(name) {
+  const r = (regionData || []).find(x => x.name === name);
+  if (!r) return false;
+  const towns = (townData || []).filter(t => t.council === name)
+    .slice().sort((a, b) => b.icps - a.icps);
+  const rows = [regionCsvRow(r), ...towns.map(townCsvRow)];
+  return downloadCSV(["nz-solar", name], AREA_CSV_HEADERS, rows,
+    `${sourceNote()} ${towns.length ? TOWN_BATT_NOTE : ""}`.trim());
+}
+
+function exportTownCard(name) {
+  const t = (townData || []).find(x => x.name === name);
+  if (!t) return false;
+  return downloadCSV(["nz-solar", name], AREA_CSV_HEADERS, [townCsvRow(t)],
+    `${sourceNote()} ${TOWN_BATT_NOTE}`);
+}
+
+function exportEvCard(name) {
+  const t = (evTlas || []).find(x => x.name === name);
+  if (!t) return false;
+  const rows = [["All electric vehicles", t.ev, t.total,
+    t.pct != null ? t.pct : ""]];
+  for (const cat of EV_CHART_ORDER) {
+    const c = t.categories && t.categories[cat];
+    if (c) rows.push([`Electric ${cat}`, c.ev, c.total, c.pct != null ? c.pct : ""]);
+  }
+  return downloadCSV(["nz-ev", name],
+    ["Category", "Electric vehicles", "Total vehicles of this type", "% electric"],
+    rows, sourceNote());
+}
+
+// Popups live outside #board, and are torn down and rebuilt on every
+// map click, so this delegates from the document rather than binding
+// per-popup. Also covers the chart panel's own button.
+document.addEventListener("click", e => {
+  const btn = e.target.closest(".csv-btn");
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const kind = btn.getAttribute("data-csv-kind");
+  const key = decodeURIComponent(btn.getAttribute("data-csv-key") || "");
+  let done;
+  if (kind === "chart") done = exportCurrentChart();
+  else if (kind === "region") done = exportRegionCard(key);
+  else if (kind === "town") done = exportTownCard(key);
+  else if (kind === "ev") done = exportEvCard(key);
+  // A view can legitimately have nothing to export -- the Leaderboard
+  // is empty until two runs straddle an EMI publication, so every
+  // change is 0 and gets filtered out. Saying so beats a click that
+  // silently does nothing. (exportCurrentChart may be a promise.)
+  Promise.resolve(done).then(ok => {
+    if (ok !== false) return;
+    const original = btn.innerHTML;
+    btn.innerHTML = "No data yet";
+    btn.disabled = true;
+    setTimeout(() => { btn.innerHTML = original; btn.disabled = false; }, 1600);
+  });
 });
 
 // Clicking a region/district on the map, while the chart is open, jumps
