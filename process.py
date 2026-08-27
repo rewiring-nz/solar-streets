@@ -1352,23 +1352,33 @@ def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_r
 
 
 GUEHMT_MW_COLUMN = "Total capacity installed (MW)"
+GUEHMT_NEW_AVG_COLUMN = "Avg. capacity - new installations (kW)"
 
 
-def _fetch_guehmt(fuel_type, region_type):
-    """One fuel-type/region-granularity slice of the GUEHMT report:
-    {region name: {date: (ICP count, cumulative MW)}}.
+def _fetch_guehmt(fuel_type, region_type, market_segment=None):
+    """One slice of the GUEHMT report, as
+    {region name: {date: {"icps", "mw", "avgNew"}}}.
 
-    Both metrics come out of the same response: GUEHMT's CSV export
-    carries every column it can produce regardless of the report's own
-    "Show" setting (verified live -- the request below doesn't ask for
-    capacity and gets it anyway), so the MW series is free rather than a
-    fifth and sixth round trip.
+    Every metric comes out of one response: GUEHMT's CSV export carries
+    all of its columns regardless of the report's own "Show" setting
+    (verified live -- this request never asks for capacity and gets it
+    anyway), so capacity and the new-installation average cost nothing
+    beyond the request already being made.
+
+    market_segment picks EMI's own market split -- None/"All", "Res",
+    "Com", "Ind" (also "SME", but that one is a cross-cutting subset,
+    not a fourth exclusive bucket: verified live that Res + Com + Ind
+    sums exactly to All in every month, while SME on its own is larger
+    than Com).
     """
-    r = get(GUEHMT_URL, timeout=180, params={
+    params = {
         "DateFrom": "20130901",
         "DateTo": datetime.now(timezone.utc).strftime("%Y%m%d"),
         "FuelType": fuel_type, "RegionType": region_type, "_rsdr": "ALL",
-    })
+    }
+    if market_segment:
+        params["MarketSegment"] = market_segment
+    r = get(GUEHMT_URL, timeout=180, params=params)
     text = r.content.decode("utf-8-sig", errors="replace")
     lines = text.splitlines()
     start = next((i for i, ln in enumerate(lines) if ln.startswith("Month end,")), None)
@@ -1377,6 +1387,12 @@ def _fetch_guehmt(fuel_type, region_type):
 
     import csv
     import io
+
+    def num(row, col, dp):
+        try:
+            return round(float(row.get(col) or 0), dp)
+        except ValueError:
+            return 0.0
 
     by_region = {}
     for row in csv.DictReader(io.StringIO("\n".join(lines[start:]))):
@@ -1388,16 +1404,17 @@ def _fetch_guehmt(fuel_type, region_type):
             icps = int(float(row["ICP count"]))
         except (TypeError, ValueError):
             continue
-        try:
-            # 3dp, not 1dp: the frontend derives average system size
-            # as mw/installs, and rounding to 0.1 MW skews that by up
-            # to 1.2% for the smallest councils (verified against
-            # GUEHMT's own published average -- West Coast is worst).
-            mw = round(float(row.get(GUEHMT_MW_COLUMN) or 0), 3)
-        except ValueError:
-            mw = 0.0
         d, m, y = date.split("/")
-        by_region.setdefault(name, {})[f"{y}-{m}-{d}"] = (icps, mw)
+        by_region.setdefault(name, {})[f"{y}-{m}-{d}"] = {
+            "icps": icps,
+            "mw": num(row, GUEHMT_MW_COLUMN, 3),
+            # Average size of the systems connected *that month*, as EMI
+            # publishes it. Can't be derived from the cumulative figures
+            # (those give the lifetime average), and can't be summed
+            # across regions either -- so it's read per region, and the
+            # national series takes it from GUEHMT's own NZ row.
+            "avgNew": num(row, GUEHMT_NEW_AVG_COLUMN, 2),
+        }
     return by_region
 
 
@@ -1411,33 +1428,47 @@ def fetch_trends():
     print("Fetching historical install trends from EMI...")
     council_all = _fetch_guehmt("solar_all", "REG_COUNCIL")
     council_batt = _fetch_guehmt("solarplusbattery", "REG_COUNCIL")
+    council_res = _fetch_guehmt("solar_all", "REG_COUNCIL", "Res")
     network_all = _fetch_guehmt("solar_all", "NWK_REPORTING_REGION_DIST")
     network_batt = _fetch_guehmt("solarplusbattery", "NWK_REPORTING_REGION_DIST")
+    network_res = _fetch_guehmt("solar_all", "NWK_REPORTING_REGION_DIST", "Res")
+    # The national new-install average is an average, so it can't be
+    # summed from the councils the way counts and capacity can -- taken
+    # from GUEHMT's own New Zealand row instead.
+    nz_res = _fetch_guehmt("solar_all", "NZ", "Res")
 
     dates = sorted({d for series in council_all.values() for d in series}
                     | {d for series in network_all.values() for d in series})
 
-    def series_for(all_map, batt_map):
+    BLANK = {"icps": 0, "mw": 0.0, "avgNew": 0.0}
+
+    def series_for(all_map, batt_map, res_map):
         out = {}
         for name in all_map:
-            # mw is only read off the all-solar pull: the battery pull's
+            # mw comes only off the all-solar pull: the battery pull's
             # own capacity column is the capacity of battery-equipped
             # systems, which isn't what "total installed MW" means here.
+            # resAvgNewKW is residential-only and month-specific, which
+            # is why it needs its own segment pull.
             out[name] = {
-                "installs": [all_map[name].get(d, (0, 0.0))[0] for d in dates],
-                "battery": [batt_map.get(name, {}).get(d, (0, 0.0))[0] for d in dates],
-                "mw": [all_map[name].get(d, (0, 0.0))[1] for d in dates],
+                "installs": [all_map[name].get(d, BLANK)["icps"] for d in dates],
+                "battery": [batt_map.get(name, {}).get(d, BLANK)["icps"] for d in dates],
+                "mw": [all_map[name].get(d, BLANK)["mw"] for d in dates],
+                "resAvgNewKW": [res_map.get(name, {}).get(d, BLANK)["avgNew"] for d in dates],
             }
         return out
 
-    councils = series_for(council_all, council_batt)
-    networks = series_for(network_all, network_batt)
+    councils = series_for(council_all, council_batt, council_res)
+    networks = series_for(network_all, network_batt, network_res)
 
-    # National = sum of councils, rather than a 5th/6th fetch.
+    # National = sum of councils, rather than more fetches -- except the
+    # average, see nz_res above.
+    nz_row = nz_res.get("New Zealand", {})
     national = {
         "installs": [sum(c["installs"][i] for c in councils.values()) for i in range(len(dates))],
         "battery": [sum(c["battery"][i] for c in councils.values()) for i in range(len(dates))],
         "mw": [round(sum(c["mw"][i] for c in councils.values()), 3) for i in range(len(dates))],
+        "resAvgNewKW": [nz_row.get(d, BLANK)["avgNew"] for d in dates],
     }
 
     return {"dates": dates, "national": national, "councils": councils, "networks": networks}

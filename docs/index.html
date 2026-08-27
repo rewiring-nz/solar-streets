@@ -419,6 +419,9 @@
   /* Hidden series stay listed, just visibly switched off, so it's
      obvious the line exists and can be brought back. */
   .legend-toggle.off { opacity: .4; text-decoration: line-through; }
+  .legend-note { font-size: 9px; opacity: .6; cursor: help; margin-left: 3px;
+    border: 1px solid currentColor; border-radius: 50%; width: 11px; height: 11px;
+    display: inline-flex; align-items: center; justify-content: center; }
   .chart-legend .ev { background: var(--cyan); }
   .data-sources { font-size: 9.5px; color: var(--dim); opacity: .75; margin-top: 10px; line-height: 1.5; }
 </style>
@@ -2043,8 +2046,14 @@ const TREND_SERIES = [
     tick: v => fmt(Math.round(v)) },
   { key: "mw", label: "Total capacity (MW)", color: "#4ade80", axis: "left",
     tick: v => v >= 100 ? fmt(Math.round(v)) : v.toFixed(v >= 10 ? 0 : 1) },
-  { key: "avgKW", label: "Avg. system size (kW)", color: "#c084fc", axis: "left",
-    tick: v => v.toFixed(1) },
+  { key: "resAvgNewKW", label: "Avg. new residential system (kW)", color: "#c084fc", axis: "left",
+    tick: v => v.toFixed(1),
+    note: "The average size of the residential systems connected in each month, as EMI publishes it "
+        + "-- not the lifetime average of every install ever (that sits near 5.7 kW, held down by a "
+        + "decade of smaller systems). One month, July 2025, reads 17.1 kW against about 7.5 either "
+        + "side: EMI's own figure, but that month it also moved 1,869 connections into the "
+        + "residential segment while counting only 944 new installs, so it reflects a "
+        + "reclassification rather than a real jump in system size. Shown as published." },
   { key: "battPct", label: "% of installs with a battery", color: "#38bdf8", axis: "right",
     dash: true, tick: v => `${Math.round(v)}%` },
 ];
@@ -2052,26 +2061,25 @@ const TREND_SERIES = [
 // Which lines are drawn. Survives re-renders (changing region, reopening
 // the panel) so a chosen view sticks, rather than resetting every time
 // the map moves.
-const trendVisible = { installs: true, mw: true, avgKW: true, battPct: true };
+const trendVisible = { installs: true, mw: true, resAvgNewKW: true, battPct: true };
 
 // Whatever was last drawn, so a legend toggle can redraw without
 // refetching or re-deriving the selection.
 let lastTrend = null;
 
-// Average system size is derived rather than published: it has to be a
-// weighted average (total capacity / total installs), and summing the
-// per-council averages the national series is built from would be
-// simply wrong. Derived this way it matches GUEHMT's own published
-// average to 3dp -- which is why mw is stored at 3dp (see process.py).
+// resAvgNewKW is the average size of the residential systems connected
+// in each month, exactly as EMI publishes it -- deliberately not the
+// lifetime average of every install ever (which sits near 5.7 kW
+// nationally and mostly reflects a decade of smaller systems), and not
+// derived here, because a month's average can't be recovered from
+// cumulative totals.
 function trendValues(s) {
   const out = {
     installs: s.installs,
     battPct: s.installs.map((v, i) => (v ? s.battery[i] / v * 100 : 0)),
   };
-  if (Array.isArray(s.mw)) {
-    out.mw = s.mw;
-    out.avgKW = s.mw.map((m, i) => (s.installs[i] ? m * 1000 / s.installs[i] : 0));
-  }
+  if (Array.isArray(s.mw)) out.mw = s.mw;
+  if (Array.isArray(s.resAvgNewKW)) out.resAvgNewKW = s.resAvgNewKW;
   return out;
 }
 
@@ -2079,8 +2087,9 @@ function renderTrendLegend(available) {
   chartLegendEl.innerHTML = available.map(d => {
     const off = trendVisible[d.key] ? "" : " off";
     const sw = `<i class="swatch" style="background:${d.color}"></i>`;
+    const tip = d.note ? `${d.label}. ${d.note}` : "Show or hide this line";
     return `<button type="button" class="legend-toggle${off}" data-series="${d.key}" ` +
-      `title="Show or hide this line">${sw}${d.label}</button>`;
+      `title="${tip.replace(/"/g, "&quot;")}">${sw}${d.label}${d.note ? ' <span class="legend-note">?</span>' : ""}</button>`;
   }).join("");
 }
 
@@ -2474,15 +2483,18 @@ async function exportSolarTrend() {
   // are currently toggled on -- a download is for the whole dataset,
   // not a snapshot of the current view.
   const hasMW = Array.isArray(s.mw);
+  const hasResAvg = Array.isArray(s.resAvgNewKW);
   const rows = td.dates.map((d, i) => {
     const inst = s.installs[i], batt = s.battery[i];
     const row = [d, inst];
-    if (hasMW) row.push(s.mw[i], inst ? (s.mw[i] * 1000 / inst).toFixed(2) : "");
+    if (hasMW) row.push(s.mw[i]);
+    if (hasResAvg) row.push(s.resAvgNewKW[i]);
     row.push(batt, inst ? (batt / inst * 100).toFixed(1) : "");
     return row;
   });
   const headers = ["Month end", "Solar installs"];
-  if (hasMW) headers.push("Total capacity (MW)", "Avg. system size (kW)");
+  if (hasMW) headers.push("Total capacity (MW)");
+  if (hasResAvg) headers.push("Avg. new residential system (kW)");
   headers.push("Installs with battery", "% with battery");
   return downloadCSV(
     ["nz-solar", level === "national" ? "new-zealand" : name, "monthly"],
