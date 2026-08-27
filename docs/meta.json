@@ -30,8 +30,8 @@
    "battInstalls": 800,
    "battPct": 33.7,
    "battBase": 2371,
-   "change": 10,
-   "changePct": 0.4
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Marlborough",
@@ -50,8 +50,8 @@
    "battInstalls": 373,
    "battPct": 21.4,
    "battBase": 1742,
-   "change": 2,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Northland",
@@ -70,8 +70,8 @@
    "battInstalls": 1040,
    "battPct": 16.2,
    "battBase": 6421,
-   "change": 9,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Hawke's Bay",
@@ -90,8 +90,8 @@
    "battInstalls": 1779,
    "battPct": 36.2,
    "battBase": 4908,
-   "change": 12,
-   "changePct": 0.2
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Bay of Plenty",
@@ -110,8 +110,8 @@
    "battInstalls": 2751,
    "battPct": 35.6,
    "battBase": 7722,
-   "change": 29,
-   "changePct": 0.4
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Otago",
@@ -130,8 +130,8 @@
    "battInstalls": 956,
    "battPct": 16.0,
    "battBase": 5962,
-   "change": 14,
-   "changePct": 0.2
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Canterbury",
@@ -150,8 +150,8 @@
    "battInstalls": 2443,
    "battPct": 15.7,
    "battBase": 15515,
-   "change": 26,
-   "changePct": 0.2
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Taranaki",
@@ -170,8 +170,8 @@
    "battInstalls": 1025,
    "battPct": 36.5,
    "battBase": 2812,
-   "change": 13,
-   "changePct": 0.4
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Waikato",
@@ -190,8 +190,8 @@
    "battInstalls": 3551,
    "battPct": 35.4,
    "battBase": 10023,
-   "change": 38,
-   "changePct": 0.3
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Manawat\u016b-Whanganui",
@@ -210,8 +210,8 @@
    "battInstalls": 1261,
    "battPct": 29.3,
    "battBase": 4303,
-   "change": 22,
-   "changePct": 0.4
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Wellington",
@@ -230,8 +230,8 @@
    "battInstalls": 1560,
    "battPct": 19.6,
    "battBase": 7953,
-   "change": 16,
-   "changePct": 0.2
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Gisborne",
@@ -250,8 +250,8 @@
    "battInstalls": 133,
    "battPct": 19.9,
    "battBase": 669,
-   "change": 7,
-   "changePct": 0.9
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Auckland",
@@ -270,8 +270,8 @@
    "battInstalls": 2313,
    "battPct": 13.8,
    "battBase": 16742,
-   "change": 18,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Southland",
@@ -290,8 +290,8 @@
    "battInstalls": 166,
    "battPct": 16.2,
    "battBase": 1023,
-   "change": 5,
-   "changePct": 0.3
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "West Coast",
@@ -310,8 +310,8 @@
    "battInstalls": 93,
    "battPct": 26.6,
    "battBase": 350,
-   "change": 2,
-   "changePct": 0.4
+   "change": 0,
+   "changePct": 0.0
   },
   {
    "name": "Nelson",
@@ -330,8 +330,8 @@
    "battInstalls": 556,
    "battPct": 30.7,
    "battBase": 1810,
-   "change": 2,
-   "changePct": 0.1
+   "change": 0,
+   "changePct": 0.0
   }
  ],
  "towns": [
@@ -459,8 +459,8 @@
    "councilBattInstalls": 800,
    "councilBattPct": 33.7,
    "councilBattBase": 2371,
-   "change": 3,
-   "changePct": 0.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 17.0
   },
   {
@@ -507,8 +507,8 @@
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
    "councilBattBase": 5962,
-   "change": 3,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 16.1
   },
   {
@@ -587,8 +587,8 @@
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
    "councilBattBase": 5962,
-   "change": 2,
-   "changePct": 0.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 15.1
   },
   {
@@ -603,8 +603,8 @@
    "councilBattInstalls": 2313,
    "councilBattPct": 13.8,
    "councilBattBase": 16742,
-   "change": 2,
-   "changePct": 3.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 15.1
   },
   {
@@ -619,8 +619,8 @@
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
    "councilBattBase": 7953,
-   "change": 3,
-   "changePct": 1.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 15.0
   },
   {
@@ -683,8 +683,8 @@
    "councilBattInstalls": 1779,
    "councilBattPct": 36.2,
    "councilBattBase": 4908,
-   "change": 2,
-   "changePct": 2.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 14.2
   },
   {
@@ -715,8 +715,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.9,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 14.0
   },
   {
@@ -907,8 +907,8 @@
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
    "councilBattBase": 5962,
-   "change": 1,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 12.7
   },
   {
@@ -1083,8 +1083,8 @@
    "councilBattInstalls": 556,
    "councilBattPct": 30.7,
    "councilBattBase": 1810,
-   "change": 1,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 12.0
   },
   {
@@ -1131,8 +1131,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.8,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 11.8
   },
   {
@@ -1227,8 +1227,8 @@
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
    "councilBattBase": 5962,
-   "change": 2,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 11.5
   },
   {
@@ -1307,8 +1307,8 @@
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
    "councilBattBase": 6421,
-   "change": 2,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 10.9
   },
   {
@@ -1339,8 +1339,8 @@
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "councilBattBase": 1742,
-   "change": 1,
-   "changePct": 2.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 10.7
   },
   {
@@ -1595,8 +1595,8 @@
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "councilBattBase": 1742,
-   "change": 1,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 10.2
   },
   {
@@ -1659,8 +1659,8 @@
    "councilBattInstalls": 800,
    "councilBattPct": 33.7,
    "councilBattBase": 2371,
-   "change": 2,
-   "changePct": 1.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 10.1
   },
   {
@@ -1787,8 +1787,8 @@
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
    "councilBattBase": 6421,
-   "change": 2,
-   "changePct": 1.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.8
   },
   {
@@ -2011,8 +2011,8 @@
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
    "councilBattBase": 6421,
-   "change": 1,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.4
   },
   {
@@ -2027,8 +2027,8 @@
    "councilBattInstalls": 2443,
    "councilBattPct": 15.7,
    "councilBattBase": 15515,
-   "change": 2,
-   "changePct": 1.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.4
   },
   {
@@ -2091,8 +2091,8 @@
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
    "councilBattBase": 7953,
-   "change": 3,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.3
   },
   {
@@ -2107,8 +2107,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.3
   },
   {
@@ -2235,8 +2235,8 @@
    "councilBattInstalls": 800,
    "councilBattPct": 33.7,
    "councilBattBase": 2371,
-   "change": 2,
-   "changePct": 1.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.0
   },
   {
@@ -2283,8 +2283,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 1.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 8.9
   },
   {
@@ -2443,8 +2443,8 @@
    "councilBattInstalls": 2443,
    "councilBattPct": 15.7,
    "councilBattBase": 15515,
-   "change": 1,
-   "changePct": 1.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 8.7
   },
   {
@@ -2651,8 +2651,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 0.9,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 8.2
   },
   {
@@ -2859,8 +2859,8 @@
    "councilBattInstalls": 1261,
    "councilBattPct": 29.3,
    "councilBattBase": 4303,
-   "change": 6,
-   "changePct": 9.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 8.0
   },
   {
@@ -2923,8 +2923,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.9,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.9
   },
   {
@@ -2955,8 +2955,8 @@
    "councilBattInstalls": 1025,
    "councilBattPct": 36.5,
    "councilBattBase": 2812,
-   "change": 2,
-   "changePct": 0.9,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.8
   },
   {
@@ -3035,8 +3035,8 @@
    "councilBattInstalls": 2443,
    "councilBattPct": 15.7,
    "councilBattBase": 15515,
-   "change": 3,
-   "changePct": 0.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.7
   },
   {
@@ -3131,8 +3131,8 @@
    "councilBattInstalls": 800,
    "councilBattPct": 33.7,
    "councilBattBase": 2371,
-   "change": 3,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.6
   },
   {
@@ -3355,8 +3355,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 2.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.5
   },
   {
@@ -3563,8 +3563,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 3,
-   "changePct": 0.8,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.1
   },
   {
@@ -3659,8 +3659,8 @@
    "councilBattInstalls": 2443,
    "councilBattPct": 15.7,
    "councilBattBase": 15515,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 7.0
   },
   {
@@ -3739,8 +3739,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.9
   },
   {
@@ -3755,8 +3755,8 @@
    "councilBattInstalls": 1779,
    "councilBattPct": 36.2,
    "councilBattBase": 4908,
-   "change": 2,
-   "changePct": 1.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.9
   },
   {
@@ -3803,8 +3803,8 @@
    "councilBattInstalls": 556,
    "councilBattPct": 30.7,
    "councilBattBase": 1810,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.8
   },
   {
@@ -3883,8 +3883,8 @@
    "councilBattInstalls": 1779,
    "councilBattPct": 36.2,
    "councilBattBase": 4908,
-   "change": 6,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.7
   },
   {
@@ -3899,8 +3899,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.7
   },
   {
@@ -3915,8 +3915,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.7
   },
   {
@@ -4011,8 +4011,8 @@
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
    "councilBattBase": 6421,
-   "change": 1,
-   "changePct": 0.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.6
   },
   {
@@ -4075,8 +4075,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 2,
-   "changePct": 3.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.6
   },
   {
@@ -4203,8 +4203,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 1,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.5
   },
   {
@@ -4299,8 +4299,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.4
   },
   {
@@ -4523,8 +4523,8 @@
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
    "councilBattBase": 6421,
-   "change": 1,
-   "changePct": 0.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.2
   },
   {
@@ -4603,8 +4603,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 0.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.1
   },
   {
@@ -4699,8 +4699,8 @@
    "councilBattInstalls": 2313,
    "councilBattPct": 13.8,
    "councilBattBase": 16742,
-   "change": -1,
-   "changePct": -0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.0
   },
   {
@@ -4715,8 +4715,8 @@
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
    "councilBattBase": 7953,
-   "change": 2,
-   "changePct": 0.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.0
   },
   {
@@ -4731,8 +4731,8 @@
    "councilBattInstalls": 1040,
    "councilBattPct": 16.2,
    "councilBattBase": 6421,
-   "change": 2,
-   "changePct": 3.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.0
   },
   {
@@ -4747,8 +4747,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 3.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.0
   },
   {
@@ -4763,8 +4763,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 3.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.0
   },
   {
@@ -4795,8 +4795,8 @@
    "councilBattInstalls": 2443,
    "councilBattPct": 15.7,
    "councilBattBase": 15515,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.9
   },
   {
@@ -4843,8 +4843,8 @@
    "councilBattInstalls": 1025,
    "councilBattPct": 36.5,
    "councilBattBase": 2812,
-   "change": 3,
-   "changePct": 5.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.9
   },
   {
@@ -4939,8 +4939,8 @@
    "councilBattInstalls": 1025,
    "councilBattPct": 36.5,
    "councilBattBase": 2812,
-   "change": 9,
-   "changePct": 1.9,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.8
   },
   {
@@ -5067,8 +5067,8 @@
    "councilBattInstalls": 1779,
    "councilBattPct": 36.2,
    "councilBattBase": 4908,
-   "change": 2,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.7
   },
   {
@@ -5243,8 +5243,8 @@
    "councilBattInstalls": 2443,
    "councilBattPct": 15.7,
    "councilBattBase": 15515,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.6
   },
   {
@@ -5259,8 +5259,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 5,
-   "changePct": 0.7,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.6
   },
   {
@@ -5275,8 +5275,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": -2,
-   "changePct": -1.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.6
   },
   {
@@ -5291,8 +5291,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 1.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.6
   },
   {
@@ -5499,8 +5499,8 @@
    "councilBattInstalls": 1025,
    "councilBattPct": 36.5,
    "councilBattBase": 2812,
-   "change": 1,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.5
   },
   {
@@ -5819,8 +5819,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.2
   },
   {
@@ -5883,8 +5883,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 6,
-   "changePct": 0.8,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.1
   },
   {
@@ -6139,8 +6139,8 @@
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
    "councilBattBase": 7953,
-   "change": 1,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.9
   },
   {
@@ -6187,8 +6187,8 @@
    "councilBattInstalls": 1261,
    "councilBattPct": 29.3,
    "councilBattBase": 4303,
-   "change": 2,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.8
   },
   {
@@ -6219,8 +6219,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 1.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.8
   },
   {
@@ -6459,8 +6459,8 @@
    "councilBattInstalls": 1025,
    "councilBattPct": 36.5,
    "councilBattBase": 2812,
-   "change": 2,
-   "changePct": 3.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.6
   },
   {
@@ -6619,8 +6619,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 4,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.5
   },
   {
@@ -6635,8 +6635,8 @@
    "councilBattInstalls": 1261,
    "councilBattPct": 29.3,
    "councilBattBase": 4303,
-   "change": 2,
-   "changePct": 1.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.5
   },
   {
@@ -6715,8 +6715,8 @@
    "councilBattInstalls": 1025,
    "councilBattPct": 36.5,
    "councilBattBase": 2812,
-   "change": -4,
-   "changePct": -0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.4
   },
   {
@@ -6731,8 +6731,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 2,
-   "changePct": 1.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.4
   },
   {
@@ -6747,8 +6747,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 0.6,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.4
   },
   {
@@ -6875,8 +6875,8 @@
    "councilBattInstalls": 1261,
    "councilBattPct": 29.3,
    "councilBattBase": 4303,
-   "change": 2,
-   "changePct": 2.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.3
   },
   {
@@ -6939,8 +6939,8 @@
    "councilBattInstalls": 956,
    "councilBattPct": 16.0,
    "councilBattBase": 5962,
-   "change": 6,
-   "changePct": 1.8,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.2
   },
   {
@@ -7179,8 +7179,8 @@
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
    "councilBattBase": 7953,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.0
   },
   {
@@ -7195,8 +7195,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 5,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.0
   },
   {
@@ -7227,8 +7227,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 1,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.0
   },
   {
@@ -7275,8 +7275,8 @@
    "councilBattInstalls": 133,
    "councilBattPct": 19.9,
    "councilBattBase": 669,
-   "change": 2,
-   "changePct": 9.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 4.0
   },
   {
@@ -7435,8 +7435,8 @@
    "councilBattInstalls": 1261,
    "councilBattPct": 29.3,
    "councilBattBase": 4303,
-   "change": 3,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.8
   },
   {
@@ -7451,8 +7451,8 @@
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
    "councilBattBase": 7953,
-   "change": 4,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.8
   },
   {
@@ -7467,8 +7467,8 @@
    "councilBattInstalls": 1261,
    "councilBattPct": 29.3,
    "councilBattBase": 4303,
-   "change": 7,
-   "changePct": 0.8,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.8
   },
   {
@@ -7483,8 +7483,8 @@
    "councilBattInstalls": 133,
    "councilBattPct": 19.9,
    "councilBattBase": 669,
-   "change": 3,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.8
   },
   {
@@ -7531,8 +7531,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 4,
-   "changePct": 14.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.8
   },
   {
@@ -7579,8 +7579,8 @@
    "councilBattInstalls": 3551,
    "councilBattPct": 35.4,
    "councilBattBase": 10023,
-   "change": 7,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.7
   },
   {
@@ -7595,8 +7595,8 @@
    "councilBattInstalls": 2443,
    "councilBattPct": 15.7,
    "councilBattBase": 15515,
-   "change": 7,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.7
   },
   {
@@ -7611,8 +7611,8 @@
    "councilBattInstalls": 2313,
    "councilBattPct": 13.8,
    "councilBattBase": 16742,
-   "change": 2,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.7
   },
   {
@@ -7707,8 +7707,8 @@
    "councilBattInstalls": 2443,
    "councilBattPct": 15.7,
    "councilBattBase": 15515,
-   "change": 10,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.6
   },
   {
@@ -7883,8 +7883,8 @@
    "councilBattInstalls": 2313,
    "councilBattPct": 13.8,
    "councilBattBase": 16742,
-   "change": 1,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.4
   },
   {
@@ -7979,8 +7979,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 1,
-   "changePct": 6.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.3
   },
   {
@@ -8155,8 +8155,8 @@
    "councilBattInstalls": 2751,
    "councilBattPct": 35.6,
    "councilBattBase": 7722,
-   "change": 2,
-   "changePct": 2.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.1
   },
   {
@@ -8299,8 +8299,8 @@
    "councilBattInstalls": 2313,
    "councilBattPct": 13.8,
    "councilBattBase": 16742,
-   "change": 3,
-   "changePct": 1.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 3.0
   },
   {
@@ -8395,8 +8395,8 @@
    "councilBattInstalls": 93,
    "councilBattPct": 26.6,
    "councilBattBase": 350,
-   "change": 2,
-   "changePct": 1.5,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.8
   },
   {
@@ -8555,8 +8555,8 @@
    "councilBattInstalls": 2313,
    "councilBattPct": 13.8,
    "councilBattBase": 16742,
-   "change": 2,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.6
   },
   {
@@ -8635,8 +8635,8 @@
    "councilBattInstalls": 133,
    "councilBattPct": 19.9,
    "councilBattBase": 669,
-   "change": 2,
-   "changePct": 20.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.6
   },
   {
@@ -8667,8 +8667,8 @@
    "councilBattInstalls": 2313,
    "councilBattPct": 13.8,
    "councilBattBase": 16742,
-   "change": 4,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.5
   },
   {
@@ -8875,8 +8875,8 @@
    "councilBattInstalls": 1560,
    "councilBattPct": 19.6,
    "councilBattBase": 7953,
-   "change": 2,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.2
   },
   {
@@ -8939,8 +8939,8 @@
    "councilBattInstalls": 2313,
    "councilBattPct": 13.8,
    "councilBattBase": 16742,
-   "change": 5,
-   "changePct": 0.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.1
   },
   {
@@ -9035,8 +9035,8 @@
    "councilBattInstalls": 166,
    "councilBattPct": 16.2,
    "councilBattBase": 1023,
-   "change": 5,
-   "changePct": 0.9,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 2.0
   },
   {
