@@ -1351,9 +1351,18 @@ def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_r
     save(OUT_TOWN_BOUNDARIES, {"type": "FeatureCollection", "features": features})
 
 
+GUEHMT_MW_COLUMN = "Total capacity installed (MW)"
+
+
 def _fetch_guehmt(fuel_type, region_type):
     """One fuel-type/region-granularity slice of the GUEHMT report:
-    {region name: {date: ICP count}}.
+    {region name: {date: (ICP count, cumulative MW)}}.
+
+    Both metrics come out of the same response: GUEHMT's CSV export
+    carries every column it can produce regardless of the report's own
+    "Show" setting (verified live -- the request below doesn't ask for
+    capacity and gets it anyway), so the MW series is free rather than a
+    fifth and sixth round trip.
     """
     r = get(GUEHMT_URL, timeout=180, params={
         "DateFrom": "20130901",
@@ -1379,8 +1388,12 @@ def _fetch_guehmt(fuel_type, region_type):
             icps = int(float(row["ICP count"]))
         except (TypeError, ValueError):
             continue
+        try:
+            mw = round(float(row.get(GUEHMT_MW_COLUMN) or 0), 1)
+        except ValueError:
+            mw = 0.0
         d, m, y = date.split("/")
-        by_region.setdefault(name, {})[f"{y}-{m}-{d}"] = icps
+        by_region.setdefault(name, {})[f"{y}-{m}-{d}"] = (icps, mw)
     return by_region
 
 
@@ -1403,9 +1416,13 @@ def fetch_trends():
     def series_for(all_map, batt_map):
         out = {}
         for name in all_map:
+            # mw is only read off the all-solar pull: the battery pull's
+            # own capacity column is the capacity of battery-equipped
+            # systems, which isn't what "total installed MW" means here.
             out[name] = {
-                "installs": [all_map[name].get(d, 0) for d in dates],
-                "battery": [batt_map.get(name, {}).get(d, 0) for d in dates],
+                "installs": [all_map[name].get(d, (0, 0.0))[0] for d in dates],
+                "battery": [batt_map.get(name, {}).get(d, (0, 0.0))[0] for d in dates],
+                "mw": [all_map[name].get(d, (0, 0.0))[1] for d in dates],
             }
         return out
 
@@ -1416,6 +1433,7 @@ def fetch_trends():
     national = {
         "installs": [sum(c["installs"][i] for c in councils.values()) for i in range(len(dates))],
         "battery": [sum(c["battery"][i] for c in councils.values()) for i in range(len(dates))],
+        "mw": [round(sum(c["mw"][i] for c in councils.values()), 1) for i in range(len(dates))],
     }
 
     return {"dates": dates, "national": national, "councils": councils, "networks": networks}

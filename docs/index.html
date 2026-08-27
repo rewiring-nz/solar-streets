@@ -411,6 +411,7 @@
   .chart-legend .swatch { display: inline-block; width: 10px; height: 3px; margin-right: 5px; vertical-align: middle; border-radius: 2px; }
   .chart-legend strong { color: var(--text); }
   .chart-legend .installs { background: var(--amber); }
+  .chart-legend .capacity { background: #4ade80; }
   .chart-legend .battery { background: #38bdf8; }
   .chart-legend .ev { background: var(--cyan); }
   .data-sources { font-size: 9.5px; color: var(--dim); opacity: .75; margin-top: 10px; line-height: 1.5; }
@@ -452,6 +453,7 @@
             <div class="chart-svg-wrap"><svg id="chartSvg" viewBox="0 0 700 320"></svg></div>
             <div class="chart-legend" id="chartLegend">
               <span><i class="swatch installs"></i>Solar installs</span>
+              <span><i class="swatch capacity"></i>Total capacity (MW)</span>
               <span><i class="swatch battery"></i>% of installs with a battery</span>
             </div>
           </div>
@@ -2030,23 +2032,35 @@ function trendSeries(td, level, name) {
   return td.networks[name];
 }
 
-function drawTrendChart(dates, installs, battery) {
-  const W = 700, H = 320, L = 48, R = 44, T = 14, B = 26;
+function drawTrendChart(dates, installs, battery, mw) {
+  // Three series, so three scales. Install count and capacity are both
+  // cumulative totals and share the gridlines, with their tick labels
+  // stacked in two colour-matched columns down the left; battery % keeps
+  // the right axis. Colour-matching is what makes that readable -- a
+  // capacity line read against the install scale would be off by ~75x.
+  const W = 700, H = 320, L = 92, R = 44, T = 14, B = 26;
   const x0 = L, x1 = W - R, y0 = T, y1 = H - B;
   const n = dates.length;
   const xAt = i => x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0);
   const maxInstalls = Math.max(...installs, 1) * 1.08;
+  const hasMW = Array.isArray(mw) && mw.some(v => v > 0);
+  const maxMW = hasMW ? Math.max(...mw, 1) * 1.08 : 1;
   const yInst = v => y1 - Math.min(1, v / maxInstalls) * (y1 - y0);
+  const yMW = v => y1 - Math.min(1, v / maxMW) * (y1 - y0);
   const yPct = v => y1 - Math.min(1, v / 100) * (y1 - y0);
   const pct = installs.map((v, i) => v ? battery[i] / v * 100 : 0);
 
   const path = (series, yFn) => "M" + series.map((v, i) => `${xAt(i).toFixed(1)},${yFn(v).toFixed(1)}`).join(" L");
+  const mwTick = v => v >= 100 ? Math.round(v) : v.toFixed(v >= 10 ? 0 : 1);
 
   let grid = "";
   for (let f = 0; f <= 1; f += 0.25) {
     const y = (y1 - f * (y1 - y0)).toFixed(1);
     grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="rgba(255,255,255,.08)"/>`;
-    grid += `<text x="${x0 - 6}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="#8a96a3">${fmt(Math.round(f * maxInstalls))}</text>`;
+    grid += `<text x="${x0 - 44}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="#ffb703">${fmt(Math.round(f * maxInstalls))}</text>`;
+    if (hasMW) {
+      grid += `<text x="${x0 - 6}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="#4ade80">${mwTick(f * maxMW)}</text>`;
+    }
     grid += `<text x="${x1 + 6}" y="${+y + 3}" text-anchor="start" font-size="9.5" fill="#38bdf8">${Math.round(f * 100)}%</text>`;
   }
 
@@ -2059,6 +2073,7 @@ function drawTrendChart(dates, installs, battery) {
 
   chartSvgEl.innerHTML = grid + xLabels +
     `<path d="${path(installs, yInst)}" fill="none" stroke="#ffb703" stroke-width="2"/>` +
+    (hasMW ? `<path d="${path(mw, yMW)}" fill="none" stroke="#4ade80" stroke-width="2"/>` : "") +
     `<path d="${path(pct, yPct)}" fill="none" stroke="#38bdf8" stroke-width="1.6" stroke-dasharray="4,3"/>`;
 }
 
@@ -2101,7 +2116,7 @@ function renderChartSelection(td, value) {
   const [level, ...rest] = value.split(":");
   const name = rest.join(":");
   const s = level === "national" ? td.national : trendSeries(td, level, name);
-  if (s) drawTrendChart(td.dates, s.installs, s.battery);
+  if (s) drawTrendChart(td.dates, s.installs, s.battery, s.mw);
 }
 
 // EV chart: a stacked area, one band per vehicle category (cumulative
@@ -2347,6 +2362,7 @@ async function renderFocusChart() {
   populateChartSelect(td, currentFocus);
   renderChartSelection(td, chartSelectEl.value);
   chartLegendEl.innerHTML = `<span><i class="swatch installs"></i>Solar installs</span>` +
+    `<span><i class="swatch capacity"></i>Total capacity (MW)</span>` +
     `<span><i class="swatch battery"></i>% of installs with a battery</span>`;
 }
 
@@ -2375,14 +2391,23 @@ async function exportSolarTrend() {
   const name = rest.join(":") || "New Zealand";
   const s = level === "national" ? td.national : trendSeries(td, level, name);
   if (!s) return false;
+  // MW is conditional so a file generated against a trends.json built
+  // before the capacity series existed just omits the column rather
+  // than emitting a header over empty cells.
+  const hasMW = Array.isArray(s.mw);
   const rows = td.dates.map((d, i) => {
     const inst = s.installs[i], batt = s.battery[i];
-    return [d, inst, batt, inst ? (batt / inst * 100).toFixed(1) : ""];
+    const row = [d, inst];
+    if (hasMW) row.push(s.mw[i]);
+    row.push(batt, inst ? (batt / inst * 100).toFixed(1) : "");
+    return row;
   });
+  const headers = ["Month end", "Solar installs"];
+  if (hasMW) headers.push("Total capacity (MW)");
+  headers.push("Installs with battery", "% with battery");
   return downloadCSV(
     ["nz-solar", level === "national" ? "new-zealand" : name, "monthly"],
-    ["Month end", "Solar installs", "Installs with battery", "% with battery"],
-    rows, sourceNote(),
+    headers, rows, sourceNote(),
   );
 }
 
