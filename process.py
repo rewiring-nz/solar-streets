@@ -1389,7 +1389,11 @@ def _fetch_guehmt(fuel_type, region_type):
         except (TypeError, ValueError):
             continue
         try:
-            mw = round(float(row.get(GUEHMT_MW_COLUMN) or 0), 1)
+            # 3dp, not 1dp: the frontend derives average system size
+            # as mw/installs, and rounding to 0.1 MW skews that by up
+            # to 1.2% for the smallest councils (verified against
+            # GUEHMT's own published average -- West Coast is worst).
+            mw = round(float(row.get(GUEHMT_MW_COLUMN) or 0), 3)
         except ValueError:
             mw = 0.0
         d, m, y = date.split("/")
@@ -1433,7 +1437,7 @@ def fetch_trends():
     national = {
         "installs": [sum(c["installs"][i] for c in councils.values()) for i in range(len(dates))],
         "battery": [sum(c["battery"][i] for c in councils.values()) for i in range(len(dates))],
-        "mw": [round(sum(c["mw"][i] for c in councils.values()), 1) for i in range(len(dates))],
+        "mw": [round(sum(c["mw"][i] for c in councils.values()), 3) for i in range(len(dates))],
     }
 
     return {"dates": dates, "national": national, "councils": councils, "networks": networks}
