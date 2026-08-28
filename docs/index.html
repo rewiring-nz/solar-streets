@@ -145,6 +145,7 @@
   }
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
+  .stat-line-seg { margin-top: 2px; }
   .stat-line-batt { color: var(--cyan); margin-top: 2px; }
   .stat-line-batt strong { color: var(--cyan); }
   .stat-line-batt .batt-base { cursor: help; border-bottom: 1px dotted rgba(122,224,255,.5); }
@@ -271,6 +272,9 @@
   /* Battery figures in cyan throughout, matching the EV dashboard, so
      they read as a distinct measure from the amber solar ones. */
   .row-batt { font-size: 10.5px; color: var(--cyan); line-height: 1.3; }
+  .seg-line { color: var(--dim); }
+  .seg-rural { cursor: help; border-bottom: 1px dotted var(--dim); }
+  .town-approx { cursor: help; border-bottom: 1px dotted currentColor; }
   .row-batt .batt-base { cursor: help; border-bottom: 1px dotted rgba(122,224,255,.5); }
   /* Whole-row click target for district/town rows that fly the map. */
   .row-main.row-clickable { cursor: pointer; }
@@ -861,6 +865,8 @@ const MONTHS_FULL = ["January","February","March","April","May","June","July","A
 // residential/business mix (see write_town_boundaries/process.py). The
 // "~" and "est" tag keep it visually distinct from the real region %
 // shown elsewhere -- it's a reasoned estimate, not a measurement.
+const TOWN_APPROX_TITLE = "Approximate. Town figures are summed from EMI's street-level file, where any street with " + "three or fewer installs is published as \"3 or less\" for privacy and counted as 2 here. " + "That overstates the national total by about 11%, so a town's count is a close indication " + "rather than an exact figure. Region totals are EMI's own published numbers and are exact.";
+
 const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this town, " +
   "projected forward using its own 2018–2023 growth rate, then scaled to a full " +
   "connections estimate using its council's real residential/business mix (EMI). " +
@@ -949,7 +955,7 @@ function downloadBtnHTML(kind, key, title) {
     `data-csv-key="${encodeURIComponent(key || "")}" title="${title}">&#8681; CSV</button>`;
 }
 
-function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, contextLines, regionSection, csv }) {
+function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, contextLines, regionSection, segments, csv }) {
   const pctLine = pct != null
     ? `<div class="popup-pct popup-solar">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
     : "";
@@ -977,6 +983,16 @@ function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, con
     lower = battLine +
       (contextLines.length ? `<div class="popup-section">${contextLines.map(l => `<span class="popup-sub">${l}</span>`).join("<br>")}</div>` : "");
   }
+  const segLine = (segments && segments.resIcps != null && segments.busIcps != null)
+    ? `<div class="popup-section"><span class="popup-sub">` +
+      `<strong class="popup-solar">${fmt(segments.resIcps)}</strong> homes &nbsp;|&nbsp; ` +
+      `<strong class="popup-solar">${fmt(segments.busIcps)}</strong> business` +
+      (segments.ruralBus != null
+        ? ` <span class="seg-rural" title="${RURAL_BUS_TITLE}">(${fmt(segments.ruralBus)} rural ` +
+          `<span class="est-badge"><b>est</b></span>)</span>`
+        : "") +
+      `</span></div>`
+    : "";
   const dl = csv
     ? `<div class="popup-actions">${downloadBtnHTML(csv.kind, csv.key, `Download ${name}'s figures as a CSV`)}</div>`
     : "";
@@ -984,7 +1000,7 @@ function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, con
     (subtitle ? `<span style="opacity:.7">${subtitle}</span><br>` : "") +
     pctLine +
     `<span class="popup-sub">Total solar installs: <strong class="popup-solar">${fmt(icps)}</strong> &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
-    lower + dl;
+    segLine + lower + dl;
 }
 
 function bboxIntersects(b, view) {
@@ -1158,6 +1174,20 @@ function renderTopbarStats() {
   }
   html += `</div>`;
   html += `<div class="stat-line">${segs.join("")}</div>`;
+  // Residential/business split. Sits above the battery line because,
+  // unlike battery, these are measured against the same base as the
+  // install count directly above them and do add up to it.
+  if (stats.resIcps != null && stats.busIcps != null) {
+    const rural = stats.ruralBus != null
+      ? ` <span class="stat-seg"><strong>${fmt(stats.ruralBus)}</strong> ` +
+        `<span class="seg-rural" title="${RURAL_BUS_TITLE}">rural business ` +
+        `<span class="est-badge"><b>est</b></span></span></span>`
+      : "";
+    html += `<div class="stat-line stat-line-seg">` +
+      `<span class="stat-seg"><strong>${fmt(stats.resIcps)}</strong> homes</span>` +
+      `<span class="stat-seg"><strong>${fmt(stats.busIcps)}</strong> business</span>` +
+      rural + `</div>`;
+  }
   // Battery figures on their own line rather than appended to the solar
   // stats above -- they're measured against a different base (see
   // battBaseTitle), so running them into the same line would read as
@@ -1217,8 +1247,8 @@ function rowHTML(t, rank) {
   // to installs as the headline, same as before this change.
   const metric = t.estPct != null
     ? `<span class="headline">${t.estPct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></span>
-       <span class="detail">${fmt(t.icps)} installs &middot; ${fmtMW(t.kW)} MW</span>`
-    : `<span class="headline">${fmt(t.icps)} installs</span>
+       <span class="detail"><span class="town-approx" title="${TOWN_APPROX_TITLE}">~${fmt(t.icps)} installs</span> &middot; ${fmtMW(t.kW)} MW</span>`
+    : `<span class="headline"><span class="town-approx" title="${TOWN_APPROX_TITLE}">~${fmt(t.icps)} installs</span></span>
        <span class="detail">${fmtMW(t.kW)} MW</span>`;
   return `
     <div class="row-main row-clickable" data-town="${encodeURIComponent(t.name)}">
@@ -1507,6 +1537,7 @@ function loadSolarRegionsLayer() {
           battPct: r.battPct != null ? r.battPct : null,
           battLabel: `${r.name} region`,
           contextLines,
+          segments: r,
           csv: { kind: "region", key: r.name },
         })
         ).addTo(map);
@@ -1572,6 +1603,29 @@ function visibleRegions() {
   return view ? regionData.filter(r => bboxIntersects(r.bbox, view)) : regionData;
 }
 
+// Residential and business are EMI's own published rows, so they add up
+// to the install count beside them exactly. Rural business is ours: the
+// share of a region's business installs that fall outside every town or
+// settlement (Stats NZ urban/rural areas), applied to EMI's published
+// business count -- the street file's own business rows are 98%
+// privacy-suppressed and can't be summed. Badged "est" for that reason.
+const RURAL_BUS_TITLE =
+  "Business installs outside any town or rural settlement -- mostly farms. "
+  + "Estimated: Stats NZ's urban/rural areas decide what counts as rural (a rural town's "
+  + "supermarket is inside its urban area, a farm down the road is not), and that share is "
+  + "applied to EMI's published business count for the region. EMI does not publish a "
+  + "rural split itself.";
+
+function segmentLineHTML(row) {
+  if (row.resIcps == null || row.busIcps == null) return "";
+  const rural = row.ruralBus != null
+    ? ` <span class="seg-rural" title="${RURAL_BUS_TITLE}">(${fmt(row.ruralBus)} rural `
+      + `<span class="est-badge"><b>est</b></span>)</span>`
+    : "";
+  return `<span class="detail seg-line">${fmt(row.resIcps)} homes &middot; ` +
+    `${fmt(row.busIcps)} business${rural}</span>`;
+}
+
 function solarRegionRowHTML(r, rank) {
   // Real EMI battery count/% for this council (see council_battery/
   // process.py). These do NOT divide out against the install count in
@@ -1594,6 +1648,7 @@ function solarRegionRowHTML(r, rank) {
       <div class="row-metric">
         <span class="headline">${fmt(r.icps)} installs</span>
         <span class="detail">${fmtMW(r.kW)} MW${r.pct != null ? ` · ${r.pct.toFixed(1)}%` : ""}</span>
+        ${segmentLineHTML(r)}
         ${battLine}
       </div>
     </div>`;
@@ -2752,11 +2807,15 @@ chartSelectEl.addEventListener("change", async () => {
     metaNational = nat
       ? {
           icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0,
+          resIcps: nat.resIcps != null ? nat.resIcps : null,
+          busIcps: nat.busIcps != null ? nat.busIcps : null,
+          ruralBus: nat.ruralBus != null ? nat.ruralBus : null,
           battInstalls: nat.battInstalls != null ? nat.battInstalls : null,
           battPct: nat.battPct != null ? nat.battPct : null,
           battBase: nat.battBase != null ? nat.battBase : null,
         }
-      : { icps: 0, kW: 0, pct: 0, battInstalls: null, battPct: null, battBase: null };
+      : { icps: 0, kW: 0, pct: 0, resIcps: null, busIcps: null, ruralBus: null,
+          battInstalls: null, battPct: null, battBase: null };
     metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
 
     renderBoard();
