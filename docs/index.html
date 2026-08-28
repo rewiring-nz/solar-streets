@@ -720,9 +720,14 @@ function pointFilter() {
 
 function applyPointFilter() {
   const f = pointFilter();
-  for (const id of ["street-points", "street-labels"]) {
+  for (const id of ["street-labels", "install-dots"]) {
     if (map.getLayer(id)) map.setFilter(id, f);
   }
+  // street-points is set inside refreshInstallDots, which combines this
+  // filter with "not already drawn as individual installs" -- both write
+  // the same layer, so only one of them may own it.
+  if (map.getLayer("street-points")) map.setFilter("street-points", f);
+  refreshInstallDots();
   renderPointFilterChips();
 }
 
@@ -733,6 +738,83 @@ function renderPointFilterChips() {
     `<button type="button" class="point-chip${pointCatOn[c.key] ? "" : " off"}" ` +
     `data-cat="${c.key}"><i class="chip-dot" style="background:${c.color}"></i>${c.label}</button>`
   ).join("");
+}
+
+/* ================= ONE DOT PER INSTALL ================= */
+/* Zoomed in far enough, a street with a known install count is drawn as
+   that many dots instead of one sized dot, so the count is countable.
+
+   Only for streets where EMI published an exact number. It suppresses
+   anything under four as "3 or less", which this pipeline carries as an
+   estimate (see SUPPRESSED in process.py) -- drawing two dots there
+   would assert a count nobody published, so those keep their single
+   dot. In practice that means dots appear precisely where the number is
+   real, which is 18% of streets and every street with 4+ installs.
+
+   The dots ring the street's point rather than following the road:
+   road_cache stores one coordinate per street, not the road's geometry,
+   so there is no line to lay them along. They are a readable count at a
+   real location, never a claim about which properties have solar --
+   EMI publishes streets, not addresses, deliberately. */
+
+const INSTALL_DOTS_MIN_ZOOM = 14;
+const INSTALL_DOTS_MAX = 1200;      // guard against a dense zoomed-out-ish view
+
+function installDotFeatures() {
+  if (SOLAR_MODE !== "points" || map.getZoom() < INSTALL_DOTS_MIN_ZOOM) return [];
+  let src;
+  try {
+    src = map.querySourceFeatures("streets", { sourceLayer: undefined });
+  } catch (_) { return []; }
+
+  const seen = new Set(), out = [];
+  for (const f of src) {
+    const p = f.properties;
+    if (p.est == 1 || !(p.icps > 1)) continue;          // estimated, or nothing to fan out
+    const key = p.sa2 + "|" + p.street;
+    if (seen.has(key)) continue;                        // tiles repeat features
+    seen.add(key);
+    const centre = map.project({ lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] });
+    const n = p.icps;
+    for (let i = 0; i < n; i++) {
+      // Rings of 8, growing outward, so even large streets stay compact
+      // and readable rather than becoming a giant starburst.
+      // Radius is set so the arc between neighbours stays comfortably
+      // wider than a dot -- at 8 per ring and ~10px dots, 15px left them
+      // touching and unreadable as a count, which defeats the point.
+      const PER_RING = 8;
+      const ring = Math.floor(i / PER_RING);
+      const inRing = Math.min(PER_RING, n - ring * PER_RING);
+      const radius = Math.max(20, 2.9 * inRing) + ring * 18;
+      const ang = (2 * Math.PI * (i % PER_RING)) / inRing - Math.PI / 2;
+      const ll = map.unproject([centre.x + radius * Math.cos(ang),
+                                centre.y + radius * Math.sin(ang)]);
+      out.push({ type: "Feature", properties: p,
+                 geometry: { type: "Point", coordinates: [ll.lng, ll.lat] } });
+    }
+    if (out.length > INSTALL_DOTS_MAX) break;
+  }
+  return out;
+}
+
+function refreshInstallDots() {
+  if (!map.getSource("install-dots")) return;
+  const feats = installDotFeatures();
+  map.getSource("install-dots").setData({ type: "FeatureCollection", features: feats });
+  // The aggregate dot is hidden for exactly the streets now drawn as
+  // individual installs, so nothing is represented twice.
+  const expanded = feats.length > 0;
+  if (map.getLayer("street-points")) {
+    const base = pointFilter();
+    const notExpanded = ["any", ["==", ["get", "est"], 1], ["<=", ["get", "icps"], 1]];
+    map.setFilter("street-points", expanded
+      ? (base ? ["all", base, notExpanded] : notExpanded)
+      : base);
+  }
+  const vis = expanded ? "visible" : "none";
+  ["install-dots"].forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", vis);
+  });
 }
 
 /* ================= SPIDERFY ================= */
@@ -770,6 +852,16 @@ function unspiderfy() {
 function showPopup(f) {
   const p = f.properties;
   const a = p.est == 1 ? "≈" : "";
+  // EMI suppresses the Res and Bus rows independently of the All row, so
+  // a street can have an exact total whose segments still don't add up
+  // to it -- 8% of streets, and 17% of those with an exact total.
+  // Marking the segments approximate in that case stops the popup
+  // showing "7 connections / 6 residential + 2 business" as if both were
+  // measured.
+  const segApprox = (p.res + p.bus !== p.icps) ? "≈" : a;
+  const segNote = (p.res + p.bus !== p.icps)
+    ? ` <small class="muted" title="EMI publishes the residential and business counts as separate rows and suppresses each one under four, so these are approximate and need not sum to the total above.">(approx.)</small>`
+    : "";
   const change = p.change > 0
     ? `<br><span class="up">+${p.change} since last update</span>` : "";
   new maplibregl.Popup()
@@ -777,7 +869,7 @@ function showPopup(f) {
     .setHTML(
       `<strong>${p.street}</strong><br><small class="muted">${p.area}</small><br>` +
       `Solar connections: <strong>${a}${p.icps}</strong>${change}<br>` +
-      `Residential ${a}${p.res} · Business ${a}${p.bus}<br>` +
+      `Residential ${segApprox}${p.res} · Business ${segApprox}${p.bus}${segNote}<br>` +
       (p.kW > 0
         ? `Capacity: ${p.kW} kW` + (p.kWper ? ` <small class="muted">(${p.kWper} kW each)</small>` : "")
         : `<small class="muted">Capacity suppressed (small count)</small>`)
@@ -788,6 +880,7 @@ function showPopup(f) {
 
 function addLayers(data) {
   map.addSource("streets", { type: "geojson", data });
+  map.addSource("install-dots", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   map.addSource("spider-legs", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
   map.addSource("spider-nodes", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
 
@@ -818,6 +911,20 @@ function addLayers(data) {
     paint: { "text-color": "#fff", "text-halo-color": "rgba(0,0,0,.7)", "text-halo-width": 1.2 }
   });
 
+  map.addLayer({
+    id: "install-dots", type: "circle", source: "install-dots",
+    layout: { visibility: "none" },
+    paint: {
+      // Deliberately uniform and small: each dot is one install, so
+      // sizing them by the street's total would double-encode the count.
+      "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 3.4, 17, 5.2, 20, 7],
+      "circle-color": POINT_COLOR,
+      "circle-opacity": 0.95,
+      "circle-stroke-width": 1,
+      "circle-stroke-color": "rgba(0,0,0,.85)",
+      "circle-pitch-alignment": "map"
+    }
+  });
   map.addLayer({
     id: "spider-legs", type: "line", source: "spider-legs",
     paint: { "line-color": "rgba(255,255,255,.75)", "line-width": 1 }
@@ -852,6 +959,11 @@ function addLayers(data) {
     const nodes = map.queryRenderedFeatures(e.point, { layers: ["spider-nodes"] });
     if (nodes.length) { showPopup(nodes[0]); return; }
 
+    // Any individual install dot opens the whole street's figures --
+    // the dots are a count, and EMI publishes nothing per address.
+    const dots = map.queryRenderedFeatures(e.point, { layers: ["install-dots"] });
+    if (dots.length) { showPopup(dots[0]); return; }
+
     const R = 14;
     const hits = map.queryRenderedFeatures(
       [[e.point.x - R, e.point.y - R], [e.point.x + R, e.point.y + R]],
@@ -871,7 +983,9 @@ function addLayers(data) {
   });
 
   map.on("moveend", unspiderfy);
-  ["street-points", "spider-nodes"].forEach(l => {
+  map.on("moveend", refreshInstallDots);
+  map.on("zoomend", refreshInstallDots);
+  ["street-points", "spider-nodes", "install-dots"].forEach(l => {
     map.on("mouseenter", l, () => map.getCanvas().style.cursor = "pointer");
     map.on("mouseleave", l, () => map.getCanvas().style.cursor = "");
   });
@@ -1653,7 +1767,7 @@ function loadSolarRegionsLayer() {
 // dataset is active) -- mode === null hides all of them.
 function applySolarLayers(mode) {
   const v = m => m === mode ? "visible" : "none";
-  ["street-points", "street-labels", "spider-legs", "spider-nodes", "spider-labels"].forEach(id => {
+  ["street-points", "street-labels", "install-dots", "spider-legs", "spider-nodes", "spider-labels"].forEach(id => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("points"));
   });
   ["solar-town-boundaries-fill", "solar-town-boundaries-outline", "solar-town-labels"].forEach(id => {
@@ -1670,6 +1784,7 @@ function setSolarMode(mode) {
     SOLAR_MODE = mode;
     listCaptionEl.textContent = mode === "regions" ? "Districts within map view" : "Towns within map view";
     applySolarLayers(mode);
+    refreshInstallDots();   // may be entering points mode already zoomed in
     renderBoard();
   };
   if (mode === "towns") { loadSolarTownsLayer().then(go); }
