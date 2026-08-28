@@ -1174,10 +1174,7 @@ function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, con
     ? `<div class="popup-section"><span class="popup-sub">` +
       `<strong class="popup-solar">${fmt(segments.resIcps)}</strong> homes &nbsp;|&nbsp; ` +
       `<strong class="popup-solar">${fmt(segments.busIcps)}</strong> business` +
-      (segments.ruralBus != null
-        ? ` <span class="seg-rural" title="${RURAL_BUS_TITLE}">(${fmt(segments.ruralBus)} rural ` +
-          `<span class="est-badge"><b>est</b></span>)</span>`
-        : "") +
+      (segments.ruralBus != null ? ` (${farmRangeHTML(segments)})` : "") +
       `</span></div>`
     : "";
   const dl = csv
@@ -1366,9 +1363,7 @@ function renderTopbarStats() {
   // install count directly above them and do add up to it.
   if (stats.resIcps != null && stats.busIcps != null) {
     const rural = stats.ruralBus != null
-      ? ` <span class="stat-seg"><strong>${fmt(stats.ruralBus)}</strong> ` +
-        `<span class="seg-rural" title="${RURAL_BUS_TITLE}">rural business ` +
-        `<span class="est-badge"><b>est</b></span></span></span>`
+      ? `<span class="stat-seg">${farmRangeHTML(stats)}</span>`
       : "";
     html += `<div class="stat-line stat-line-seg">` +
       `<span class="stat-seg"><strong>${fmt(stats.resIcps)}</strong> homes</span>` +
@@ -1803,6 +1798,30 @@ function visibleRegions() {
 // settlement (Stats NZ urban/rural areas), applied to EMI's published
 // business count -- the street file's own business rows are 98%
 // privacy-suppressed and can't be summed. Badged "est" for that reason.
+const FARM_RANGE_TITLE =
+  "Two independent estimates, shown as a range because neither is definitive. The upper figure "
+  + "counts business installs falling outside every town and rural settlement (Stats NZ urban/rural "
+  + "areas) -- that runs high, because it also catches rural schools, marae, packhouses and tourism. "
+  + "The lower figure applies agriculture's share of the region's non-residential connections (EMI's "
+  + "own ANZSIC industry classification) to its business installs -- that likely runs low, since it "
+  + "assumes farms adopt solar at the same rate as other businesses, while rural business systems "
+  + "average 50 kW against 24 kW urban. The two agree closely in genuinely farming regions "
+  + "(Canterbury 412 vs 413) and diverge where rural non-farm business is common (Auckland 101 vs 215). "
+  + "EMI publishes no farm/solar split, so a single number here would imply precision neither method has.";
+
+// Renders the farm figure as "low-high" where both estimates exist, and
+// falls back to the geographic one alone otherwise.
+function farmRangeHTML(row, opts) {
+  if (row.ruralBus == null) return "";
+  const low = row.farmAnzsic;
+  const label = opts && opts.label !== undefined ? opts.label : "farms";
+  const text = (low != null && low < row.ruralBus)
+    ? `${fmt(low)}\u2013${fmt(row.ruralBus)}`
+    : fmt(row.ruralBus);
+  return `<span class="seg-rural" title="${FARM_RANGE_TITLE}">${text} ${label} ` +
+    `<span class="est-badge"><b>est</b></span></span>`;
+}
+
 const RURAL_BUS_TITLE =
   "Business installs outside any town or rural settlement -- mostly farms. "
   + "Estimated: Stats NZ's urban/rural areas decide what counts as rural (a rural town's "
@@ -1812,10 +1831,7 @@ const RURAL_BUS_TITLE =
 
 function segmentLineHTML(row) {
   if (row.resIcps == null || row.busIcps == null) return "";
-  const rural = row.ruralBus != null
-    ? ` <span class="seg-rural" title="${RURAL_BUS_TITLE}">(${fmt(row.ruralBus)} rural `
-      + `<span class="est-badge"><b>est</b></span>)</span>`
-    : "";
+  const rural = row.ruralBus != null ? ` (${farmRangeHTML(row)})` : "";
   return `<span class="detail seg-line">${fmt(row.resIcps)} homes &middot; ` +
     `${fmt(row.busIcps)} business${rural}</span>`;
 }
@@ -3010,11 +3026,12 @@ chartSelectEl.addEventListener("change", async () => {
           resIcps: nat.resIcps != null ? nat.resIcps : null,
           busIcps: nat.busIcps != null ? nat.busIcps : null,
           ruralBus: nat.ruralBus != null ? nat.ruralBus : null,
+          farmAnzsic: nat.farmAnzsic != null ? nat.farmAnzsic : null,
           battInstalls: nat.battInstalls != null ? nat.battInstalls : null,
           battPct: nat.battPct != null ? nat.battPct : null,
           battBase: nat.battBase != null ? nat.battBase : null,
         }
-      : { icps: 0, kW: 0, pct: 0, resIcps: null, busIcps: null, ruralBus: null,
+      : { icps: 0, kW: 0, pct: 0, resIcps: null, busIcps: null, ruralBus: null, farmAnzsic: null,
           battInstalls: null, battPct: null, battBase: null };
     metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
 

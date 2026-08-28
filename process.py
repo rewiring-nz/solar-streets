@@ -820,12 +820,19 @@ def fetch_anzsic_ratios():
 
     text = fetch_csv(url)
     totals, residential = {}, {}
+    agri, nonres = {}, {}
     for row in csv.DictReader(io.StringIO(text)):
         region = row.get("Network reporting region")
         n, _ = icp_value(row.get("ICP count (total)"))
         totals[region] = totals.get(region, 0) + n
         if row.get("ANZSIC L1") == "0":
             residential[region] = residential.get(region, 0) + n
+        else:
+            nonres[region] = nonres.get(region, 0) + n
+            # "A" is Agriculture, Forestry and Fishing -- the only
+            # authoritative farm marker in any of these datasets.
+            if row.get("ANZSIC L1") == "A":
+                agri[region] = agri.get(region, 0) + n
 
     council_totals, council_res = {}, {}
     for region, n in totals.items():
@@ -853,7 +860,23 @@ def fetch_anzsic_ratios():
     total_res = sum(residential.values())
     if total_res:
         ratios["__national__"] = sum(totals.values()) / total_res
-    return ratios
+
+    # Agriculture's share of each council's non-residential connections.
+    # Used to narrow the rural-business figure towards actual farms: the
+    # geographic test only asks "outside a town", which also catches
+    # rural schools, marae, packhouses and tourism. Verified live that
+    # the two agree closely in genuinely farming regions (Canterbury 412
+    # vs 413, Hawke's Bay 170 vs 171) and diverge where rural non-farm
+    # business is common (Auckland 101 vs 215).
+    c_agri, c_nonres = {}, {}
+    for region, n in nonres.items():
+        council = NETWORK_TO_COUNCIL.get(region)
+        if not council:
+            continue
+        c_nonres[council] = c_nonres.get(council, 0) + n
+        c_agri[council] = c_agri.get(council, 0) + agri.get(region, 0)
+    agri_share = {c: c_agri[c] / c_nonres[c] for c in c_nonres if c_nonres[c]}
+    return ratios, agri_share
 
 
 def fetch_urban_areas():
@@ -2655,10 +2678,30 @@ def main():
         note_failure("Census dwellings", exc, "district/town % estimates will be omitted")
         sa1_dwellings = []
     try:
-        anzsic_ratios = fetch_anzsic_ratios()
+        anzsic_ratios, agri_share = fetch_anzsic_ratios()
     except Exception as exc:                       # noqa: BLE001
         note_failure("ANZSIC ICP breakdown", exc, "district/town % estimates will be omitted")
-        anzsic_ratios = {}
+        anzsic_ratios, agri_share = {}, {}
+
+    # A second, narrower estimate of farm solar, from EMI's own industry
+    # classification rather than from geography. The two bracket the
+    # answer rather than either being definitive: the geographic figure
+    # counts every business outside a town, so it runs high by including
+    # rural non-farm sites; this one assumes farms take up solar at the
+    # same rate as other businesses in their region, which likely runs
+    # low, since rural business systems average 50.1 kW against 24.3 kW
+    # urban. Published as a pair so the range is visible instead of a
+    # single number implying precision neither method has.
+    if agri_share:
+        national_farm = 0
+        for r in region_tree:
+            share = agri_share.get(r["name"])
+            if share is None or r.get("busIcps") is None:
+                continue
+            r["farmAnzsic"] = round(r["busIcps"] * share)
+            national_farm += r["farmAnzsic"]
+        if totals and national_farm:
+            totals["farmAnzsic"] = national_farm
 
     if region_tree and tla_region:
         try:
