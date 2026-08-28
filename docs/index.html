@@ -165,7 +165,18 @@
   .map-mode-btn:not(.active):hover { background: rgba(255,255,255,.16); color: var(--text); }
 
   .topbar-chart { max-height: 0; overflow: hidden; transition: max-height .25s ease; border-top: 1px solid transparent; }
-  #topbar.expanded .topbar-chart { max-height: 420px; border-top-color: var(--border); }
+  /* A fixed cap silently clipped the panel: the chart SVG keeps its
+     aspect ratio at width:100%, so a wider viewport (or zooming out,
+     which widens it in CSS pixels) makes it taller, and at 1600px the
+     content came to 445px against the old 420px -- cutting off the
+     legend and the sources line with no way to reach them. Cap on the
+     viewport instead, and scroll rather than clip, so content is never
+     unreachable at any width or zoom. */
+  #topbar.expanded .topbar-chart {
+    max-height: min(72vh, 900px);
+    overflow-y: auto;
+    border-top-color: var(--border);
+  }
   .topbar-chart-inner { padding: 10px 14px 14px; }
 
   .list-caption {
