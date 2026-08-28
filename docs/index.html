@@ -163,6 +163,18 @@
   .map-mode-btn { background: rgba(255,255,255,.08); color: var(--dim); }
   .map-mode-btn.active { background: var(--amber); color: #241a00; box-shadow: 0 0 10px rgba(255,183,3,.3); }
   .map-mode-btn:not(.active):hover { background: rgba(255,255,255,.16); color: var(--text); }
+  .point-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  .point-chip {
+    display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border);
+    background: rgba(255,255,255,.04); color: var(--text); font: inherit; font-size: 10.5px;
+    font-weight: 600; padding: 3px 8px; border-radius: 7px; cursor: pointer;
+  }
+  .point-chip:hover { background: rgba(255,255,255,.12); }
+  /* Switched-off categories stay listed so it is obvious they exist
+     and what colour they are on the map. */
+  .point-chip.off { opacity: .45; text-decoration: line-through; }
+  .chip-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+    border: 1px solid rgba(0,0,0,.6); }
 
   .topbar-chart { max-height: 0; overflow: hidden; transition: max-height .25s ease; border-top: 1px solid transparent; }
   /* A fixed cap silently clipped the panel: the chart SVG keeps its
@@ -673,6 +685,56 @@ mapReady.then(() => {
 
 const DOT_COLOR = "#ffb703";
 
+// Street-point categories. Deliberately overlapping on purpose: a
+// street can carry both homes and businesses, and EMI publishes both
+// counts for it, so it should appear under either filter rather than
+// being forced into one. The two business categories are disjoint --
+// "rural" is exactly the flag the rural-business estimate is built
+// from (see fetch_urban_areas in process.py), so switching everything
+// else off shows precisely the points that estimate counts.
+const POINT_CATS = [
+  { key: "res",      label: "Homes",          color: DOT_COLOR,
+    filter: [">", ["get", "res"], 0] },
+  { key: "bus",      label: "Business",       color: "#c084fc",
+    filter: ["all", [">", ["get", "bus"], 0], ["!=", ["get", "rural"], 1]] },
+  { key: "ruralBus", label: "Rural business", color: "#4ade80",
+    filter: ["all", [">", ["get", "bus"], 0], ["==", ["get", "rural"], 1]] },
+];
+const pointCatOn = { res: true, bus: true, ruralBus: true };
+
+// Colour by the most specific category the street falls into, so the
+// classification is visible on the map rather than only in the totals.
+const POINT_COLOR = [
+  "case",
+  ["all", [">", ["get", "bus"], 0], ["==", ["get", "rural"], 1]], "#4ade80",
+  [">", ["get", "bus"], 0], "#c084fc",
+  DOT_COLOR,
+];
+
+function pointFilter() {
+  const on = POINT_CATS.filter(c => pointCatOn[c.key]);
+  if (on.length === POINT_CATS.length) return null;      // everything: no filter
+  if (!on.length) return ["==", ["get", "icps"], -1];    // nothing matches
+  return ["any", ...on.map(c => c.filter)];
+}
+
+function applyPointFilter() {
+  const f = pointFilter();
+  for (const id of ["street-points", "street-labels"]) {
+    if (map.getLayer(id)) map.setFilter(id, f);
+  }
+  renderPointFilterChips();
+}
+
+function renderPointFilterChips() {
+  const el = document.getElementById("pointFilters");
+  if (!el) return;
+  el.innerHTML = POINT_CATS.map(c =>
+    `<button type="button" class="point-chip${pointCatOn[c.key] ? "" : " off"}" ` +
+    `data-cat="${c.key}"><i class="chip-dot" style="background:${c.color}"></i>${c.label}</button>`
+  ).join("");
+}
+
 /* ================= SPIDERFY ================= */
 
 let spiderActive = false;
@@ -738,7 +800,7 @@ function addLayers(data) {
         9,  ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 5.2, 5, 10,  15, 16],
         14, ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 9,   5, 16,  15, 30]
       ],
-      "circle-color": DOT_COLOR,
+      "circle-color": POINT_COLOR,
       "circle-opacity": ["interpolate", ["linear"], ["zoom"], 4, 0.7, 10, 0.9],
       "circle-stroke-width": 1,
       "circle-stroke-color": "rgba(0,0,0,.85)",
@@ -1217,7 +1279,13 @@ function renderTopbarStats() {
     `<button type="button" class="map-mode-btn${SOLAR_MODE === mode ? " active" : ""}" data-mode="${mode}">${MODE_LABELS[mode]}</button>`
   ).join("");
   html += `</div>`;
+  // Only meaningful over the street dots -- the town and district
+  // choropleths aggregate both segments into one shape.
+  if (SOLAR_MODE === "points") {
+    html += `<div id="pointFilters" class="point-filters"></div>`;
+  }
   topbarStatsEl.innerHTML = html;
+  if (SOLAR_MODE === "points") renderPointFilterChips();
   updateBackToNzButton();
 }
 
@@ -2746,6 +2814,12 @@ async function applyFocusFromMap(level, name) {
 
 topbarStatsEl.addEventListener("click", e => {
   if (e.target.closest("#chartToggleBtn")) { toggleChartPanel(); return; }
+  const chip = e.target.closest(".point-chip");
+  if (chip) {
+    pointCatOn[chip.dataset.cat] = !pointCatOn[chip.dataset.cat];
+    applyPointFilter();
+    return;
+  }
   const modeBtn = e.target.closest(".map-mode-btn");
   if (modeBtn) setSolarMode(modeBtn.dataset.mode);
 });
