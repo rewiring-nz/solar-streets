@@ -566,7 +566,48 @@ const TERRAIN_EXAGGERATION = 1.4;
 
 // Embed-friendly URL params, e.g. ?region=Wanaka&chart=open&dash=closed
 const urlParams = new URLSearchParams(location.search);
-const REGION_PARAM = (urlParams.get("region") || "").trim();
+// Where to open the map. Accepts ?region=Wellington, the bare form
+// ?Wellington, or ?q=/?place=, and looks in two places:
+//
+//   1. this page's own query string
+//   2. the query string of the page embedding it, via document.referrer
+//
+// (2) exists because the map is normally embedded in an iframe on
+// another site, where the visitor-facing URL is the parent's. An iframe
+// cannot read its parent's location (cross-origin), and modern browsers
+// default to strict-origin-when-cross-origin, which strips the query
+// from the referrer -- so (2) only yields anything if the embedding
+// page opts in with referrerpolicy="unsafe-url" on the iframe. It costs
+// nothing to support and makes that a one-attribute change rather than
+// requiring script on the host page.
+function readPlaceParam(search) {
+  if (!search) return "";
+  let params;
+  try { params = new URLSearchParams(search); } catch (_) { return ""; }
+  for (const key of ["region", "q", "place", "search"]) {
+    const v = (params.get(key) || "").trim();
+    if (v) return v;
+  }
+  // Bare form: ?Wellington, or ?Queen Street, Auckland -- the whole
+  // thing arrives as a valueless key.
+  for (const [k, v] of params) {
+    if (!v && k.trim()) return decodeURIComponent(k.replace(/\+/g, " ")).trim();
+  }
+  return "";
+}
+
+function referrerSearch() {
+  try {
+    const r = document.referrer;
+    if (!r) return "";
+    const u = new URL(r);
+    // Only honour a parent on a different origin -- our own pages
+    // linking around shouldn't hijack the view.
+    return u.origin === location.origin ? "" : u.search;
+  } catch (_) { return ""; }
+}
+
+const REGION_PARAM = readPlaceParam(location.search) || readPlaceParam(referrerSearch());
 const CHART_PARAM = (urlParams.get("chart") || "").toLowerCase();
 const DASH_PARAM = (urlParams.get("dash") || "").toLowerCase();
 const DATASET_PARAM = (urlParams.get("dataset") || "").toLowerCase();
