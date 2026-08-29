@@ -1365,17 +1365,64 @@ function findPlace(term) {
 // be there when the page first paints, not visibly flying in) and on for
 // the interactive search box (where the motion is the feedback that the
 // search actually did something).
+// The topbar and the towns/districts panel sit *over* the map, so the
+// canvas centre is not the centre of what the viewer can actually see:
+// on desktop the panel is a 340px left sidebar, on mobile a bottom
+// sheet up to 55vh. Centring on the raw canvas pushes the target behind
+// them -- which is what made a ?place link land off-centre. Measured
+// from the real elements rather than hardcoded, so it follows the
+// breakpoint, the panel being collapsed, and the topbar being expanded.
+function viewPadding() {
+  const c = map.getCanvas().getBoundingClientRect();
+  const pad = { top: 14, bottom: 14, left: 14, right: 14 };
+  const topEl = document.getElementById("topWrap");
+  if (topEl) {
+    const r = topEl.getBoundingClientRect();
+    if (r.height) pad.top = Math.max(pad.top, r.bottom - c.top + 12);
+  }
+  const dash = document.getElementById("dash");
+  if (dash && !dash.classList.contains("collapsed")) {
+    const r = dash.getBoundingClientRect();
+    if (r.height) {
+      if (window.innerWidth >= 768) pad.left = Math.max(pad.left, r.right - c.left + 12);
+      else pad.bottom = Math.max(pad.bottom, c.bottom - r.top + 12);
+    }
+  }
+  // Padding that swallows the canvas makes fitBounds throw or zoom
+  // absurdly, so cap each axis at 60% of it.
+  const capW = c.width * 0.6, capH = c.height * 0.6;
+  if (pad.left + pad.right > capW) {
+    const k = capW / (pad.left + pad.right); pad.left *= k; pad.right *= k;
+  }
+  if (pad.top + pad.bottom > capH) {
+    const k = capH / (pad.top + pad.bottom); pad.top *= k; pad.bottom *= k;
+  }
+  return pad;
+}
+
+// Applied to the camera itself rather than passed per-call, so every
+// move -- a ?place link, a row click, a map click, the chart dropdown,
+// back-to-NZ -- lands in the part of the map the viewer can actually
+// see. Re-applied whenever the layout changes, since the panels move
+// between a left sidebar and a bottom sheet at 768px and can be
+// collapsed.
+function applyViewPadding() {
+  if (!map || !map.getCanvas) return;
+  try { map.setPadding(viewPadding()); } catch (_) {}
+}
+
 function focusOnPlace(term, animate) {
   const match = findPlace(term);
   if (!match) { console.warn(`?region=${term} -- no matching region or town found`); return false; }
-  const opts = { padding: 40, duration: animate ? 800 : 0 };
+  applyViewPadding();
   if (match.bbox) {
     const [s, w, n, e] = match.bbox;
-    map.fitBounds([[w, s], [e, n]], opts);
-  } else if (animate) {
-    map.flyTo({ center: [match.lng, match.lat], zoom: match.zoom || 12, duration: 800 });
+    // A little extra breathing room around a region's outline; this is
+    // on top of the camera padding, not instead of it.
+    map.fitBounds([[w, s], [e, n]], { padding: 24, duration: animate ? 800 : 0 });
   } else {
-    map.jumpTo({ center: [match.lng, match.lat], zoom: match.zoom || 12 });
+    const opts = { center: [match.lng, match.lat], zoom: match.zoom || 12 };
+    if (animate) map.flyTo({ ...opts, duration: 800 }); else map.jumpTo(opts);
   }
   return true;
 }
@@ -1516,7 +1563,8 @@ function renderBoard() {
 function flyToBbox(bbox) {
   if (!bbox) return;
   const [s, w, n, e] = bbox;
-  map.fitBounds([[w, s], [e, n]], { padding: 40, duration: 800 });
+  applyViewPadding();
+  map.fitBounds([[w, s], [e, n]], { padding: 24, duration: 800 });
 }
 
 function flyToNZ() {
@@ -1933,6 +1981,7 @@ const PANEL_ANIM_MS = 300;
 
 let dashHidden = false;
 function setDashHidden(hidden) {
+  setTimeout(applyViewPadding, 300);   // after the panel transition
   dashHidden = hidden;
   dash.classList.toggle("collapsed", hidden);
   dashArrow.classList.toggle("open", !hidden);
@@ -1972,6 +2021,7 @@ function toggleRegionsPanel() {
   else { openRegionsPanel(); }
 }
 dashArrow.addEventListener("click", toggleRegionsPanel);
+window.addEventListener("resize", applyViewPadding);
 
 const methodologyBtn = document.getElementById("methodologyBtn");
 const methodologyOverlay = document.getElementById("methodologyOverlay");
