@@ -241,7 +241,11 @@
       border-radius: 10px 10px 0 0; border-bottom: none;
       flex-direction: row;
     }
-    .edge-arrow.open { bottom: 55vh; }
+    /* The open position is set from JS (see syncDashArrow), because it
+       has to follow the panel's measured height: the panel is
+       max-height:55vh and shrinks to its content, so any fixed value
+       here leaves the handle floating in mid-air whenever the list is
+       short. Only the collapsed position is expressed in CSS. */
     .edge-arrow .glyph { transform: rotate(-90deg); }
     .edge-arrow.open .glyph { transform: rotate(90deg); }
   }
@@ -325,13 +329,19 @@
   .popup-region-header { font-weight: 700; color: var(--text); font-size: 12.5px; margin-bottom: 4px; }
 
   /* ============ Methodology button + popup ============ */
+  /* Sits under the fullscreen control, top-right. It used to be a pill
+     at bottom-centre, which on mobile landed on top of the regions
+     handle -- the only other thing down there. */
   #methodologyBtn {
-    position: absolute; z-index: 20; bottom: 10px; left: 50%; transform: translateX(-50%);
+    position: absolute; z-index: 20; top: 52px; right: 10px;
+    width: 29px; height: 29px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
     background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px;
-    color: var(--dim); font-size: 11px; font-weight: 700; cursor: pointer;
-    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    border: 1px solid var(--border); border-radius: 50%;
+    color: var(--dim); font-size: 14px; font-weight: 700; font-style: italic;
+    font-family: Georgia, "Times New Roman", serif; line-height: 1; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,.4);
   }
   #methodologyBtn:hover { color: var(--text); }
   #methodologyOverlay {
@@ -516,7 +526,7 @@
     <div class="board" id="board"><div class="loading-note">Loading towns…</div></div>
   </div>
 
-  <button id="methodologyBtn" type="button">Methodology</button>
+  <button id="methodologyBtn" type="button" title="How this map is built, and what is measured versus estimated" aria-label="Methodology">i</button>
   <div id="methodologyOverlay" class="hidden">
     <div id="methodologyModal">
       <button id="methodologyClose" type="button" aria-label="Close">&times;</button>
@@ -1980,14 +1990,43 @@ function renderSolarRegionBoard() {
 const PANEL_ANIM_MS = 300;
 
 let dashHidden = false;
+// Publishes the panel's real height so the mobile handle can sit on its
+// top edge. Measured rather than assumed: the panel is max-height:55vh
+// and shrinks to its content, so a fixed 55vh left the handle floating
+// above it whenever the list was short (loading, or an empty view).
+// Keeps the mobile handle sitting on the panel's top edge. Measured and
+// applied directly rather than through CSS, because the height is only
+// known at runtime -- the panel is max-height:55vh and shrinks to its
+// content, so a fixed offset leaves the handle detached whenever the
+// list is short (loading, or a view with no towns in it).
+function syncDashArrow() {
+  if (!dash || !dashArrow) return;
+  const mobile = window.matchMedia("(max-width: 767px)").matches;
+  if (!mobile) { dashArrow.style.bottom = ""; return; }   // desktop docks it to the side
+  if (dash.classList.contains("collapsed")) { dashArrow.style.bottom = "0px"; return; }
+  const app = dashArrow.offsetParent || document.getElementById("app");
+  const appRect = app.getBoundingClientRect();
+  const panel = dash.getBoundingClientRect();
+  dashArrow.style.bottom = `${Math.max(0, Math.round(appRect.bottom - panel.top))}px`;
+}
+
 function setDashHidden(hidden) {
-  setTimeout(applyViewPadding, 300);   // after the panel transition
   dashHidden = hidden;
   dash.classList.toggle("collapsed", hidden);
   dashArrow.classList.toggle("open", !hidden);
   dashArrow.title = hidden ? "Show regions" : "Hide regions";
+  syncDashArrow();
+  // Again once the slide finishes, since the height is only final then.
+  setTimeout(() => { syncDashArrow(); applyViewPadding(); }, 300);
 }
-setDashHidden(DASH_PARAM === "closed");   // default open, unless ?dash=closed
+// Open by default on desktop, where it is a side panel and the map is
+// still fully usable beside it. Closed by default on mobile, where it
+// is a bottom sheet covering up to 55vh of a small screen -- landing on
+// a map that is already half hidden is a poor first impression.
+// ?dash=open / ?dash=closed still win either way.
+const startsHidden = DASH_PARAM === "closed"
+  || (DASH_PARAM !== "open" && window.matchMedia("(max-width: 767px)").matches);
+setDashHidden(startsHidden);
 
 function isChartOpen() { return topbarEl.classList.contains("expanded"); }
 // renderTopbar() (not renderFocusChart() directly) so the "Show
@@ -2021,7 +2060,11 @@ function toggleRegionsPanel() {
   else { openRegionsPanel(); }
 }
 dashArrow.addEventListener("click", toggleRegionsPanel);
-window.addEventListener("resize", applyViewPadding);
+window.addEventListener("resize", () => { syncDashArrow(); applyViewPadding(); });
+// The panel also changes height whenever its list re-renders (panning
+// the map, switching mode, an empty view). Observing it covers every
+// cause without having to hook each render path.
+if (window.ResizeObserver && dash) new ResizeObserver(syncDashArrow).observe(dash);
 
 const methodologyBtn = document.getElementById("methodologyBtn");
 const methodologyOverlay = document.getElementById("methodologyOverlay");
