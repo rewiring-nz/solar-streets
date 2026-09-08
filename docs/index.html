@@ -2744,8 +2744,12 @@ function renderLeaderboard() {
   // but EMI/NZTA only republish monthly, so metaUpdated/evUpdated is
   // whichever month the current snapshot actually reflects.
   const asOf = isEv ? evUpdated : metaUpdated;
+  // Says what is being ranked and over what period. "In the month of X"
+  // alone left the percentage beside each row unexplained, and it reads
+  // naturally as an adoption share -- it is growth against the previous
+  // release, which is a much smaller number.
   const monthLine = asOf
-    ? `<div class="lb-month">In the month of ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()}</div>`
+    ? `<div class="lb-month">Biggest increases &mdash; ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()} vs the previous release</div>`
     : "";
   const rows = (list || [])
     // A leaderboard is for "what grew" -- a negative figure here is more
@@ -2769,7 +2773,9 @@ function renderLeaderboard() {
     `<div class="lb-row">` +
       `<span class="lb-rank">${i + 1}</span>` +
       `<span class="lb-name">${r.name}</span>` +
-      `<span class="lb-change up">+${fmt(r.change)} ${unit} <small>(+${r.changePct.toFixed(1)}%)</small></span>` +
+      `<span class="lb-change up">+${fmt(r.change)} ${unit} ` +
+      `<small title="Growth against this region's own total at the previous data release -- not its share of the fleet.">` +
+      `(+${r.changePct.toFixed(1)}% growth)</small></span>` +
     `</div>`
   ).join("") + `</div>`;
 }

@@ -2657,17 +2657,32 @@ def main():
     # assignment (real council boundaries barely ever move, so that's
     # equivalent to -- and simpler than -- also archiving last run's
     # grouping).
-    prev_towns = load(PREV_TOWN_TOTALS, {})
+    # A region's baseline has to be its own previous figure, not the sum
+    # of last run's towns. Those are two different bases: region installs
+    # are EMI's published per-council rows, while town installs are
+    # summed from the privacy-suppressed street file and run ~11% higher
+    # (Auckland 16,873 against a town sum of 19,410). Comparing one to
+    # the other made every region except Nelson report a large fall --
+    # the arithmetic gap, not anything real -- and the leaderboard drops
+    # decliners, so it showed a single row.
+    prev_snapshot = load(PREV_TOWN_TOTALS, {})
+    # The file used to be a flat {town: {...}}; tolerate that shape so
+    # the first run after this change doesn't crash on it.
+    prev_towns = prev_snapshot.get("towns") if "towns" in prev_snapshot else prev_snapshot
+    prev_regions = prev_snapshot.get("regions", {})
+
     for t in towns:
-        t["change"], t["changePct"] = _change(t["icps"], prev_towns.get(t["name"], {}).get("icps"))
-    prev_council_icps = {}
-    for t in towns:
-        prev = prev_towns.get(t["name"])
-        if prev and t["council"]:
-            prev_council_icps[t["council"]] = prev_council_icps.get(t["council"], 0) + prev["icps"]
+        t["change"], t["changePct"] = _change(t["icps"], (prev_towns or {}).get(t["name"], {}).get("icps"))
     for r in region_tree:
-        r["change"], r["changePct"] = _change(r["icps"], prev_council_icps.get(r["name"]))
-    save(PREV_TOWN_TOTALS, {t["name"]: {"icps": t["icps"]} for t in towns})
+        # None until a snapshot exists on this same basis, which the
+        # leaderboard renders as "no comparison data yet" -- the honest
+        # state, rather than a fabricated jump on the changeover run.
+        r["change"], r["changePct"] = _change(r["icps"], prev_regions.get(r["name"], {}).get("icps"))
+
+    save(PREV_TOWN_TOTALS, {
+        "towns": {t["name"]: {"icps": t["icps"]} for t in towns},
+        "regions": {r["name"]: {"icps": r["icps"]} for r in region_tree},
+    })
 
     # Census dwellings / ANZSIC ratio: fetched once here and shared by
     # both write_region_boundaries (TLA-level estPct) and
