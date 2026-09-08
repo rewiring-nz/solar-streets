@@ -43,8 +43,8 @@
    "battInstalls": 801,
    "battPct": 33.8,
    "battBase": 2371,
-   "change": null,
-   "changePct": null,
+   "change": 46,
+   "changePct": 1.9,
    "farmAnzsic": 59
   },
   {
@@ -70,8 +70,8 @@
    "battInstalls": 373,
    "battPct": 21.4,
    "battBase": 1742,
-   "change": null,
-   "changePct": null,
+   "change": 24,
+   "changePct": 1.4,
    "farmAnzsic": 42
   },
   {
@@ -97,8 +97,8 @@
    "battInstalls": 1043,
    "battPct": 16.2,
    "battBase": 6425,
-   "change": null,
-   "changePct": null,
+   "change": 72,
+   "changePct": 1.1,
    "farmAnzsic": 225
   },
   {
@@ -124,8 +124,8 @@
    "battInstalls": 1790,
    "battPct": 36.4,
    "battBase": 4921,
-   "change": null,
-   "changePct": null,
+   "change": 38,
+   "changePct": 0.8,
    "farmAnzsic": 174
   },
   {
@@ -151,8 +151,8 @@
    "battInstalls": 2760,
    "battPct": 35.7,
    "battBase": 7731,
-   "change": null,
-   "changePct": null,
+   "change": 112,
+   "changePct": 1.4,
    "farmAnzsic": 112
   },
   {
@@ -178,8 +178,8 @@
    "battInstalls": 958,
    "battPct": 16.0,
    "battBase": 5974,
-   "change": null,
-   "changePct": null,
+   "change": 133,
+   "changePct": 2.2,
    "farmAnzsic": 107
   },
   {
@@ -205,8 +205,8 @@
    "battInstalls": 2481,
    "battPct": 15.9,
    "battBase": 15582,
-   "change": null,
-   "changePct": null,
+   "change": 253,
+   "changePct": 1.6,
    "farmAnzsic": 416
   },
   {
@@ -232,8 +232,8 @@
    "battInstalls": 1029,
    "battPct": 36.6,
    "battBase": 2814,
-   "change": null,
-   "changePct": null,
+   "change": 55,
+   "changePct": 2.0,
    "farmAnzsic": 164
   },
   {
@@ -259,8 +259,8 @@
    "battInstalls": 3557,
    "battPct": 35.5,
    "battBase": 10030,
-   "change": null,
-   "changePct": null,
+   "change": 125,
+   "changePct": 1.2,
    "farmAnzsic": 447
   },
   {
@@ -286,8 +286,8 @@
    "battInstalls": 1270,
    "battPct": 29.4,
    "battBase": 4321,
-   "change": null,
-   "changePct": null,
+   "change": 66,
+   "changePct": 1.5,
    "farmAnzsic": 146
   },
   {
@@ -313,8 +313,8 @@
    "battInstalls": 1572,
    "battPct": 19.7,
    "battBase": 7965,
-   "change": null,
-   "changePct": null,
+   "change": 123,
+   "changePct": 1.5,
    "farmAnzsic": 46
   },
   {
@@ -340,8 +340,8 @@
    "battInstalls": 133,
    "battPct": 19.9,
    "battBase": 669,
-   "change": null,
-   "changePct": null,
+   "change": 4,
+   "changePct": 0.6,
    "farmAnzsic": 26
   },
   {
@@ -367,8 +367,8 @@
    "battInstalls": 2344,
    "battPct": 14.0,
    "battBase": 16794,
-   "change": null,
-   "changePct": null,
+   "change": 117,
+   "changePct": 0.7,
    "farmAnzsic": 101
   },
   {
@@ -394,8 +394,8 @@
    "battInstalls": 166,
    "battPct": 16.2,
    "battBase": 1023,
-   "change": null,
-   "changePct": null,
+   "change": 18,
+   "changePct": 1.8,
    "farmAnzsic": 64
   },
   {
@@ -421,8 +421,8 @@
    "battInstalls": 93,
    "battPct": 26.6,
    "battBase": 350,
-   "change": null,
-   "changePct": null,
+   "change": 11,
+   "changePct": 3.1,
    "farmAnzsic": 11
   },
   {
@@ -448,8 +448,8 @@
    "battInstalls": 666,
    "battPct": 36.8,
    "battBase": 1810,
-   "change": null,
-   "changePct": null,
+   "change": 33,
+   "changePct": 1.8,
    "farmAnzsic": 0
   }
  ],
@@ -590,8 +590,8 @@
    "councilBattInstalls": 1790,
    "councilBattPct": 36.4,
    "councilBattBase": 4921,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.7,
    "estPct": 17.4
   },
   {
@@ -610,8 +610,8 @@
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "councilBattBase": 1742,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.5,
    "estPct": 17.1
   },
   {
@@ -670,8 +670,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 10,
+   "changePct": 0.8,
    "estPct": 16.2
   },
   {
@@ -750,8 +750,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.8,
    "estPct": 15.3
   },
   {
@@ -790,8 +790,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.4,
    "estPct": 15.1
   },
   {
@@ -810,8 +810,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.0,
    "estPct": 15.1
   },
   {
@@ -830,8 +830,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.6,
    "estPct": 15.0
   },
   {
@@ -850,8 +850,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 2.8,
    "estPct": 14.9
   },
   {
@@ -910,8 +910,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.9,
    "estPct": 14.1
   },
   {
@@ -1130,8 +1130,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.3,
    "estPct": 12.8
   },
   {
@@ -1190,8 +1190,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.5,
    "estPct": 12.6
   },
   {
@@ -1210,8 +1210,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.6,
    "estPct": 12.6
   },
   {
@@ -1310,8 +1310,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 9,
+   "changePct": 1.2,
    "estPct": 12.2
   },
   {
@@ -1390,8 +1390,8 @@
    "councilBattInstalls": 666,
    "councilBattPct": 36.8,
    "councilBattBase": 1810,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.7,
    "estPct": 12.0
   },
   {
@@ -1410,8 +1410,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.8,
    "estPct": 11.9
   },
   {
@@ -1550,8 +1550,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.2,
    "estPct": 11.6
   },
   {
@@ -1630,8 +1630,8 @@
    "councilBattInstalls": 1790,
    "councilBattPct": 36.4,
    "councilBattBase": 4921,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 7.7,
    "estPct": 11.2
   },
   {
@@ -1670,8 +1670,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 0.6,
    "estPct": 11.0
   },
   {
@@ -1710,8 +1710,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.1,
    "estPct": 10.9
   },
   {
@@ -1750,8 +1750,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.6,
    "estPct": 10.8
   },
   {
@@ -1950,8 +1950,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.5,
    "estPct": 10.3
   },
   {
@@ -2070,8 +2070,8 @@
    "councilBattInstalls": 801,
    "councilBattPct": 33.8,
    "councilBattBase": 2371,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.9,
    "estPct": 10.2
   },
   {
@@ -2550,8 +2550,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 9,
+   "changePct": 1.2,
    "estPct": 9.5
   },
   {
@@ -2570,8 +2570,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.3,
    "estPct": 9.5
   },
   {
@@ -2590,8 +2590,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.1,
    "estPct": 9.5
   },
   {
@@ -2650,8 +2650,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.4,
    "estPct": 9.4
   },
   {
@@ -2850,8 +2850,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.1,
    "estPct": 9.1
   },
   {
@@ -2870,8 +2870,8 @@
    "councilBattInstalls": 801,
    "councilBattPct": 33.8,
    "councilBattBase": 2371,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.9,
    "estPct": 9.0
   },
   {
@@ -3010,8 +3010,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.6,
    "estPct": 8.8
   },
   {
@@ -3050,8 +3050,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.3,
    "estPct": 8.7
   },
   {
@@ -3350,8 +3350,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.4,
    "estPct": 8.2
   },
   {
@@ -3590,8 +3590,8 @@
    "councilBattInstalls": 1790,
    "councilBattPct": 36.4,
    "councilBattBase": 4921,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 6.7,
    "estPct": 8.1
   },
   {
@@ -3670,8 +3670,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 7,
+   "changePct": 0.9,
    "estPct": 7.9
   },
   {
@@ -3750,8 +3750,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 0.8,
    "estPct": 7.8
   },
   {
@@ -3770,8 +3770,8 @@
    "councilBattInstalls": 1029,
    "councilBattPct": 36.6,
    "councilBattBase": 2814,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.4,
    "estPct": 7.8
   },
   {
@@ -3890,8 +3890,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.2,
    "estPct": 7.7
   },
   {
@@ -3910,8 +3910,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 1.2,
    "estPct": 7.7
   },
   {
@@ -4030,8 +4030,8 @@
    "councilBattInstalls": 801,
    "councilBattPct": 33.8,
    "councilBattBase": 2371,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 0.5,
    "estPct": 7.6
   },
   {
@@ -4090,8 +4090,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.9,
    "estPct": 7.6
   },
   {
@@ -4210,8 +4210,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.5,
    "estPct": 7.5
   },
   {
@@ -4350,8 +4350,8 @@
    "councilBattInstalls": 801,
    "councilBattPct": 33.8,
    "councilBattBase": 2371,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.5,
    "estPct": 7.3
   },
   {
@@ -4370,8 +4370,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.3,
    "estPct": 7.3
   },
   {
@@ -4390,8 +4390,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.4,
    "estPct": 7.3
   },
   {
@@ -4450,8 +4450,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 2.7,
    "estPct": 7.2
   },
   {
@@ -4650,8 +4650,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 6,
+   "changePct": 0.6,
    "estPct": 7.0
   },
   {
@@ -4690,8 +4690,8 @@
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "councilBattBase": 1742,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 0.3,
    "estPct": 6.9
   },
   {
@@ -4730,8 +4730,8 @@
    "councilBattInstalls": 1790,
    "councilBattPct": 36.4,
    "councilBattBase": 4921,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.5,
    "estPct": 6.9
   },
   {
@@ -4790,8 +4790,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 5.0,
    "estPct": 6.9
   },
   {
@@ -4830,8 +4830,8 @@
    "councilBattInstalls": 666,
    "councilBattPct": 36.8,
    "councilBattBase": 1810,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 5,
+   "changePct": 0.3,
    "estPct": 6.8
   },
   {
@@ -4850,8 +4850,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 0.4,
    "estPct": 6.8
   },
   {
@@ -4870,8 +4870,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.7,
    "estPct": 6.8
   },
   {
@@ -4890,8 +4890,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.1,
    "estPct": 6.8
   },
   {
@@ -4970,8 +4970,8 @@
    "councilBattInstalls": 1790,
    "councilBattPct": 36.4,
    "councilBattBase": 4921,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 0.1,
    "estPct": 6.7
   },
   {
@@ -4990,8 +4990,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.1,
    "estPct": 6.7
   },
   {
@@ -5010,8 +5010,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": -1,
+   "changePct": -0.5,
    "estPct": 6.7
   },
   {
@@ -5090,8 +5090,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.5,
    "estPct": 6.6
   },
   {
@@ -5250,8 +5250,8 @@
    "councilBattInstalls": 1790,
    "councilBattPct": 36.4,
    "councilBattBase": 4921,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 0.4,
    "estPct": 6.5
   },
   {
@@ -5270,8 +5270,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.5,
    "estPct": 6.5
   },
   {
@@ -5430,8 +5430,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.7,
    "estPct": 6.4
   },
   {
@@ -5790,8 +5790,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.3,
    "estPct": 6.1
   },
   {
@@ -5870,8 +5870,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 5.7,
    "estPct": 6.1
   },
   {
@@ -5950,8 +5950,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.3,
    "estPct": 6.0
   },
   {
@@ -6050,8 +6050,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.3,
    "estPct": 5.9
   },
   {
@@ -6070,8 +6070,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.5,
    "estPct": 5.9
   },
   {
@@ -6230,8 +6230,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.2,
    "estPct": 5.8
   },
   {
@@ -6250,8 +6250,8 @@
    "councilBattInstalls": 1029,
    "councilBattPct": 36.6,
    "councilBattBase": 2814,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.2,
    "estPct": 5.8
   },
   {
@@ -6270,8 +6270,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 0.7,
    "estPct": 5.8
   },
   {
@@ -6290,8 +6290,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 0.9,
    "estPct": 5.8
   },
   {
@@ -6330,8 +6330,8 @@
    "councilBattInstalls": 166,
    "councilBattPct": 16.2,
    "councilBattBase": 1023,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.6,
    "estPct": 5.8
   },
   {
@@ -6370,8 +6370,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.9,
    "estPct": 5.8
   },
   {
@@ -6490,8 +6490,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.1,
    "estPct": 5.7
   },
   {
@@ -6510,8 +6510,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 6,
+   "changePct": 0.7,
    "estPct": 5.7
   },
   {
@@ -6530,8 +6530,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.3,
    "estPct": 5.7
   },
   {
@@ -6590,8 +6590,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.1,
    "estPct": 5.7
   },
   {
@@ -6650,8 +6650,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 9,
+   "changePct": 1.3,
    "estPct": 5.6
   },
   {
@@ -6730,8 +6730,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.3,
    "estPct": 5.6
   },
   {
@@ -7110,8 +7110,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 1.7,
    "estPct": 5.4
   },
   {
@@ -7330,8 +7330,8 @@
    "councilBattInstalls": 373,
    "councilBattPct": 21.4,
    "councilBattBase": 1742,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.3,
    "estPct": 5.2
   },
   {
@@ -7370,8 +7370,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 9.1,
    "estPct": 5.2
   },
   {
@@ -7430,8 +7430,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 0.5,
    "estPct": 5.1
   },
   {
@@ -7450,8 +7450,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.1,
    "estPct": 5.1
   },
   {
@@ -7690,8 +7690,8 @@
    "councilBattInstalls": 1043,
    "councilBattPct": 16.2,
    "councilBattBase": 6425,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.2,
    "estPct": 4.9
   },
   {
@@ -7730,8 +7730,8 @@
    "councilBattInstalls": 1270,
    "councilBattPct": 29.4,
    "councilBattBase": 4321,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.4,
    "estPct": 4.9
   },
   {
@@ -7790,8 +7790,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.5,
    "estPct": 4.9
   },
   {
@@ -7810,8 +7810,8 @@
    "councilBattInstalls": 1790,
    "councilBattPct": 36.4,
    "councilBattBase": 4921,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 12.5,
    "estPct": 4.9
   },
   {
@@ -7930,8 +7930,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 1.0,
    "estPct": 4.8
   },
   {
@@ -7990,8 +7990,8 @@
    "councilBattInstalls": 1029,
    "councilBattPct": 36.6,
    "councilBattBase": 2814,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 4.3,
    "estPct": 4.8
   },
   {
@@ -8150,8 +8150,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 8,
+   "changePct": 0.7,
    "estPct": 4.6
   },
   {
@@ -8170,8 +8170,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.2,
    "estPct": 4.6
   },
   {
@@ -8190,8 +8190,8 @@
    "councilBattInstalls": 1270,
    "councilBattPct": 29.4,
    "councilBattBase": 4321,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 1.9,
    "estPct": 4.6
   },
   {
@@ -8450,8 +8450,8 @@
    "councilBattInstalls": 1029,
    "councilBattPct": 36.6,
    "councilBattBase": 2814,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.2,
    "estPct": 4.4
   },
   {
@@ -8530,8 +8530,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 5.6,
    "estPct": 4.4
   },
   {
@@ -8730,8 +8730,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 1.2,
    "estPct": 4.2
   },
   {
@@ -8750,8 +8750,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 1.2,
    "estPct": 4.2
   },
   {
@@ -8930,8 +8930,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 15.4,
    "estPct": 4.1
   },
   {
@@ -9010,8 +9010,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 6,
+   "changePct": 0.4,
    "estPct": 4.0
   },
   {
@@ -9030,8 +9030,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 5,
+   "changePct": 0.5,
    "estPct": 4.0
   },
   {
@@ -9050,8 +9050,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 0.5,
    "estPct": 4.0
   },
   {
@@ -9070,8 +9070,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": -1,
+   "changePct": -0.2,
    "estPct": 4.0
   },
   {
@@ -9250,8 +9250,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.5,
    "estPct": 3.9
   },
   {
@@ -9270,8 +9270,8 @@
    "councilBattInstalls": 1029,
    "councilBattPct": 36.6,
    "councilBattBase": 2814,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 1.2,
    "estPct": 3.9
   },
   {
@@ -9370,8 +9370,8 @@
    "councilBattInstalls": 1270,
    "councilBattPct": 29.4,
    "councilBattBase": 4321,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 8,
+   "changePct": 0.6,
    "estPct": 3.8
   },
   {
@@ -9390,8 +9390,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.1,
    "estPct": 3.8
   },
   {
@@ -9430,8 +9430,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.3,
    "estPct": 3.8
   },
   {
@@ -9510,8 +9510,8 @@
    "councilBattInstalls": 1270,
    "councilBattPct": 29.4,
    "councilBattBase": 4321,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 14.3,
    "estPct": 3.8
   },
   {
@@ -9570,8 +9570,8 @@
    "councilBattInstalls": 3557,
    "councilBattPct": 35.5,
    "councilBattBase": 10030,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 16,
+   "changePct": 0.5,
    "estPct": 3.7
   },
   {
@@ -9590,8 +9590,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 12,
+   "changePct": 0.7,
    "estPct": 3.7
   },
   {
@@ -9710,8 +9710,8 @@
    "councilBattInstalls": 2481,
    "councilBattPct": 15.9,
    "councilBattBase": 15582,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 15,
+   "changePct": 0.4,
    "estPct": 3.6
   },
   {
@@ -9830,8 +9830,8 @@
    "councilBattInstalls": 1270,
    "councilBattPct": 29.4,
    "councilBattBase": 4321,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 16.7,
    "estPct": 3.6
   },
   {
@@ -9870,8 +9870,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 4,
+   "changePct": 0.3,
    "estPct": 3.5
   },
   {
@@ -9950,8 +9950,8 @@
    "councilBattInstalls": 2760,
    "councilBattPct": 35.7,
    "councilBattBase": 7731,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 5.9,
    "estPct": 3.5
   },
   {
@@ -10150,8 +10150,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.2,
    "estPct": 3.2
   },
   {
@@ -10230,8 +10230,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 1,
+   "changePct": 0.2,
    "estPct": 3.1
   },
   {
@@ -10370,8 +10370,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.4,
    "estPct": 3.0
   },
   {
@@ -10670,8 +10670,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": -1,
+   "changePct": -0.1,
    "estPct": 2.7
   },
   {
@@ -10750,8 +10750,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 14,
+   "changePct": 0.5,
    "estPct": 2.6
   },
   {
@@ -10890,8 +10890,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 20,
+   "changePct": 0.8,
    "estPct": 2.5
   },
   {
@@ -11070,8 +11070,8 @@
    "councilBattInstalls": 1572,
    "councilBattPct": 19.7,
    "councilBattBase": 7965,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 13,
+   "changePct": 0.9,
    "estPct": 2.3
   },
   {
@@ -11230,8 +11230,8 @@
    "councilBattInstalls": 2344,
    "councilBattPct": 14.0,
    "councilBattBase": 16794,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 19,
+   "changePct": 0.4,
    "estPct": 2.1
   },
   {
@@ -11250,8 +11250,8 @@
    "councilBattInstalls": 958,
    "councilBattPct": 16.0,
    "councilBattBase": 5974,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 3,
+   "changePct": 0.3,
    "estPct": 2.1
   },
   {
@@ -11330,8 +11330,8 @@
    "councilBattInstalls": 166,
    "councilBattPct": 16.2,
    "councilBattBase": 1023,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 0.3,
    "estPct": 2.0
   },
   {
