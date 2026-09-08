@@ -524,6 +524,34 @@ def report_failures():
               f"(the previously committed file is still being served)")
 
 
+def rolling_baseline(path, vintage, totals):
+    """(baseline_totals, snapshot_to_save) for a leaderboard comparison.
+
+    The snapshot only moves on when the *source* publishes something new,
+    not on every pipeline run. EMI and NZTA republish monthly while this
+    runs weekly, so overwriting the baseline each run meant the
+    comparison was against figures identical to the current ones for
+    three runs out of four -- every change came out as zero and the
+    leaderboard, which drops non-gainers, showed "no comparison data
+    yet" almost all the time.
+
+    Keyed on the source's own data vintage (EMI's Last-Modified, NZTA's
+    dataLastEditDate), so an interim run keeps showing the most recent
+    real release-over-release movement instead of blanking it.
+    """
+    snap = load(path, {}) or {}
+    if snap.get("vintage") == vintage:
+        # Nothing new upstream: keep comparing against the same release
+        # as last time, and leave the stored snapshot alone.
+        return snap.get("baseline") or {}, snap
+    return snap.get("totals") or {}, {
+        "vintage": vintage,
+        "totals": totals,
+        "baselineVintage": snap.get("vintage"),
+        "baseline": snap.get("totals") or {},
+    }
+
+
 def _change(current, previous):
     """(change, changePct) against a prior run's total for the same
     area -- the leaderboard's whole data source. None/None (rather than
@@ -2491,7 +2519,9 @@ def main():
             # run's tla_region (regions are static, so last run's real
             # per-TLA numbers grouped today are equivalent to -- and
             # simpler than -- also having archived last run's grouping).
-            prev_ev = load(PREV_EV_TOTALS, {})
+            ev_totals = {row["name"]: {"ev": row["ev"]} for row in ev_tlas}
+            prev_ev, ev_snapshot = rolling_baseline(
+                PREV_EV_TOTALS, ev_data_date or "unknown", ev_totals)
             for row in ev_tlas:
                 row["change"], row["changePct"] = _change(row["ev"], prev_ev.get(row["name"], {}).get("ev"))
             prev_region_ev = {}
@@ -2501,7 +2531,7 @@ def main():
                     prev_region_ev[row["region"]] = prev_region_ev.get(row["region"], 0) + prev["ev"]
             for row in ev_regions:
                 row["change"], row["changePct"] = _change(row["ev"], prev_region_ev.get(row["name"]))
-            save(PREV_EV_TOTALS, {row["name"]: {"ev": row["ev"]} for row in ev_tlas})
+            save(PREV_EV_TOTALS, ev_snapshot)
 
             save(OUT_EV, {
                 # NZTA's own last-refresh date, not this run's -- same
@@ -2665,11 +2695,15 @@ def main():
     # the other made every region except Nelson report a large fall --
     # the arithmetic gap, not anything real -- and the leaderboard drops
     # decliners, so it showed a single row.
-    prev_snapshot = load(PREV_TOWN_TOTALS, {})
+    current_totals = {
+        "towns": {t["name"]: {"icps": t["icps"]} for t in towns},
+        "regions": {r["name"]: {"icps": r["icps"]} for r in region_tree},
+    }
+    baseline, town_snapshot = rolling_baseline(PREV_TOWN_TOTALS, data_date, current_totals)
     # The file used to be a flat {town: {...}}; tolerate that shape so
     # the first run after this change doesn't crash on it.
-    prev_towns = prev_snapshot.get("towns") if "towns" in prev_snapshot else prev_snapshot
-    prev_regions = prev_snapshot.get("regions", {})
+    prev_towns = baseline.get("towns") if "towns" in baseline else baseline
+    prev_regions = baseline.get("regions", {})
 
     for t in towns:
         t["change"], t["changePct"] = _change(t["icps"], (prev_towns or {}).get(t["name"], {}).get("icps"))
@@ -2679,10 +2713,7 @@ def main():
         # state, rather than a fabricated jump on the changeover run.
         r["change"], r["changePct"] = _change(r["icps"], prev_regions.get(r["name"], {}).get("icps"))
 
-    save(PREV_TOWN_TOTALS, {
-        "towns": {t["name"]: {"icps": t["icps"]} for t in towns},
-        "regions": {r["name"]: {"icps": r["icps"]} for r in region_tree},
-    })
+    save(PREV_TOWN_TOTALS, town_snapshot)
 
     # Census dwellings / ANZSIC ratio: fetched once here and shared by
     # both write_region_boundaries (TLA-level estPct) and
