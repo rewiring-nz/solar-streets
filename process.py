@@ -76,6 +76,10 @@ TOWN_ANCHORS_SERVICE = (
     "LINZ_NZ_Suburbs_and_Localities/FeatureServer/0/query"
 )
 TOWN_ANCHORS_CACHE = "town_anchors.json"
+# Each named town's real footprint -- the union of its LINZ locality
+# polygons. Streets and Census dwellings are assigned by containment in
+# these; see fetch_town_polygons.
+TOWN_POLYGONS_CACHE = "town_polygons.json"
 
 # Real 2018 and 2023 Census occupied-private-dwelling counts, one point
 # (SA1 centroid) per statistical area nationally -- same Stats NZ ArcGIS
@@ -1431,19 +1435,77 @@ def fetch_town_anchors():
     return anchors
 
 
-def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios):
+def fetch_town_polygons():
+    """{major_name: GeoJSON geometry} -- each named town's footprint, the
+    union of its LINZ locality polygons. Cached: localities change rarely
+    and the fetch is several MB.
+
+    Used two ways: to *assign* streets and Census dwellings to a town
+    (see _nearest_town_fn) and to draw the Towns map mode. It used to be
+    fetched only for drawing, after assignment had already run against a
+    single point per town. That single-point Voronoi is what broke the
+    town figures: a small town beside a city gets one anchor, the city
+    one anchor at its centre, and the small town's cell swallows the
+    city's outer suburbs. Verified against LINZ's footprints: Taupaki
+    was publishing 2,671 installs (really ~72), Coatesville 2,558
+    (~137), Lyttelton 1,722 (~133), Takanini 1,255 (~46), while Auckland
+    was ~8,000 and Christchurch ~3,900 short. The same Voronoi let
+    Waiheke Island's south coast snap to Kawakawa Bay across the water.
+    Containment in the town's real footprint has none of those failure
+    modes.
+    """
+    cached = load(TOWN_POLYGONS_CACHE, None)
+    if cached:
+        return cached
+
+    from shapely.geometry import shape, mapping
+    from shapely.ops import unary_union
+
+    print("Fetching LINZ locality polygons for town footprints...")
+    groups, offset = {}, 0
+    while True:
+        r = get(TOWN_ANCHORS_SERVICE, timeout=180, params={
+            "where": "1=1", "outFields": "major_name",
+            "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.002,
+            "f": "geojson", "resultOffset": offset, "resultRecordCount": 2000,
+        })
+        feats = r.json().get("features", [])
+        if not feats:
+            break
+        for f in feats:
+            name = f["properties"].get("major_name")
+            geom = f.get("geometry")
+            if not name or not geom:
+                continue
+            # buffer(0) repairs the minor self-intersections
+            # maxAllowableOffset's simplification sometimes introduces --
+            # a standard fix, not a precision compromise: unary_union
+            # refuses to run on invalid geometry otherwise.
+            groups.setdefault(name, []).append(shape(geom).buffer(0))
+        offset += len(feats)
+
+    out = {}
+    for name, polys in groups.items():
+        try:
+            out[name] = mapping(unary_union(polys))
+        except Exception as exc:                       # noqa: BLE001
+            print(f"  ! Couldn't merge locality boundary for {name}: {exc}")
+    save(TOWN_POLYGONS_CACHE, out)
+    return out
+
+
+def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios, polygons=None):
     """Attaches row["estPct"] in place to entries of `towns`, for towns
     small enough that EMI has no real per-town ICP total to divide by
     (see build_towns). An *estimate*, built entirely from real numbers:
 
       1. Real 2018 and 2023 Census occupied-dwelling counts inside the
-         town's real catchment -- SA1 centroids assigned to their
-         nearest town anchor via _nearest_town_fn, the *same* catchment
-         build_towns uses for installs (not the narrower boundary
-         polygon written by write_town_boundaries, which only covers
-         named localities -- using that here would put installs and
-         dwellings on two different-sized catchments and skew the
-         ratio; see fetch_sa1_dwellings for the source).
+         town's real catchment -- SA1 centroids assigned through the
+         *same* _nearest_town_fn rule build_towns uses for installs
+         (containment in the town's LINZ footprint, nearest anchor only
+         outside every footprint), so installs and dwellings are never
+         drawn from different-sized catchments; see fetch_sa1_dwellings
+         for the source.
       2. The town's own real 2018->2023 dwelling growth rate, compounded
          forward to the current year (clamped to +-5%/15% annually --
          a guard against small-sample noise in low-dwelling towns, not
@@ -1464,7 +1526,7 @@ def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios):
     if not sa1_dwellings or not anzsic_ratios or not town_anchors:
         return
 
-    nearest_town = _nearest_town_fn(town_anchors)
+    nearest_town = _nearest_town_fn(town_anchors, polygons)
     sums = {}   # name -> [dwellings_2018, dwellings_2023]
     for lat, lng, d18, d23 in sa1_dwellings:
         acc = sums.setdefault(nearest_town(lat, lng), [0, 0])
@@ -1511,7 +1573,7 @@ def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios):
                 break
 
 
-def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_ratios=None):
+def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_ratios=None, polygons=None):
     """docs/town_boundaries.geojson -- a real boundary per town, for
     solar's "Towns" map mode (border lines rather than dots). Built by
     merging LINZ's own locality polygons within each major_name
@@ -1533,44 +1595,13 @@ def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_r
     itself; degrades gracefully (see main()) if it's not installed.
     """
     from shapely.geometry import shape, mapping
-    from shapely.ops import unary_union
 
-    print("Fetching LINZ locality polygons for town boundaries...")
-    groups = {}   # major_name -> [shapely geometry, ...]
-    offset = 0
-    while True:
-        r = get(TOWN_ANCHORS_SERVICE, timeout=180, params={
-            "where": "1=1", "outFields": "major_name",
-            "returnGeometry": "true", "geometryPrecision": 4, "maxAllowableOffset": 0.002,
-            "f": "geojson", "resultOffset": offset, "resultRecordCount": 2000,
-        })
-        feats = r.json().get("features", [])
-        if not feats:
-            break
-        for f in feats:
-            name = f["properties"].get("major_name")
-            geom = f.get("geometry")
-            if not name or not geom:
-                continue
-            # buffer(0) repairs the minor self-intersections
-            # maxAllowableOffset's simplification sometimes introduces --
-            # a standard fix, not a precision compromise: unary_union
-            # below refuses to run on invalid geometry otherwise.
-            groups.setdefault(name, []).append(shape(geom).buffer(0))
-        offset += len(feats)
-
+    footprints = polygons or fetch_town_polygons()
     by_name = {t["name"]: t for t in towns}
-    merged_by_name = {}
-    for name, polys in groups.items():
-        if name not in by_name:
-            continue
-        try:
-            merged_by_name[name] = unary_union(polys)
-        except Exception as exc:                       # noqa: BLE001
-            print(f"  ! Couldn't merge locality boundary for {name}: {exc}")
+    merged_by_name = {name: shape(g) for name, g in footprints.items() if name in by_name}
 
     try:
-        _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios)
+        _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios, footprints)
     except Exception as exc:                       # noqa: BLE001
         print(f"  ! Town %-estimate step failed ({exc}) -- towns will show no estPct")
 
@@ -2086,20 +2117,37 @@ def build_ev_data(tlas, tla_region, tla_centroids, council_bounds, overall_ev, o
     return national, region_rows, tla_rows, trends
 
 
-def _nearest_town_fn(town_anchors):
-    """A lat,lng -> town-name closure over town_anchors' nearest-named-
-    anchor catchment. Shared by build_towns (streets) and
-    _estimate_town_pcts (Census dwellings) so both sides of the
-    estimated-%'s ratio are drawn from the identical catchment -- a
-    town's boundary polygon (write_town_boundaries) only covers its
-    named localities and is narrower than this catchment in places with
-    sparse surrounding naming, so using it for both would systematically
-    undercount whichever side used it, skewing the ratio.
+def _nearest_town_fn(town_anchors, polygons=None):
+    """A lat,lng -> town-name closure. Containment in the town's real
+    LINZ footprint first; nearest anchor only for points outside every
+    footprint (~1% of streets, sparsely-named country). Shared by
+    build_towns (streets) and _estimate_town_pcts (Census dwellings) so
+    both sides of the estimated-%'s ratio use the identical rule -- the
+    footprint alone would leave those outside points unassigned, which
+    is why the fallback exists rather than dropping them.
     """
+    # Containment first, nearest anchor only as the fallback for the
+    # ~1% of points outside every town footprint (see fetch_town_polygons
+    # for why the anchor-only version mis-assigned a quarter of streets).
+    # Both consumers of this function -- streets and Census dwellings --
+    # go through the identical rule, so the estimated-%'s numerator and
+    # denominator are always drawn from the same catchment.
+    tree = pgeoms = pnames = None
+    if polygons:
+        from shapely.geometry import shape, Point
+        from shapely.strtree import STRtree
+        pnames = [n for n in polygons if n in town_anchors]
+        pgeoms = [shape(polygons[n]) for n in pnames]
+        tree = STRtree(pgeoms)
     names = list(town_anchors)
     pts = [town_anchors[n] for n in names]
 
     def nearest_town(lat, lng):
+        if tree is not None:
+            p = Point(lng, lat)
+            for i in tree.query(p):
+                if pgeoms[i].contains(p):
+                    return pnames[i]
         coslat = math.cos(math.radians(lat))
         best_i, best_d = 0, float("inf")
         for i, (alat, alng) in enumerate(pts):
@@ -2113,7 +2161,7 @@ def _nearest_town_fn(town_anchors):
     return nearest_town
 
 
-def build_towns(features, town_anchors, council_bounds, rural_known=False):
+def build_towns(features, town_anchors, council_bounds, rural_known=False, polygons=None):
     """Group placed streets into real towns (nearest named-locality
     centre) -- e.g. "Wanaka" and "Queenstown" as separate entries -- each
     tagged with the regional council it falls inside and its own
@@ -2128,7 +2176,7 @@ def build_towns(features, town_anchors, council_bounds, rural_known=False):
     if not town_anchors:
         return []
 
-    nearest_town = _nearest_town_fn(town_anchors)
+    nearest_town = _nearest_town_fn(town_anchors, polygons)
 
     towns = {}   # town name -> accumulator
     for f in features:
@@ -2573,7 +2621,16 @@ def main():
     previous = load("previous_counts.json", {})
     features, missing = build(records, cache, areas, previous, is_rural)
 
-    towns = build_towns(features, town_anchors, council_bounds, is_rural is not None)
+    # Real town footprints for assignment (see fetch_town_polygons).
+    # Optional like the other enrichments: without them, assignment falls
+    # back to one anchor per town -- and reports it, because that fallback
+    # is the behaviour that mis-assigned a quarter of streets.
+    town_polygons = None
+    try:
+        town_polygons = fetch_town_polygons()
+    except Exception as exc:                       # noqa: BLE001
+        note_failure("Town footprints", exc, "towns fall back to single-anchor assignment, which over-counts small towns near cities")
+    towns = build_towns(features, town_anchors, council_bounds, is_rural is not None, town_polygons)
 
     # Region installs/kW/Res/Bus come from EMI's own per-council rows,
     # not from summing the geocoded streets underneath them.
@@ -2757,7 +2814,7 @@ def main():
 
     if towns:
         try:
-            write_town_boundaries(towns, town_anchors, sa1_dwellings, anzsic_ratios)
+            write_town_boundaries(towns, town_anchors, sa1_dwellings, anzsic_ratios, town_polygons)
         except Exception as exc:                       # noqa: BLE001
             note_failure("Town boundaries", exc, "solar's Towns map mode will fall back to dots")
 
