@@ -1805,6 +1805,9 @@ def resolve_mvr_service():
     return None
 
 
+MVR_PAGE_ROWS = 2000   # the MVR server's own per-response cap on grouped rows
+
+
 def _mvr_query(where, group_fields=None):
     """One query against the Motor Vehicle Register -- either a plain
     count, or a server-side grouped count (never raw rows: the table is
@@ -1818,8 +1821,20 @@ def _mvr_query(where, group_fields=None):
             "statisticType": "count", "onStatisticField": "OBJECTID", "outStatisticFieldName": "cnt",
         }])
         params["orderByFields"] = group_fields
-        r = get(MVR_SERVICE, timeout=180, params=params)
-        return r.json().get("features", [])
+        # The server caps any one grouped response at 2000 rows and sets
+        # exceededTransferLimit rather than failing, so page through by
+        # offset until it stops saying so -- otherwise a big grouping
+        # (every make/model in Auckland) is silently truncated.
+        features, offset = [], 0
+        while True:
+            params["resultOffset"] = offset
+            params["resultRecordCount"] = MVR_PAGE_ROWS
+            r = get(MVR_SERVICE, timeout=180, params=params).json()
+            page = r.get("features", [])
+            features.extend(page)
+            if not r.get("exceededTransferLimit") or not page:
+                return features
+            offset += len(page)
     params["returnCountOnly"] = "true"
     r = get(MVR_SERVICE, timeout=180, params=params)
     return r.json().get("count", 0)
@@ -1877,45 +1892,71 @@ def _fmt_vehicle(make, model):
             " ".join(_fmt_vehicle_word(w) for w in model.split()))
 
 
-def fetch_ev_vehicle_models(tla_names):
-    """Real Make/Model breakdown of the current electric fleet, per TLA,
-    alongside each vehicle's VEHICLE_TYPE/BODY_TYPE -- everything
-    EV_CATEGORIES' clauses key off, so _ev_category_for can bucket
-    every row into a category client-side without 7 more queries.
+def fetch_vehicle_models(tla_names):
+    """Real Make/Model breakdown of the whole current fleet, per TLA,
+    alongside each vehicle's MOTIVE_POWER and VEHICLE_TYPE/BODY_TYPE --
+    everything EV_CATEGORIES' clauses and _fuel_label key off, so every
+    row can be bucketed into a fuel list and a category client-side
+    without further queries.
 
-    One groupBy(VEHICLE_TYPE, BODY_TYPE, MAKE, MODEL) query per TLA,
-    rather than a single TLA x MAKE x MODEL query -- verified live that
-    the MVR server silently truncates any single grouped query at 2000
-    rows (exceededTransferLimit) once that 3-way combination is
-    requested, while even Auckland alone (the single biggest TLA)
-    returns a complete, untruncated 951 rows on the 4-field group
-    queried on its own -- one MAKE/MODEL is practically always the same
-    VEHICLE_TYPE/BODY_TYPE, so adding those two fields barely raises
-    the row count. Getting each TLA's *full* breakdown (not just a
-    truncated top slice) matters because region/national totals below
-    are summed from these per-TLA results rather than fetched
-    separately.
+    One groupBy(MOTIVE_POWER, VEHICLE_TYPE, BODY_TYPE, MAKE, MODEL)
+    query per TLA, paged (see _mvr_query) -- Auckland alone runs to
+    several thousand rows across all fuels. Getting each TLA's *full*
+    breakdown (not just a top slice) matters because region/national
+    lists below are summed from these per-TLA results rather than
+    fetched separately, and a truncated tail would quietly undercount
+    every rollup.
+
+    Returns {tla: [(fuel, vehicle_type, body_type, make, model, count)]},
+    fuel being _fuel_label's word or None.
     """
-    print("Fetching EV make/model breakdown from the Motor Vehicle Register...")
+    print("Fetching make/model breakdown from the Motor Vehicle Register...")
     by_tla = {}
     for raw, name in tla_names.items():
         escaped = raw.replace("'", "''")   # e.g. "Central Hawke's Bay District"
-        rows = _mvr_query(
-            f"MOTIVE_POWER = 'ELECTRIC' AND TLA = '{escaped}'",
-            "VEHICLE_TYPE,BODY_TYPE,MAKE,MODEL",
-        )
+        rows = _mvr_query(f"TLA = '{escaped}'", "MOTIVE_POWER,VEHICLE_TYPE,BODY_TYPE,MAKE,MODEL")
         models = []
         for r in rows:
             a = r["attributes"]
             make, model = a.get("MAKE"), a.get("MODEL")
             if make and model:
-                models.append((a.get("VEHICLE_TYPE"), a.get("BODY_TYPE"), make, model, a["cnt"]))
+                models.append((_fuel_label(a.get("MOTIVE_POWER")), a.get("VEHICLE_TYPE"),
+                               a.get("BODY_TYPE"), make, model, a["cnt"]))
         by_tla[name] = models
     return by_tla
 
 
 TOP_VEHICLES_N = 50
 VEHICLE_CATEGORY_ALL = "All"
+
+# The register's MOTIVE_POWER values, folded into the handful of fuel
+# words shown after a model name. "electric" is exactly the EV_WHERE
+# definition used for every EV count, so the electric list reconciles
+# with the totals beside it. Everything with a combustion engine goes in
+# the fossil-fuel list -- including plug-in and range-extended hybrids,
+# since the point of that list is what still burns fuel. Vehicles with
+# no motive power recorded (mostly trailers and caravans, ~15% of the
+# register), "OTHER", and hydrogen fuel cells fit neither list.
+FOSSIL_FUELS = ("petrol", "diesel", "hybrid", "PHEV", "LPG", "CNG", "range-extended EV")
+
+
+def _fuel_label(motive_power):
+    mp = (motive_power or "").upper()
+    if mp == "ELECTRIC":
+        return "electric"
+    if not mp or mp == "OTHER" or "FUEL CELL" in mp:
+        return None
+    if mp.startswith("ELECTRIC ["):          # ELECTRIC [PETROL EXTENDED]
+        return "range-extended EV"
+    if mp.startswith("PLUGIN") or mp.startswith("PLUG IN"):
+        return "PHEV"
+    if "HYBRID" in mp:
+        return "hybrid"
+    if mp in ("PETROL", "DIESEL"):
+        return mp.lower()
+    if mp in ("LPG", "CNG"):
+        return mp
+    return None
 
 
 def _ev_category_for(vehicle_type, body_type):
@@ -1942,13 +1983,18 @@ def _ev_category_for(vehicle_type, body_type):
     return None   # e.g. ATVs -- not one of EV_CATEGORIES' buckets, and left out of "All" too
 
 
-def build_top_vehicles(tla_models, tla_region):
-    """National + per-region + per-TLA "most popular vehicle" lists,
-    each keyed by category ("All" plus every name in EV_CATEGORIES) --
-    rolled up from fetch_ev_vehicle_models' real per-TLA counts (never
-    a separate national/region query -- see that function's docstring
-    for why summing here is the accurate path, not just the
-    convenient one).
+def build_top_vehicles(tla_models, tla_region, fuels):
+    """National + per-region + per-TLA "most popular vehicle" lists for
+    the vehicles whose fuel word is in `fuels`, each keyed by category
+    ("All" plus every name in EV_CATEGORIES) -- rolled up from
+    fetch_vehicle_models' real per-TLA counts (never a separate
+    national/region query -- see that function's docstring for why
+    summing here is the accurate path, not just the convenient one).
+
+    Each level also carries "_totals": that fuel set's full count per
+    category at that level (every row, not just the top 50), so a
+    list's percentages divide by exactly the population it was drawn
+    from. Called once with ("electric",) and once with FOSSIL_FUELS.
     """
     categories = [VEHICLE_CATEGORY_ALL] + [name for name, _ in EV_CATEGORIES]
 
@@ -1956,19 +2002,23 @@ def build_top_vehicles(tla_models, tla_region):
         return {cat: {} for cat in categories}
 
     def top_all(counters):
-        return {
+        out = {
             cat: [
-                {"make": make, "model": model, "count": c}
-                for (make, model), c in sorted(counter.items(), key=lambda kv: kv[1], reverse=True)[:TOP_VEHICLES_N]
+                {"make": make, "model": model, "fuel": fuel, "count": c}
+                for (make, model, fuel), c in sorted(counter.items(), key=lambda kv: kv[1], reverse=True)[:TOP_VEHICLES_N]
             ]
             for cat, counter in counters.items()
         }
+        out["_totals"] = {cat: sum(counter.values()) for cat, counter in counters.items()}
+        return out
 
     tlas_out, region_acc, national_acc = {}, {}, empty_counters()
     for tla, models in tla_models.items():
         counters = empty_counters()
-        for vehicle_type, body_type, make, model, cnt in models:
-            key = _fmt_vehicle(make, model)
+        for fuel, vehicle_type, body_type, make, model, cnt in models:
+            if fuel not in fuels:
+                continue
+            key = _fmt_vehicle(make, model) + (fuel,)
             counters[VEHICLE_CATEGORY_ALL][key] = counters[VEHICLE_CATEGORY_ALL].get(key, 0) + cnt
             cat = _ev_category_for(vehicle_type, body_type)
             if cat:
@@ -2567,8 +2617,16 @@ def main():
                 tlas, tla_region, tla_centroids, council_bounds,
                 overall_ev, overall_total, ev_categories, ev_years, ev_trend_series,
             )
-            ev_vehicle_models = fetch_ev_vehicle_models(tla_names)
-            top_vehicles = build_top_vehicles(ev_vehicle_models, tla_region)
+            vehicle_models = fetch_vehicle_models(tla_names)
+            top_vehicles = build_top_vehicles(vehicle_models, tla_region, ("electric",))
+            top_vehicles_fossil = build_top_vehicles(vehicle_models, tla_region, FOSSIL_FUELS)
+            # The electric list is drawn from the same register rows as
+            # the EV totals, so its national count must match them.
+            ev_total_from_models = top_vehicles["national"]["_totals"][VEHICLE_CATEGORY_ALL]
+            if abs(ev_total_from_models - ev_national["ev"]) > ev_national["ev"] * 0.01:
+                raise RuntimeError(
+                    f"EV make/model rows sum to {ev_total_from_models:,} but the EV total is "
+                    f"{ev_national['ev']:,} -- the two queries no longer agree")
 
             # Month-over-month change, for the leaderboard -- see
             # _change() and PREV_EV_TOTALS. TLA totals compare directly
@@ -2602,6 +2660,7 @@ def main():
                 "tlas": ev_tlas,
                 "trends": ev_trends,
                 "topVehicles": top_vehicles,
+                "topVehiclesFossil": top_vehicles_fossil,
             })
             write_ev_boundaries(ev_tlas)
         except Exception as exc:                       # noqa: BLE001

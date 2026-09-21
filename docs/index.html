@@ -153,16 +153,20 @@
   .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; white-space: nowrap; flex: none; }
 
   .topbar-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .chart-toggle-btn, .map-mode-btn {
+  .chart-toggle-btn, .map-mode-btn, .fuel-btn {
     padding: 4px 12px; border: none; border-radius: 7px; font-size: 11px; font-weight: 700;
     letter-spacing: .2px; cursor: pointer;
   }
   .chart-toggle-btn { background: var(--amber); color: #241a00; box-shadow: 0 0 10px rgba(255,183,3,.3); }
   body.dataset-ev .chart-toggle-btn { background: var(--cyan); color: #062229; box-shadow: 0 0 10px rgba(34,211,238,.3); }
   .chart-toggle-btn:hover { filter: brightness(1.08); }
-  .map-mode-btn { background: rgba(255,255,255,.08); color: var(--dim); }
-  .map-mode-btn.active { background: var(--amber); color: #241a00; box-shadow: 0 0 10px rgba(255,183,3,.3); }
-  .map-mode-btn:not(.active):hover { background: rgba(255,255,255,.16); color: var(--text); }
+  .map-mode-btn, .fuel-btn { background: rgba(255,255,255,.08); color: var(--dim); }
+  .map-mode-btn.active, .fuel-btn.active { background: var(--amber); color: #241a00; box-shadow: 0 0 10px rgba(255,183,3,.3); }
+  .map-mode-btn:not(.active):hover, .fuel-btn:not(.active):hover { background: rgba(255,255,255,.16); color: var(--text); }
+  body.dataset-ev .fuel-btn.active { background: var(--cyan); color: #062229; box-shadow: 0 0 10px rgba(34,211,238,.3); }
+  .vehicle-fuel-toggle { display: flex; gap: 4px; margin-bottom: 8px; }
+  .vehicle-fuel-toggle.hidden { display: none; }
+  .lb-fuel { color: var(--dim); font-weight: 400; }
   .point-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
   .point-chip {
     display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border);
@@ -279,7 +283,7 @@
        content up to (100vw - 20px), so four full-size buttons don't
        all fit on a narrow phone. */
     .topbar-actions { gap: 4px; }
-    .chart-toggle-btn, .map-mode-btn { padding: 3px 7px; font-size: 9.5px; }
+    .chart-toggle-btn, .map-mode-btn, .fuel-btn { padding: 3px 7px; font-size: 9.5px; }
   }
 
   .board { overflow-y: auto; flex: 1; padding: 4px 10px 10px; }
@@ -518,6 +522,10 @@
           </div>
           <div id="leaderboardView" class="hidden"></div>
           <div id="vehicleDetailsView" class="hidden">
+            <div class="vehicle-fuel-toggle" id="vehicleFuelToggle" title="Electric is battery-electric only, matching every EV count on this page. Fossil fuel is anything with a combustion engine: petrol, diesel, hybrid, plug-in hybrid (PHEV), LPG/CNG and range-extended EVs. Vehicles with no motive power recorded (mostly trailers and caravans) are in neither list.">
+              <button type="button" class="fuel-btn active" data-fuel="ev">Electric</button>
+              <button type="button" class="fuel-btn" data-fuel="ice">Fossil fuel</button>
+            </div>
             <select id="vehicleCategorySelect" class="chart-select"></select>
             <div id="vehicleDetailsList"></div>
           </div>
@@ -2160,6 +2168,8 @@ const vehicleCategorySelectEl = document.getElementById("vehicleCategorySelect")
 const vehicleDetailsListEl = document.getElementById("vehicleDetailsList");
 let chartMode = "trend";   // "trend" | "leaderboard" | "vehicles" -- which view topbarChart's panel shows
 let vehicleCategoryFilter = "All";   // persists across focus changes, like chartMode
+let vehicleFuelFilter = "ev";        // "ev" | "ice" -- which fuel list Vehicle Details shows
+const vehicleFuelToggleEl = document.getElementById("vehicleFuelToggle");
 
 // Fixed stacking order (largest category at the base) and a colour per
 // category for the chart's stacked areas, the map choropleth legend
@@ -2175,6 +2185,7 @@ let evRegions = [];
 let evTlas = [];
 let evTrends = null;
 let evTopVehicles = null;
+let evTopVehiclesFossil = null;   // same shape, every combustion-engined vehicle (see FOSSIL_FUELS in process.py)
 let evCategoryNames = [];
 let evUpdated = null;
 let evLoadPromise = null;
@@ -2191,6 +2202,7 @@ function loadEvData() {
       evTlas = ev.tlas;
       evTrends = ev.trends;
       evTopVehicles = ev.topVehicles || null;
+      evTopVehiclesFossil = ev.topVehiclesFossil || null;
       evCategoryNames = ev.categories || [];
       evUpdated = ev.updated ? new Date(ev.updated + "T00:00:00Z") : null;
       addEvLayer(boundaries);
@@ -2831,13 +2843,46 @@ function renderLeaderboard() {
 // each TLA's real vehicles into these same categories (kept in sync
 // with EV_CATEGORIES there) alongside the unfiltered "All" list.
 function vehiclesFor(level, name) {
-  if (!evTopVehicles) return null;
-  if (level === "region") return evTopVehicles.regions[name] || null;
-  if (level === "tla") return evTopVehicles.tlas[name] || null;
-  return evTopVehicles.national;
+  const src = vehicleFuelFilter === "ice" ? evTopVehiclesFossil : evTopVehicles;
+  if (!src) return null;
+  if (level === "region") return src.regions[name] || null;
+  if (level === "tla") return src.tlas[name] || null;
+  return src.national;
+}
+
+// Denominator for a list's percentages. Electric divides by the same
+// EV totals shown everywhere else (they come from the same register
+// filter). Fossil fuel has no such headline figure, so it divides by
+// its own full count from the make/model rows ("_totals", every row,
+// not just the top 50) -- never by the whole fleet, which would fold
+// in trailers and other vehicles with no motive power at all.
+function vehicleTotal(byCategory, stats) {
+  const cat = vehicleCategoryFilter;
+  if (vehicleFuelFilter === "ice" || !stats) {
+    return byCategory && byCategory._totals ? byCategory._totals[cat] : null;
+  }
+  return cat === "All"
+    ? stats.ev
+    : stats.categories && stats.categories[cat] && stats.categories[cat].ev;
+}
+
+function vehiclePctLabel() {
+  const cat = vehicleCategoryFilter;
+  const pool = vehicleFuelFilter === "ice" ? "fossil-fuel" : "electric";
+  return cat === "All" ? `% of all ${pool} vehicles here` : `% of ${pool} ${cat.toLowerCase()} here`;
+}
+
+function vehicleLabel(v, html) {
+  const fuel = v.fuel ? (html ? ` <span class="lb-fuel">(${v.fuel})</span>` : ` (${v.fuel})`) : "";
+  return `${v.make} ${v.model}${fuel}`;
 }
 
 function renderVehicleDetails() {
+  // Older data files predate the fossil-fuel list; no toggle until it exists.
+  vehicleFuelToggleEl.classList.toggle("hidden", !evTopVehiclesFossil);
+  if (!evTopVehiclesFossil) vehicleFuelFilter = "ev";
+  vehicleFuelToggleEl.querySelectorAll(".fuel-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.fuel === vehicleFuelFilter));
   const byCategory = vehiclesFor(currentFocus.level, currentFocus.name);
   const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
   if (!byCategory) {
@@ -2848,7 +2893,7 @@ function renderVehicleDetails() {
   // Only offer categories that actually have a real vehicle here --
   // an empty "Tractors" option in a city district would just be a
   // dead end to click.
-  const available = ["All", ...EV_CHART_ORDER].filter(cat => (byCategory[cat] || []).length);
+  const available = ["All", ...EV_CHART_ORDER].filter(cat => (byCategory[cat] || []).length);   // never "_totals"
   if (!available.includes(vehicleCategoryFilter)) vehicleCategoryFilter = "All";
   vehicleCategorySelectEl.innerHTML = available.map(cat =>
     `<option value="${cat}"${cat === vehicleCategoryFilter ? " selected" : ""}>${cat}</option>`
@@ -2858,9 +2903,7 @@ function renderVehicleDetails() {
   // % is of that category's own real total (e.g. % of buses), not all
   // EVs, once a specific category is picked -- against the overall EV
   // count, a popular bus model would misleadingly read as ~0%.
-  const total = vehicleCategoryFilter === "All"
-    ? stats && stats.ev
-    : stats && stats.categories && stats.categories[vehicleCategoryFilter] && stats.categories[vehicleCategoryFilter].ev;
+  const total = vehicleTotal(byCategory, stats);
   if (!list.length) {
     vehicleDetailsListEl.innerHTML = `<div class="leaderboard-empty">No vehicles in this category here.</div>`;
     return;
@@ -2869,7 +2912,7 @@ function renderVehicleDetails() {
     const pct = total ? ` <small>(${(v.count / total * 100).toFixed(1)}%)</small>` : "";
     return `<div class="lb-row">` +
       `<span class="lb-rank">${i + 1}</span>` +
-      `<span class="lb-name">${v.make} ${v.model}</span>` +
+      `<span class="lb-name">${vehicleLabel(v, true)}</span>` +
       `<span class="lb-count">${fmt(v.count)}${pct}</span>` +
     `</div>`;
   }).join("") + `</div>`;
@@ -2877,6 +2920,12 @@ function renderVehicleDetails() {
 
 vehicleCategorySelectEl.addEventListener("change", () => {
   vehicleCategoryFilter = vehicleCategorySelectEl.value;
+  renderVehicleDetails();
+});
+vehicleFuelToggleEl.addEventListener("click", e => {
+  const btn = e.target.closest(".fuel-btn");
+  if (!btn || btn.dataset.fuel === vehicleFuelFilter) return;
+  vehicleFuelFilter = btn.dataset.fuel;
   renderVehicleDetails();
 });
 
@@ -2982,19 +3031,14 @@ function exportVehicleDetails() {
   const list = byCategory[vehicleCategoryFilter] || [];
   if (!list.length) return false;
   const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
-  // Same denominator rule the on-screen list uses: once a category is
-  // picked the % is of that category's own total, not of all EVs.
-  const total = vehicleCategoryFilter === "All"
-    ? stats && stats.ev
-    : stats && stats.categories && stats.categories[vehicleCategoryFilter]
-      && stats.categories[vehicleCategoryFilter].ev;
-  const pctLabel = vehicleCategoryFilter === "All"
-    ? "% of all EVs here" : `% of ${vehicleCategoryFilter.toLowerCase()} here`;
+  // Same denominator rule the on-screen list uses (vehicleTotal).
+  const total = vehicleTotal(byCategory, stats);
+  const pctLabel = vehiclePctLabel();
   const rows = list.map((v, i) =>
-    [i + 1, v.make, v.model, v.count, total ? (v.count / total * 100).toFixed(1) : ""]);
+    [i + 1, v.make, v.model, v.fuel || "", v.count, total ? (v.count / total * 100).toFixed(1) : ""]);
   return downloadCSV(
-    ["nz-ev", currentFocus.name, vehicleCategoryFilter, "models"],
-    ["Rank", "Make", "Model", "Count", pctLabel], rows, sourceNote(),
+    ["nz-vehicles", vehicleFuelFilter === "ice" ? "fossil-fuel" : "electric", currentFocus.name, vehicleCategoryFilter, "models"],
+    ["Rank", "Make", "Model", "Fuel", "Count", pctLabel], rows, sourceNote(),
   );
 }
 
