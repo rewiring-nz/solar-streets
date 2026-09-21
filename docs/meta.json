@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-20",
- "streets": 36381,
- "streetsTotal": 37339,
+ "updated": "2026-09-21",
+ "streets": 36408,
+ "streetsTotal": 37367,
  "matchRate": 97.4,
  "national": {
   "resIcps": 83820,
@@ -15,8 +15,8 @@
   "battInstalls": 21968,
   "battPct": 23.9,
   "battBase": 92055,
-  "ruralBus": 2775,
-  "ruralBusShare": 33.4,
+  "ruralBus": 2780,
+  "ruralBusShare": 33.5,
   "farmAnzsic": 2123
  },
  "regions": [
@@ -70,8 +70,8 @@
    "battInstalls": 391,
    "battPct": 22.1,
    "battBase": 1771,
-   "change": 3,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 42
   },
   {
@@ -97,7 +97,7 @@
    "battInstalls": 1097,
    "battPct": 16.9,
    "battBase": 6508,
-   "change": 3,
+   "change": 0,
    "changePct": 0.0,
    "farmAnzsic": 223
   },
@@ -119,13 +119,13 @@
    ],
    "lat": -39.3648,
    "lng": 176.9539,
-   "ruralBusShare": 29.0,
-   "ruralBus": 163,
+   "ruralBusShare": 29.4,
+   "ruralBus": 165,
    "battInstalls": 1831,
    "battPct": 36.8,
    "battBase": 4979,
-   "change": 23,
-   "changePct": 0.5,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 175
   },
   {
@@ -146,13 +146,13 @@
    ],
    "lat": -37.8999,
    "lng": 176.7985,
-   "ruralBusShare": 29.7,
-   "ruralBus": 169,
+   "ruralBusShare": 29.9,
+   "ruralBus": 170,
    "battInstalls": 2862,
    "battPct": 36.3,
    "battBase": 7875,
-   "change": 20,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 108
   },
   {
@@ -174,40 +174,13 @@
    "lat": -45.5143,
    "lng": 169.8972,
    "ruralBusShare": 36.8,
-   "ruralBus": 182,
+   "ruralBus": 183,
    "battInstalls": 1066,
    "battPct": 17.5,
    "battBase": 6101,
-   "change": 3,
+   "change": 0,
    "changePct": 0.0,
    "farmAnzsic": 105
-  },
-  {
-   "name": "Canterbury",
-   "icps": 15850,
-   "kW": 349830.3,
-   "totalIcps": 351003,
-   "pct": 4.52,
-   "resIcps": 14588,
-   "resKW": 84944.6,
-   "busIcps": 1262,
-   "busKW": 264885.7,
-   "bbox": [
-    -45.080929,
-    169.542498,
-    -41.907373,
-    174.06344
-   ],
-   "lat": -43.3808,
-   "lng": 172.2093,
-   "ruralBusShare": 32.0,
-   "ruralBus": 404,
-   "battInstalls": 2605,
-   "battPct": 16.4,
-   "battBase": 15850,
-   "change": 21,
-   "changePct": 0.1,
-   "farmAnzsic": 413
   },
   {
    "name": "Taranaki",
@@ -232,9 +205,36 @@
    "battInstalls": 1068,
    "battPct": 37.1,
    "battBase": 2882,
-   "change": 9,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 161
+  },
+  {
+   "name": "Canterbury",
+   "icps": 15850,
+   "kW": 349830.3,
+   "totalIcps": 351003,
+   "pct": 4.52,
+   "resIcps": 14588,
+   "resKW": 84944.6,
+   "busIcps": 1262,
+   "busKW": 264885.7,
+   "bbox": [
+    -45.080929,
+    169.542498,
+    -41.907373,
+    174.06344
+   ],
+   "lat": -43.3808,
+   "lng": 172.2093,
+   "ruralBusShare": 32.0,
+   "ruralBus": 404,
+   "battInstalls": 2605,
+   "battPct": 16.4,
+   "battBase": 15850,
+   "change": 0,
+   "changePct": 0.0,
+   "farmAnzsic": 413
   },
   {
    "name": "Waikato",
@@ -259,8 +259,8 @@
    "battInstalls": 3656,
    "battPct": 35.8,
    "battBase": 10200,
-   "change": 26,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 446
   },
   {
@@ -281,13 +281,13 @@
    ],
    "lat": -39.6301,
    "lng": 175.4434,
-   "ruralBusShare": 34.2,
-   "ruralBus": 143,
+   "ruralBusShare": 34.5,
+   "ruralBus": 144,
    "battInstalls": 1312,
    "battPct": 29.8,
    "battBase": 4409,
-   "change": 10,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 145
   },
   {
@@ -313,8 +313,8 @@
    "battInstalls": 1672,
    "battPct": 20.6,
    "battBase": 8111,
-   "change": 14,
-   "changePct": 0.2,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 45
   },
   {
@@ -367,8 +367,8 @@
    "battInstalls": 2482,
    "battPct": 14.6,
    "battBase": 17029,
-   "change": 68,
-   "changePct": 0.4,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 102
   },
   {
@@ -394,8 +394,8 @@
    "battInstalls": 182,
    "battPct": 17.4,
    "battBase": 1046,
-   "change": 3,
-   "changePct": 0.3,
+   "change": 0,
+   "changePct": 0.0,
    "farmAnzsic": 63
   },
   {
@@ -470,7 +470,7 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": -191,
+   "change": -193,
    "changePct": -92.3,
    "estPct": 39.1
   },
@@ -570,8 +570,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -19,
-   "changePct": -22.6,
+   "change": -20,
+   "changePct": -23.5,
    "estPct": 19.2
   },
   {
@@ -595,6 +595,26 @@
    "estPct": 19.2
   },
   {
+   "name": "Hira",
+   "council": "Nelson",
+   "icps": 56,
+   "kW": 396.2,
+   "res": 53,
+   "bus": 4,
+   "lat": -41.2132,
+   "lng": 173.4024,
+   "ruralBus": 2,
+   "ruralBusKW": 16.2,
+   "councilPct": null,
+   "councilIcps": 1843,
+   "councilBattInstalls": 682,
+   "councilBattPct": 37.0,
+   "councilBattBase": 1843,
+   "change": -253,
+   "changePct": -81.9,
+   "estPct": 18.9
+  },
+  {
    "name": "Dorie",
    "council": "Canterbury",
    "icps": 18,
@@ -613,26 +633,6 @@
    "change": -6,
    "changePct": -25.0,
    "estPct": 18.3
-  },
-  {
-   "name": "Hira",
-   "council": "Nelson",
-   "icps": 54,
-   "kW": 376.6,
-   "res": 51,
-   "bus": 4,
-   "lat": -41.2132,
-   "lng": 173.4024,
-   "ruralBus": 2,
-   "ruralBusKW": 16.2,
-   "councilPct": null,
-   "councilIcps": 1843,
-   "councilBattInstalls": 682,
-   "councilBattPct": 37.0,
-   "councilBattBase": 1843,
-   "change": -255,
-   "changePct": -82.5,
-   "estPct": 18.2
   },
   {
    "name": "Clevedon",
@@ -710,8 +710,8 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": 23,
-   "changePct": 11.5,
+   "change": 22,
+   "changePct": 10.9,
    "estPct": 16.6
   },
   {
@@ -810,8 +810,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": -5,
-   "changePct": -0.4,
+   "change": -14,
+   "changePct": -1.1,
    "estPct": 16.1
   },
   {
@@ -850,8 +850,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -39,
-   "changePct": -31.2,
+   "change": -40,
+   "changePct": -31.7,
    "estPct": 15.8
   },
   {
@@ -890,8 +890,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -4,
-   "changePct": -25.0,
+   "change": -6,
+   "changePct": -33.3,
    "estPct": 15.7
   },
   {
@@ -957,9 +957,9 @@
   {
    "name": "West Melton",
    "council": "Canterbury",
-   "icps": 358,
-   "kW": 2506.6,
-   "res": 356,
+   "icps": 359,
+   "kW": 2514.6,
+   "res": 357,
    "bus": 8,
    "lat": -43.5076,
    "lng": 172.3589,
@@ -970,9 +970,9 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -2,
-   "changePct": -0.6,
-   "estPct": 15.2
+   "change": -1,
+   "changePct": -0.3,
+   "estPct": 15.3
   },
   {
    "name": "Athol",
@@ -1050,8 +1050,8 @@
    "councilBattInstalls": 823,
    "councilBattPct": 34.1,
    "councilBattBase": 2416,
-   "change": -286,
-   "changePct": -61.1,
+   "change": -289,
+   "changePct": -61.4,
    "estPct": 14.9
   },
   {
@@ -1155,6 +1155,26 @@
    "estPct": 13.8
   },
   {
+   "name": "Ohoka",
+   "council": "Canterbury",
+   "icps": 157,
+   "kW": 6792.7,
+   "res": 149,
+   "bus": 12,
+   "lat": -43.3734,
+   "lng": 172.5677,
+   "ruralBus": 12,
+   "ruralBusKW": 1266.1,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": -288,
+   "changePct": -64.7,
+   "estPct": 13.7
+  },
+  {
    "name": "Whakam\u0101rama",
    "council": "Bay of Plenty",
    "icps": 183,
@@ -1170,28 +1190,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": 66,
-   "changePct": 56.4,
-   "estPct": 13.5
-  },
-  {
-   "name": "Ohoka",
-   "council": "Canterbury",
-   "icps": 155,
-   "kW": 6767.7,
-   "res": 148,
-   "bus": 12,
-   "lat": -43.3734,
-   "lng": 172.5677,
-   "ruralBus": 12,
-   "ruralBusKW": 1367.4,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": -286,
-   "changePct": -64.9,
+   "change": 65,
+   "changePct": 55.1,
    "estPct": 13.5
   },
   {
@@ -1275,6 +1275,46 @@
    "estPct": 13.1
   },
   {
+   "name": "Amberley",
+   "council": "Canterbury",
+   "icps": 264,
+   "kW": 1550.2,
+   "res": 250,
+   "bus": 22,
+   "lat": -43.1537,
+   "lng": 172.7402,
+   "ruralBus": 8,
+   "ruralBusKW": 49.0,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": 22,
+   "changePct": 9.1,
+   "estPct": 12.9
+  },
+  {
+   "name": "West Eyreton",
+   "council": "Canterbury",
+   "icps": 144,
+   "kW": 13901.7,
+   "res": 129,
+   "bus": 18,
+   "lat": -43.4143,
+   "lng": 172.2943,
+   "ruralBus": 18,
+   "ruralBusKW": 12994.2,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": 79,
+   "changePct": 121.5,
+   "estPct": 12.9
+  },
+  {
    "name": "Cromwell",
    "council": "Otago",
    "icps": 690,
@@ -1290,28 +1330,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": 51,
-   "changePct": 8.0,
-   "estPct": 12.8
-  },
-  {
-   "name": "Amberley",
-   "council": "Canterbury",
-   "icps": 261,
-   "kW": 1519.2,
-   "res": 247,
-   "bus": 22,
-   "lat": -43.1537,
-   "lng": 172.7402,
-   "ruralBus": 8,
-   "ruralBusKW": 49.0,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": 24,
-   "changePct": 10.1,
+   "change": 49,
+   "changePct": 7.6,
    "estPct": 12.8
   },
   {
@@ -1330,15 +1350,15 @@
    "councilBattInstalls": 1831,
    "councilBattPct": 36.8,
    "councilBattBase": 4979,
-   "change": 1,
-   "changePct": 1.1,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 12.8
   },
   {
    "name": "Kerikeri",
    "council": "Northland",
    "icps": 824,
-   "kW": 6020.7,
+   "kW": 6021.7,
    "res": 757,
    "bus": 87,
    "lat": -35.2237,
@@ -1350,8 +1370,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": 43,
-   "changePct": 5.5,
+   "change": 40,
+   "changePct": 5.1,
    "estPct": 12.7
   },
   {
@@ -1375,42 +1395,22 @@
    "estPct": 12.7
   },
   {
-   "name": "West Eyreton",
-   "council": "Canterbury",
-   "icps": 141,
-   "kW": 13877.7,
-   "res": 126,
-   "bus": 18,
-   "lat": -43.4143,
-   "lng": 172.2943,
-   "ruralBus": 18,
-   "ruralBusKW": 12994.5,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": 76,
-   "changePct": 116.9,
-   "estPct": 12.6
-  },
-  {
    "name": "Waitao",
    "council": "Bay of Plenty",
    "icps": 31,
    "kW": 222.5,
    "res": 30,
-   "bus": 4,
+   "bus": 6,
    "lat": -37.7621,
    "lng": 176.2386,
-   "ruralBus": 4,
-   "ruralBusKW": 22.0,
+   "ruralBus": 6,
+   "ruralBusKW": 26.3,
    "councilPct": 5.22,
    "councilIcps": 7875,
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": -409,
+   "change": -410,
    "changePct": -93.0,
    "estPct": 12.6
   },
@@ -1450,8 +1450,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": 82,
-   "changePct": 43.9,
+   "change": 81,
+   "changePct": 43.1,
    "estPct": 12.5
   },
   {
@@ -1530,8 +1530,8 @@
    "councilBattInstalls": 391,
    "councilBattPct": 22.1,
    "councilBattBase": 1771,
-   "change": -24,
-   "changePct": -12.9,
+   "change": -25,
+   "changePct": -13.4,
    "estPct": 12.3
   },
   {
@@ -1570,8 +1570,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": -14,
-   "changePct": -10.4,
+   "change": -15,
+   "changePct": -11.0,
    "estPct": 12.1
   },
   {
@@ -1610,8 +1610,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -22,
-   "changePct": -37.3,
+   "change": -23,
+   "changePct": -38.3,
    "estPct": 12.1
   },
   {
@@ -1650,8 +1650,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": -76,
-   "changePct": -33.2,
+   "change": -78,
+   "changePct": -33.8,
    "estPct": 11.9
   },
   {
@@ -1730,8 +1730,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": -99,
-   "changePct": -58.9,
+   "change": -101,
+   "changePct": -59.4,
    "estPct": 11.7
   },
   {
@@ -1810,8 +1810,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": -720,
-   "changePct": -86.3,
+   "change": -722,
+   "changePct": -86.4,
    "estPct": 11.5
   },
   {
@@ -1830,8 +1830,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": -86,
-   "changePct": -45.3,
+   "change": -87,
+   "changePct": -45.5,
    "estPct": 11.5
   },
   {
@@ -1850,9 +1850,49 @@
    "councilBattInstalls": 391,
    "councilBattPct": 22.1,
    "councilBattBase": 1771,
-   "change": 32,
-   "changePct": 103.2,
+   "change": 30,
+   "changePct": 90.9,
    "estPct": 11.5
+  },
+  {
+   "name": "Maraek\u0101kaho",
+   "council": "Hawke's Bay",
+   "icps": 53,
+   "kW": 402.5,
+   "res": 46,
+   "bus": 9,
+   "lat": -39.6538,
+   "lng": 176.5346,
+   "ruralBus": 9,
+   "ruralBusKW": 66.4,
+   "councilPct": 6.56,
+   "councilIcps": 4979,
+   "councilBattInstalls": 1831,
+   "councilBattPct": 36.8,
+   "councilBattBase": 4979,
+   "change": -39,
+   "changePct": -42.4,
+   "estPct": 11.5
+  },
+  {
+   "name": "Loburn",
+   "council": "Canterbury",
+   "icps": 166,
+   "kW": 1173.0,
+   "res": 157,
+   "bus": 18,
+   "lat": -43.2187,
+   "lng": 172.5076,
+   "ruralBus": 18,
+   "ruralBusKW": 131.9,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": 27,
+   "changePct": 19.4,
+   "estPct": 11.4
   },
   {
    "name": "P\u014drangahau",
@@ -1893,26 +1933,6 @@
    "change": -7,
    "changePct": -43.8,
    "estPct": 11.4
-  },
-  {
-   "name": "Loburn",
-   "council": "Canterbury",
-   "icps": 164,
-   "kW": 1157.0,
-   "res": 155,
-   "bus": 18,
-   "lat": -43.2187,
-   "lng": 172.5076,
-   "ruralBus": 18,
-   "ruralBusKW": 131.9,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": 30,
-   "changePct": 22.4,
-   "estPct": 11.3
   },
   {
    "name": "T\u0101kaka",
@@ -1975,26 +1995,6 @@
    "estPct": 11.1
   },
   {
-   "name": "Maraek\u0101kaho",
-   "council": "Hawke's Bay",
-   "icps": 51,
-   "kW": 372.5,
-   "res": 46,
-   "bus": 6,
-   "lat": -39.6538,
-   "lng": 176.5346,
-   "ruralBus": 6,
-   "ruralBusKW": 37.9,
-   "councilPct": 6.56,
-   "councilIcps": 4979,
-   "councilBattInstalls": 1831,
-   "councilBattPct": 36.8,
-   "councilBattBase": 4979,
-   "change": -41,
-   "changePct": -44.6,
-   "estPct": 11.1
-  },
-  {
    "name": "Kaihu",
    "council": "Northland",
    "icps": 9,
@@ -2030,8 +2030,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -15,
-   "changePct": -32.6,
+   "change": -17,
+   "changePct": -35.4,
    "estPct": 11.0
   },
   {
@@ -2097,9 +2097,9 @@
   {
    "name": "Oxford",
    "council": "Canterbury",
-   "icps": 222,
-   "kW": 1402.3,
-   "res": 210,
+   "icps": 223,
+   "kW": 1417.3,
+   "res": 211,
    "bus": 18,
    "lat": -43.3286,
    "lng": 172.2182,
@@ -2110,8 +2110,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -10,
-   "changePct": -4.3,
+   "change": -9,
+   "changePct": -3.9,
    "estPct": 10.6
   },
   {
@@ -2170,8 +2170,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": -31,
-   "changePct": -17.8,
+   "change": -32,
+   "changePct": -18.3,
    "estPct": 10.4
   },
   {
@@ -2190,8 +2190,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": -26,
-   "changePct": -38.2,
+   "change": -27,
+   "changePct": -39.1,
    "estPct": 10.4
   },
   {
@@ -2210,8 +2210,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": -1,
-   "changePct": -0.2,
+   "change": -3,
+   "changePct": -0.7,
    "estPct": 10.3
   },
   {
@@ -2230,9 +2230,29 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": -125,
-   "changePct": -24.0,
+   "change": -127,
+   "changePct": -24.3,
    "estPct": 10.3
+  },
+  {
+   "name": "Swannanoa",
+   "council": "Canterbury",
+   "icps": 147,
+   "kW": 1238.4,
+   "res": 139,
+   "bus": 10,
+   "lat": -43.3891,
+   "lng": 172.4898,
+   "ruralBus": 10,
+   "ruralBusKW": 85.6,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": -7,
+   "changePct": -4.5,
+   "estPct": 10.1
   },
   {
    "name": "Bombay",
@@ -2293,26 +2313,6 @@
    "change": -23,
    "changePct": -79.3,
    "estPct": 10.1
-  },
-  {
-   "name": "Swannanoa",
-   "council": "Canterbury",
-   "icps": 146,
-   "kW": 1230.4,
-   "res": 138,
-   "bus": 10,
-   "lat": -43.3891,
-   "lng": 172.4898,
-   "ruralBus": 10,
-   "ruralBusKW": 85.6,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": -6,
-   "changePct": -3.9,
-   "estPct": 10.0
   },
   {
    "name": "Taieri Mouth",
@@ -2490,8 +2490,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": 3,
-   "changePct": 2.6,
+   "change": 2,
+   "changePct": 1.7,
    "estPct": 9.7
   },
   {
@@ -2590,8 +2590,8 @@
    "councilBattInstalls": 1831,
    "councilBattPct": 36.8,
    "councilBattBase": 4979,
-   "change": -10,
-   "changePct": -13.5,
+   "change": -11,
+   "changePct": -14.7,
    "estPct": 9.5
   },
   {
@@ -2630,8 +2630,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 17,
-   "changePct": 8.7,
+   "change": 16,
+   "changePct": 8.2,
    "estPct": 9.4
   },
   {
@@ -2690,9 +2690,29 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 1,
-   "changePct": 2.4,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 9.4
+  },
+  {
+   "name": "Pegasus",
+   "council": "Canterbury",
+   "icps": 215,
+   "kW": 1253.6,
+   "res": 208,
+   "bus": 16,
+   "lat": -43.3109,
+   "lng": 172.6986,
+   "ruralBus": 0,
+   "ruralBusKW": 0.0,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": 3,
+   "changePct": 1.4,
+   "estPct": 9.3
   },
   {
    "name": "Clive",
@@ -2758,8 +2778,8 @@
    "name": "Waikanae",
    "council": "Wellington",
    "icps": 685,
-   "kW": 4220.0,
-   "res": 669,
+   "kW": 4221.4,
+   "res": 671,
    "bus": 28,
    "lat": -40.8714,
    "lng": 175.0664,
@@ -2770,8 +2790,8 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": -64,
-   "changePct": -8.5,
+   "change": -66,
+   "changePct": -8.8,
    "estPct": 9.2
   },
   {
@@ -2853,26 +2873,6 @@
    "change": 0,
    "changePct": 0.0,
    "estPct": 9.2
-  },
-  {
-   "name": "Pegasus",
-   "council": "Canterbury",
-   "icps": 211,
-   "kW": 1210.8,
-   "res": 206,
-   "bus": 16,
-   "lat": -43.3109,
-   "lng": 172.6986,
-   "ruralBus": 0,
-   "ruralBusKW": 0.0,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": 0,
-   "changePct": 0.0,
-   "estPct": 9.1
   },
   {
    "name": "Brightwater",
@@ -3150,8 +3150,8 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": 63,
-   "changePct": 18.5,
+   "change": 62,
+   "changePct": 18.1,
    "estPct": 8.7
   },
   {
@@ -3170,8 +3170,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": 16,
-   "changePct": 12.0,
+   "change": 15,
+   "changePct": 11.2,
    "estPct": 8.7
   },
   {
@@ -3210,8 +3210,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": -248,
-   "changePct": -82.1,
+   "change": -246,
+   "changePct": -82.0,
    "estPct": 8.7
   },
   {
@@ -3330,8 +3330,8 @@
    "councilBattInstalls": 823,
    "councilBattPct": 34.1,
    "councilBattBase": 2416,
-   "change": 184,
-   "changePct": 23.1,
+   "change": 180,
+   "changePct": 22.4,
    "estPct": 8.5
   },
   {
@@ -3352,6 +3352,26 @@
    "councilBattBase": 6508,
    "change": -178,
    "changePct": -54.1,
+   "estPct": 8.5
+  },
+  {
+   "name": "Hamurana",
+   "council": "Bay of Plenty",
+   "icps": 109,
+   "kW": 772.2,
+   "res": 102,
+   "bus": 14,
+   "lat": -38.0101,
+   "lng": 176.1792,
+   "ruralBus": 10,
+   "ruralBusKW": 61.5,
+   "councilPct": 5.22,
+   "councilIcps": 7875,
+   "councilBattInstalls": 2862,
+   "councilBattPct": 36.3,
+   "councilBattBase": 7875,
+   "change": -127,
+   "changePct": -53.8,
    "estPct": 8.5
   },
   {
@@ -3490,28 +3510,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 38,
-   "changePct": 25.3,
-   "estPct": 8.3
-  },
-  {
-   "name": "Hamurana",
-   "council": "Bay of Plenty",
-   "icps": 107,
-   "kW": 756.6,
-   "res": 100,
-   "bus": 14,
-   "lat": -38.0101,
-   "lng": 176.1792,
-   "ruralBus": 10,
-   "ruralBusKW": 61.5,
-   "councilPct": 5.22,
-   "councilIcps": 7875,
-   "councilBattInstalls": 2862,
-   "councilBattPct": 36.3,
-   "councilBattBase": 7875,
-   "change": -127,
-   "changePct": -54.3,
+   "change": 36,
+   "changePct": 23.7,
    "estPct": 8.3
   },
   {
@@ -3570,8 +3570,28 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -452,
+   "change": -454,
    "changePct": -92.1,
+   "estPct": 8.3
+  },
+  {
+   "name": "Poukawa",
+   "council": "Hawke's Bay",
+   "icps": 35,
+   "kW": 337.3,
+   "res": 33,
+   "bus": 4,
+   "lat": -39.7787,
+   "lng": 176.7584,
+   "ruralBus": 4,
+   "ruralBusKW": 26.7,
+   "councilPct": 6.56,
+   "councilIcps": 4979,
+   "councilBattInstalls": 1831,
+   "councilBattPct": 36.8,
+   "councilBattBase": 4979,
+   "change": 1,
+   "changePct": 2.9,
    "estPct": 8.3
   },
   {
@@ -3617,9 +3637,9 @@
   {
    "name": "Queenstown",
    "council": "Otago",
-   "icps": 1064,
-   "kW": 7815.1,
-   "res": 1011,
+   "icps": 1065,
+   "kW": 7825.1,
+   "res": 1012,
    "bus": 103,
    "lat": -45.0285,
    "lng": 168.6648,
@@ -3630,8 +3650,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": 258,
-   "changePct": 32.0,
+   "change": 259,
+   "changePct": 32.1,
    "estPct": 8.2
   },
   {
@@ -3675,6 +3695,26 @@
    "estPct": 8.2
   },
   {
+   "name": "Havelock",
+   "council": "Marlborough",
+   "icps": 69,
+   "kW": 362.2,
+   "res": 66,
+   "bus": 6,
+   "lat": -41.3148,
+   "lng": 173.7642,
+   "ruralBus": 4,
+   "ruralBusKW": 16.6,
+   "councilPct": 6.58,
+   "councilIcps": 1771,
+   "councilBattInstalls": 391,
+   "councilBattPct": 22.1,
+   "councilBattBase": 1771,
+   "change": 8,
+   "changePct": 13.1,
+   "estPct": 8.2
+  },
+  {
    "name": "Matakohe",
    "council": "Northland",
    "icps": 18,
@@ -3697,9 +3737,9 @@
   {
    "name": "Woodend",
    "council": "Canterbury",
-   "icps": 239,
-   "kW": 1498.1,
-   "res": 231,
+   "icps": 240,
+   "kW": 1507.9,
+   "res": 232,
    "bus": 20,
    "lat": -43.3246,
    "lng": 172.6701,
@@ -3710,8 +3750,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 12,
-   "changePct": 5.3,
+   "change": 6,
+   "changePct": 2.6,
    "estPct": 8.1
   },
   {
@@ -3738,7 +3778,7 @@
    "name": "Kaukapakapa",
    "council": "Auckland",
    "icps": 99,
-   "kW": 568.5,
+   "kW": 569.1,
    "res": 97,
    "bus": 4,
    "lat": -36.5992,
@@ -3750,28 +3790,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -19,
-   "changePct": -16.1,
-   "estPct": 8.1
-  },
-  {
-   "name": "Poukawa",
-   "council": "Hawke's Bay",
-   "icps": 34,
-   "kW": 292.3,
-   "res": 33,
-   "bus": 4,
-   "lat": -39.7787,
-   "lng": 176.7584,
-   "ruralBus": 4,
-   "ruralBusKW": 20.1,
-   "councilPct": 6.56,
-   "councilIcps": 4979,
-   "councilBattInstalls": 1831,
-   "councilBattPct": 36.8,
-   "councilBattBase": 4979,
-   "change": 0,
-   "changePct": 0.0,
+   "change": -21,
+   "changePct": -17.5,
    "estPct": 8.1
   },
   {
@@ -3877,9 +3897,9 @@
   {
    "name": "Waiheke Island",
    "council": "Auckland",
-   "icps": 344,
-   "kW": 2096.4,
-   "res": 328,
+   "icps": 345,
+   "kW": 2101.4,
+   "res": 330,
    "bus": 36,
    "lat": -36.7804,
    "lng": 175.0117,
@@ -3890,8 +3910,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": 6,
-   "changePct": 1.8,
+   "change": 7,
+   "changePct": 2.1,
    "estPct": 7.9
   },
   {
@@ -3915,26 +3935,6 @@
    "estPct": 7.9
   },
   {
-   "name": "Havelock",
-   "council": "Marlborough",
-   "icps": 67,
-   "kW": 344.2,
-   "res": 64,
-   "bus": 6,
-   "lat": -41.3148,
-   "lng": 173.7642,
-   "ruralBus": 4,
-   "ruralBusKW": 16.6,
-   "councilPct": 6.58,
-   "councilIcps": 1771,
-   "councilBattInstalls": 391,
-   "councilBattPct": 22.1,
-   "councilBattBase": 1771,
-   "change": 6,
-   "changePct": 9.8,
-   "estPct": 7.9
-  },
-  {
    "name": "Lincoln",
    "council": "Canterbury",
    "icps": 522,
@@ -3950,16 +3950,16 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 36,
-   "changePct": 7.4,
+   "change": 35,
+   "changePct": 7.2,
    "estPct": 7.8
   },
   {
    "name": "Motueka",
    "council": "Tasman",
-   "icps": 480,
-   "kW": 5576.7,
-   "res": 439,
+   "icps": 481,
+   "kW": 5584.7,
+   "res": 440,
    "bus": 69,
    "lat": -41.1204,
    "lng": 172.9915,
@@ -3971,7 +3971,7 @@
    "councilBattPct": 34.1,
    "councilBattBase": 2416,
    "change": 64,
-   "changePct": 15.4,
+   "changePct": 15.3,
    "estPct": 7.8
   },
   {
@@ -4030,7 +4030,7 @@
    "councilBattInstalls": 1068,
    "councilBattPct": 37.1,
    "councilBattBase": 2882,
-   "change": -401,
+   "change": -403,
    "changePct": -84.1,
    "estPct": 7.7
   },
@@ -4235,11 +4235,31 @@
    "estPct": 7.6
   },
   {
+   "name": "Rangiora",
+   "council": "Canterbury",
+   "icps": 852,
+   "kW": 6560.2,
+   "res": 786,
+   "bus": 96,
+   "lat": -43.3072,
+   "lng": 172.6027,
+   "ruralBus": 26,
+   "ruralBusKW": 238.9,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": 48,
+   "changePct": 6.0,
+   "estPct": 7.5
+  },
+  {
    "name": "Havelock North",
    "council": "Hawke's Bay",
-   "icps": 622,
-   "kW": 4481.4,
-   "res": 578,
+   "icps": 626,
+   "kW": 4516.6,
+   "res": 582,
    "bus": 74,
    "lat": -39.6712,
    "lng": 176.8872,
@@ -4250,8 +4270,8 @@
    "councilBattInstalls": 1831,
    "councilBattPct": 36.8,
    "councilBattBase": 4979,
-   "change": -360,
-   "changePct": -36.7,
+   "change": -371,
+   "changePct": -37.2,
    "estPct": 7.5
   },
   {
@@ -4310,8 +4330,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": -24,
-   "changePct": -34.3,
+   "change": -28,
+   "changePct": -37.8,
    "estPct": 7.5
   },
   {
@@ -4332,6 +4352,26 @@
    "councilBattBase": 2882,
    "change": -16,
    "changePct": -27.6,
+   "estPct": 7.5
+  },
+  {
+   "name": "Hawarden",
+   "council": "Canterbury",
+   "icps": 34,
+   "kW": 371.6,
+   "res": 24,
+   "bus": 12,
+   "lat": -42.9188,
+   "lng": 172.6321,
+   "ruralBus": 10,
+   "ruralBusKW": 246.8,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": 12,
+   "changePct": 54.5,
    "estPct": 7.5
   },
   {
@@ -4375,23 +4415,23 @@
    "estPct": 7.5
   },
   {
-   "name": "Rangiora",
+   "name": "Kaiapoi",
    "council": "Canterbury",
-   "icps": 837,
-   "kW": 6429.2,
-   "res": 771,
-   "bus": 96,
-   "lat": -43.3072,
-   "lng": 172.6027,
-   "ruralBus": 26,
-   "ruralBusKW": 238.9,
+   "icps": 578,
+   "kW": 3511.0,
+   "res": 556,
+   "bus": 26,
+   "lat": -43.378,
+   "lng": 172.6683,
+   "ruralBus": 6,
+   "ruralBusKW": 66.3,
    "councilPct": 4.52,
    "councilIcps": 15850,
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 42,
-   "changePct": 5.3,
+   "change": -312,
+   "changePct": -35.1,
    "estPct": 7.4
   },
   {
@@ -4410,8 +4450,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 14,
-   "changePct": 13.5,
+   "change": 13,
+   "changePct": 12.4,
    "estPct": 7.4
   },
   {
@@ -4430,8 +4470,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": -37,
-   "changePct": -37.0,
+   "change": -38,
+   "changePct": -37.6,
    "estPct": 7.4
   },
   {
@@ -4450,8 +4490,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": 18,
-   "changePct": 54.5,
+   "change": 17,
+   "changePct": 50.0,
    "estPct": 7.4
   },
   {
@@ -4517,9 +4557,9 @@
   {
    "name": "Nelson",
    "council": "Nelson",
-   "icps": 1744,
-   "kW": 11561.1,
-   "res": 1641,
+   "icps": 1747,
+   "kW": 11581.5,
+   "res": 1644,
    "bus": 139,
    "lat": -41.3235,
    "lng": 173.2373,
@@ -4530,28 +4570,8 @@
    "councilBattInstalls": 682,
    "councilBattPct": 37.0,
    "councilBattBase": 1843,
-   "change": 257,
+   "change": 258,
    "changePct": 17.3,
-   "estPct": 7.3
-  },
-  {
-   "name": "Kaiapoi",
-   "council": "Canterbury",
-   "icps": 571,
-   "kW": 3471.8,
-   "res": 551,
-   "bus": 24,
-   "lat": -43.378,
-   "lng": 172.6683,
-   "ruralBus": 6,
-   "ruralBusKW": 66.3,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": -312,
-   "changePct": -35.3,
    "estPct": 7.3
   },
   {
@@ -4570,8 +4590,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": 111,
-   "changePct": 63.1,
+   "change": 110,
+   "changePct": 62.1,
    "estPct": 7.3
   },
   {
@@ -4635,6 +4655,26 @@
    "estPct": 7.3
   },
   {
+   "name": "Kaka Point",
+   "council": "Otago",
+   "icps": 18,
+   "kW": 96.6,
+   "res": 14,
+   "bus": 6,
+   "lat": -46.3689,
+   "lng": 169.7476,
+   "ruralBus": 4,
+   "ruralBusKW": 26.0,
+   "councilPct": 5.02,
+   "councilIcps": 6101,
+   "councilBattInstalls": 1066,
+   "councilBattPct": 17.5,
+   "councilBattBase": 6101,
+   "change": 2,
+   "changePct": 12.5,
+   "estPct": 7.3
+  },
+  {
    "name": "Warkworth",
    "council": "Auckland",
    "icps": 478,
@@ -4658,7 +4698,7 @@
    "name": "Prebbleton",
    "council": "Canterbury",
    "icps": 222,
-   "kW": 1445.0,
+   "kW": 1438.0,
    "res": 217,
    "bus": 12,
    "lat": -43.5914,
@@ -4670,8 +4710,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -205,
-   "changePct": -48.0,
+   "change": -209,
+   "changePct": -48.5,
    "estPct": 7.2
   },
   {
@@ -4757,9 +4797,9 @@
   {
    "name": "Rolleston",
    "council": "Canterbury",
-   "icps": 1118,
-   "kW": 8998.1,
-   "res": 1057,
+   "icps": 1121,
+   "kW": 9022.9,
+   "res": 1061,
    "bus": 88,
    "lat": -43.5855,
    "lng": 172.4009,
@@ -4770,15 +4810,15 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 17,
-   "changePct": 1.5,
+   "change": 14,
+   "changePct": 1.3,
    "estPct": 7.1
   },
   {
    "name": "Te Kauwhata",
    "council": "Waikato",
    "icps": 195,
-   "kW": 3826.1,
+   "kW": 3834.1,
    "res": 172,
    "bus": 36,
    "lat": -37.3954,
@@ -4810,8 +4850,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 28,
-   "changePct": 26.4,
+   "change": 26,
+   "changePct": 24.1,
    "estPct": 7.1
   },
   {
@@ -4830,7 +4870,7 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -1323,
+   "change": -1327,
    "changePct": -91.4,
    "estPct": 7.1
   },
@@ -4897,9 +4937,9 @@
   {
    "name": "Blenheim",
    "council": "Marlborough",
-   "icps": 1118,
-   "kW": 8471.5,
-   "res": 1047,
+   "icps": 1119,
+   "kW": 8681.1,
+   "res": 1048,
    "bus": 122,
    "lat": -41.5169,
    "lng": 173.9563,
@@ -4910,8 +4950,8 @@
    "councilBattInstalls": 391,
    "councilBattPct": 22.1,
    "councilBattBase": 1771,
-   "change": 92,
-   "changePct": 9.0,
+   "change": 85,
+   "changePct": 8.2,
    "estPct": 7.0
   },
   {
@@ -4930,8 +4970,8 @@
    "councilBattInstalls": 1831,
    "councilBattPct": 36.8,
    "councilBattBase": 4979,
-   "change": 27,
-   "changePct": 13.2,
+   "change": 26,
+   "changePct": 12.7,
    "estPct": 7.0
   },
   {
@@ -5030,8 +5070,8 @@
    "councilBattInstalls": 1312,
    "councilBattPct": 29.8,
    "councilBattBase": 4409,
-   "change": -38,
-   "changePct": -55.9,
+   "change": -40,
+   "changePct": -57.1,
    "estPct": 7.0
   },
   {
@@ -5090,8 +5130,8 @@
    "councilBattInstalls": 391,
    "councilBattPct": 22.1,
    "councilBattBase": 1771,
-   "change": -94,
-   "changePct": -79.7,
+   "change": -97,
+   "changePct": -80.2,
    "estPct": 6.9
   },
   {
@@ -5150,36 +5190,36 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 2,
-   "changePct": 50.0,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 6.9
   },
   {
    "name": "Napier",
    "council": "Hawke's Bay",
-   "icps": 2173,
-   "kW": 15472.4,
-   "res": 1939,
-   "bus": 307,
+   "icps": 2179,
+   "kW": 15919.8,
+   "res": 1940,
+   "bus": 315,
    "lat": -39.5383,
    "lng": 176.8382,
-   "ruralBus": 36,
-   "ruralBusKW": 339.7,
+   "ruralBus": 40,
+   "ruralBusKW": 397.6,
    "councilPct": 6.56,
    "councilIcps": 4979,
    "councilBattInstalls": 1831,
    "councilBattPct": 36.8,
    "councilBattBase": 4979,
-   "change": 80,
-   "changePct": 3.8,
+   "change": 77,
+   "changePct": 3.7,
    "estPct": 6.8
   },
   {
    "name": "Cambridge",
    "council": "Waikato",
-   "icps": 914,
-   "kW": 6314.0,
-   "res": 855,
+   "icps": 916,
+   "kW": 6328.2,
+   "res": 857,
    "bus": 84,
    "lat": -37.898,
    "lng": 175.4793,
@@ -5190,8 +5230,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": -16,
-   "changePct": -1.7,
+   "change": -21,
+   "changePct": -2.2,
    "estPct": 6.8
   },
   {
@@ -5230,8 +5270,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": -80,
-   "changePct": -53.7,
+   "change": -82,
+   "changePct": -54.3,
    "estPct": 6.8
   },
   {
@@ -5430,28 +5470,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": -13,
-   "changePct": -7.0,
-   "estPct": 6.6
-  },
-  {
-   "name": "Pirongia",
-   "council": "Waikato",
-   "icps": 81,
-   "kW": 795.0,
-   "res": 71,
-   "bus": 12,
-   "lat": -37.9922,
-   "lng": 175.1895,
-   "ruralBus": 8,
-   "ruralBusKW": 119.4,
-   "councilPct": 4.04,
-   "councilIcps": 10200,
-   "councilBattInstalls": 3656,
-   "councilBattPct": 35.8,
-   "councilBattBase": 10200,
-   "change": -18,
-   "changePct": -18.2,
+   "change": -14,
+   "changePct": -7.5,
    "estPct": 6.6
   },
   {
@@ -5492,26 +5512,6 @@
    "councilBattBase": 7875,
    "change": -9,
    "changePct": -16.1,
-   "estPct": 6.6
-  },
-  {
-   "name": "Hawarden",
-   "council": "Canterbury",
-   "icps": 30,
-   "kW": 336.6,
-   "res": 24,
-   "bus": 10,
-   "lat": -42.9188,
-   "lng": 172.6321,
-   "ruralBus": 8,
-   "ruralBusKW": 219.3,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": 8,
-   "changePct": 36.4,
    "estPct": 6.6
   },
   {
@@ -5570,8 +5570,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": -65,
-   "changePct": -22.3,
+   "change": -67,
+   "changePct": -22.8,
    "estPct": 6.5
   },
   {
@@ -5590,8 +5590,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -12,
-   "changePct": -6.2,
+   "change": -14,
+   "changePct": -7.1,
    "estPct": 6.5
   },
   {
@@ -5615,6 +5615,46 @@
    "estPct": 6.5
   },
   {
+   "name": "Governors Bay",
+   "council": "Canterbury",
+   "icps": 85,
+   "kW": 563.4,
+   "res": 82,
+   "bus": 6,
+   "lat": -43.6179,
+   "lng": 172.6434,
+   "ruralBus": 0,
+   "ruralBusKW": 0.0,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": -782,
+   "changePct": -90.2,
+   "estPct": 6.5
+  },
+  {
+   "name": "Pirongia",
+   "council": "Waikato",
+   "icps": 80,
+   "kW": 791.5,
+   "res": 70,
+   "bus": 12,
+   "lat": -37.9922,
+   "lng": 175.1895,
+   "ruralBus": 8,
+   "ruralBusKW": 119.4,
+   "councilPct": 4.04,
+   "councilIcps": 10200,
+   "councilBattInstalls": 3656,
+   "councilBattPct": 35.8,
+   "councilBattBase": 10200,
+   "change": -21,
+   "changePct": -20.8,
+   "estPct": 6.5
+  },
+  {
    "name": "Springston",
    "council": "Canterbury",
    "icps": 53,
@@ -5635,26 +5675,6 @@
    "estPct": 6.5
   },
   {
-   "name": "Kaka Point",
-   "council": "Otago",
-   "icps": 16,
-   "kW": 80.6,
-   "res": 14,
-   "bus": 4,
-   "lat": -46.3689,
-   "lng": 169.7476,
-   "ruralBus": 2,
-   "ruralBusKW": 10.0,
-   "councilPct": 5.02,
-   "councilIcps": 6101,
-   "councilBattInstalls": 1066,
-   "councilBattPct": 17.5,
-   "councilBattBase": 6101,
-   "change": 0,
-   "changePct": 0.0,
-   "estPct": 6.5
-  },
-  {
    "name": "\u014ctaki",
    "council": "Wellington",
    "icps": 326,
@@ -5670,8 +5690,8 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": 31,
-   "changePct": 10.5,
+   "change": 30,
+   "changePct": 10.1,
    "estPct": 6.4
   },
   {
@@ -5692,26 +5712,6 @@
    "councilBattBase": 17029,
    "change": 70,
    "changePct": 67.3,
-   "estPct": 6.4
-  },
-  {
-   "name": "Governors Bay",
-   "council": "Canterbury",
-   "icps": 84,
-   "kW": 558.6,
-   "res": 81,
-   "bus": 6,
-   "lat": -43.6179,
-   "lng": 172.6434,
-   "ruralBus": 0,
-   "ruralBusKW": 0.0,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": -779,
-   "changePct": -90.3,
    "estPct": 6.4
   },
   {
@@ -5758,13 +5758,13 @@
    "name": "Hanmer Springs",
    "council": "Canterbury",
    "icps": 68,
-   "kW": 389.0,
+   "kW": 396.0,
    "res": 60,
    "bus": 14,
    "lat": -42.5414,
    "lng": 172.7989,
    "ruralBus": 4,
-   "ruralBusKW": 39.0,
+   "ruralBusKW": 41.1,
    "councilPct": 4.52,
    "councilIcps": 15850,
    "councilBattInstalls": 2605,
@@ -5833,6 +5833,26 @@
    "change": -4,
    "changePct": -22.2,
    "estPct": 6.3
+  },
+  {
+   "name": "Methven",
+   "council": "Canterbury",
+   "icps": 96,
+   "kW": 1190.1,
+   "res": 81,
+   "bus": 22,
+   "lat": -43.6296,
+   "lng": 171.6186,
+   "ruralBus": 10,
+   "ruralBusKW": 308.2,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": 0,
+   "changePct": 0.0,
+   "estPct": 6.2
   },
   {
    "name": "M\u0101hia",
@@ -5910,28 +5930,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": 995,
-   "changePct": 92.3,
-   "estPct": 6.1
-  },
-  {
-   "name": "Methven",
-   "council": "Canterbury",
-   "icps": 94,
-   "kW": 1162.7,
-   "res": 79,
-   "bus": 22,
-   "lat": -43.6296,
-   "lng": 171.6186,
-   "ruralBus": 10,
-   "ruralBusKW": 308.2,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": -2,
-   "changePct": -2.1,
+   "change": 991,
+   "changePct": 91.6,
    "estPct": 6.1
   },
   {
@@ -6030,8 +6030,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": 304,
-   "changePct": 43.1,
+   "change": 300,
+   "changePct": 42.3,
    "estPct": 6.0
   },
   {
@@ -6050,8 +6050,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 1,
-   "changePct": 0.3,
+   "change": -3,
+   "changePct": -0.9,
    "estPct": 6.0
   },
   {
@@ -6217,9 +6217,9 @@
   {
    "name": "Matamata",
    "council": "Waikato",
-   "icps": 363,
-   "kW": 2928.6,
-   "res": 314,
+   "icps": 364,
+   "kW": 2934.6,
+   "res": 315,
    "bus": 68,
    "lat": -37.8368,
    "lng": 175.7519,
@@ -6230,8 +6230,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 27,
-   "changePct": 8.0,
+   "change": 26,
+   "changePct": 7.7,
    "estPct": 5.9
   },
   {
@@ -6338,7 +6338,7 @@
    "name": "Tauranga",
    "council": "Bay of Plenty",
    "icps": 2461,
-   "kW": 16793.8,
+   "kW": 16796.8,
    "res": 2360,
    "bus": 176,
    "lat": -37.7873,
@@ -6350,8 +6350,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": 1542,
-   "changePct": 167.8,
+   "change": 1540,
+   "changePct": 167.2,
    "estPct": 5.8
   },
   {
@@ -6370,8 +6370,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": -121,
-   "changePct": -33.1,
+   "change": -123,
+   "changePct": -33.4,
    "estPct": 5.8
   },
   {
@@ -6438,7 +6438,7 @@
    "name": "Glenbrook",
    "council": "Auckland",
    "icps": 53,
-   "kW": 292.3,
+   "kW": 288.3,
    "res": 52,
    "bus": 2,
    "lat": -37.1903,
@@ -6518,7 +6518,7 @@
    "name": "Hastings",
    "council": "Hawke's Bay",
    "icps": 1264,
-   "kW": 11827.5,
+   "kW": 11830.5,
    "res": 1108,
    "bus": 211,
    "lat": -39.6204,
@@ -6530,8 +6530,8 @@
    "councilBattInstalls": 1831,
    "councilBattPct": 36.8,
    "councilBattBase": 4979,
-   "change": 453,
-   "changePct": 55.9,
+   "change": 449,
+   "changePct": 55.1,
    "estPct": 5.7
   },
   {
@@ -6539,7 +6539,7 @@
    "council": "Canterbury",
    "icps": 779,
    "kW": 16779.3,
-   "res": 660,
+   "res": 662,
    "bus": 163,
    "lat": -43.8751,
    "lng": 171.7507,
@@ -6550,8 +6550,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 55,
-   "changePct": 7.6,
+   "change": 54,
+   "changePct": 7.4,
    "estPct": 5.7
   },
   {
@@ -6570,8 +6570,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": 50,
-   "changePct": 23.1,
+   "change": 47,
+   "changePct": 21.5,
    "estPct": 5.7
   },
   {
@@ -6610,7 +6610,7 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -1586,
+   "change": -1589,
    "changePct": -92.3,
    "estPct": 5.7
   },
@@ -6780,7 +6780,7 @@
    "icps": 79,
    "kW": 859.4,
    "res": 70,
-   "bus": 18,
+   "bus": 16,
    "lat": -40.1769,
    "lng": 175.3297,
    "ruralBus": 6,
@@ -6870,8 +6870,8 @@
    "councilBattInstalls": 391,
    "councilBattPct": 22.1,
    "councilBattBase": 1771,
-   "change": 5,
-   "changePct": 26.3,
+   "change": 4,
+   "changePct": 20.0,
    "estPct": 5.6
   },
   {
@@ -6970,8 +6970,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": 6,
-   "changePct": 25.0,
+   "change": 4,
+   "changePct": 15.4,
    "estPct": 5.5
   },
   {
@@ -7037,9 +7037,9 @@
   {
    "name": "Taup\u014d",
    "council": "Waikato",
-   "icps": 782,
-   "kW": 5244.0,
-   "res": 702,
+   "icps": 785,
+   "kW": 5275.6,
+   "res": 705,
    "bus": 100,
    "lat": -38.6874,
    "lng": 176.0823,
@@ -7050,8 +7050,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 38,
-   "changePct": 5.1,
+   "change": 27,
+   "changePct": 3.6,
    "estPct": 5.4
   },
   {
@@ -7210,8 +7210,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": -99,
-   "changePct": -59.3,
+   "change": -101,
+   "changePct": -59.8,
    "estPct": 5.3
   },
   {
@@ -7330,8 +7330,8 @@
    "councilBattInstalls": 1097,
    "councilBattPct": 16.9,
    "councilBattBase": 6508,
-   "change": -26,
-   "changePct": -76.5,
+   "change": -27,
+   "changePct": -77.1,
    "estPct": 5.2
   },
   {
@@ -7350,15 +7350,15 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": 57,
-   "changePct": 10.2,
+   "change": 55,
+   "changePct": 9.8,
    "estPct": 5.1
   },
   {
    "name": "Thames",
    "council": "Waikato",
    "icps": 256,
-   "kW": 2635.3,
+   "kW": 2628.9,
    "res": 241,
    "bus": 26,
    "lat": -37.1332,
@@ -7457,21 +7457,21 @@
   {
    "name": "New Plymouth",
    "council": "Taranaki",
-   "icps": 1589,
-   "kW": 14856.0,
-   "res": 1429,
+   "icps": 1590,
+   "kW": 14858.8,
+   "res": 1430,
    "bus": 233,
    "lat": -39.031,
    "lng": 174.1533,
    "ruralBus": 40,
-   "ruralBusKW": 403.1,
+   "ruralBusKW": 402.8,
    "councilPct": 4.69,
    "councilIcps": 2882,
    "councilBattInstalls": 1068,
    "councilBattPct": 37.1,
    "councilBattBase": 2882,
-   "change": 619,
-   "changePct": 63.8,
+   "change": 614,
+   "changePct": 62.9,
    "estPct": 5.0
   },
   {
@@ -7492,6 +7492,26 @@
    "councilBattBase": 6508,
    "change": 140,
    "changePct": 98.6,
+   "estPct": 5.0
+  },
+  {
+   "name": "Foxton",
+   "council": "Manawat\u016b-Whanganui",
+   "icps": 163,
+   "kW": 1286.7,
+   "res": 155,
+   "bus": 18,
+   "lat": -40.4472,
+   "lng": 175.3107,
+   "ruralBus": 6,
+   "ruralBusKW": 340.0,
+   "councilPct": 4.4,
+   "councilIcps": 4409,
+   "councilBattInstalls": 1312,
+   "councilBattPct": 29.8,
+   "councilBattBase": 4409,
+   "change": 0,
+   "changePct": 0.0,
    "estPct": 5.0
   },
   {
@@ -7530,8 +7550,28 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -2402,
+   "change": -2421,
    "changePct": -94.6,
+   "estPct": 5.0
+  },
+  {
+   "name": "Kaik\u014dura",
+   "council": "Canterbury",
+   "icps": 109,
+   "kW": 695.9,
+   "res": 101,
+   "bus": 16,
+   "lat": -42.3989,
+   "lng": 173.6747,
+   "ruralBus": 6,
+   "ruralBusKW": 40.8,
+   "councilPct": 4.52,
+   "councilIcps": 15850,
+   "councilBattInstalls": 2605,
+   "councilBattPct": 16.4,
+   "councilBattBase": 15850,
+   "change": 8,
+   "changePct": 7.9,
    "estPct": 5.0
   },
   {
@@ -7550,8 +7590,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": -19,
-   "changePct": -31.1,
+   "change": -21,
+   "changePct": -33.3,
    "estPct": 5.0
   },
   {
@@ -7612,46 +7652,6 @@
    "councilBattBase": 17029,
    "change": -120,
    "changePct": -34.7,
-   "estPct": 4.9
-  },
-  {
-   "name": "Foxton",
-   "council": "Manawat\u016b-Whanganui",
-   "icps": 159,
-   "kW": 1157.1,
-   "res": 153,
-   "bus": 16,
-   "lat": -40.4472,
-   "lng": 175.3107,
-   "ruralBus": 4,
-   "ruralBusKW": 240.0,
-   "councilPct": 4.4,
-   "councilIcps": 4409,
-   "councilBattInstalls": 1312,
-   "councilBattPct": 29.8,
-   "councilBattBase": 4409,
-   "change": -4,
-   "changePct": -2.5,
-   "estPct": 4.9
-  },
-  {
-   "name": "Kaik\u014dura",
-   "council": "Canterbury",
-   "icps": 107,
-   "kW": 675.9,
-   "res": 99,
-   "bus": 16,
-   "lat": -42.3989,
-   "lng": 173.6747,
-   "ruralBus": 6,
-   "ruralBusKW": 40.8,
-   "councilPct": 4.52,
-   "councilIcps": 15850,
-   "councilBattInstalls": 2605,
-   "councilBattPct": 16.4,
-   "councilBattBase": 15850,
-   "change": 6,
-   "changePct": 5.9,
    "estPct": 4.9
   },
   {
@@ -8070,8 +8070,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 28,
-   "changePct": 21.7,
+   "change": 26,
+   "changePct": 19.8,
    "estPct": 4.5
   },
   {
@@ -8150,8 +8150,8 @@
    "councilBattInstalls": 104,
    "councilBattPct": 28.7,
    "councilBattBase": 362,
-   "change": 12,
-   "changePct": 150.0,
+   "change": 10,
+   "changePct": 100.0,
    "estPct": 4.5
   },
   {
@@ -8170,8 +8170,8 @@
    "councilBattInstalls": 182,
    "councilBattPct": 17.4,
    "councilBattBase": 1046,
-   "change": -80,
-   "changePct": -83.3,
+   "change": -82,
+   "changePct": -83.7,
    "estPct": 4.5
   },
   {
@@ -8270,8 +8270,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 79,
-   "changePct": 13.1,
+   "change": 77,
+   "changePct": 12.7,
    "estPct": 4.3
   },
   {
@@ -8297,10 +8297,10 @@
   {
    "name": "Oamaru",
    "council": "Otago",
-   "icps": 393,
-   "kW": 2694.3,
+   "icps": 395,
+   "kW": 2706.3,
    "res": 369,
-   "bus": 40,
+   "bus": 42,
    "lat": -45.0675,
    "lng": 170.9904,
    "ruralBus": 14,
@@ -8310,8 +8310,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": 46,
-   "changePct": 13.3,
+   "change": 50,
+   "changePct": 14.5,
    "estPct": 4.3
   },
   {
@@ -8437,9 +8437,9 @@
   {
    "name": "Rotorua",
    "council": "Bay of Plenty",
-   "icps": 1123,
-   "kW": 8046.4,
-   "res": 1038,
+   "icps": 1124,
+   "kW": 8055.7,
+   "res": 1039,
    "bus": 136,
    "lat": -38.1336,
    "lng": 176.3207,
@@ -8470,8 +8470,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 59,
-   "changePct": 15.7,
+   "change": 57,
+   "changePct": 15.1,
    "estPct": 4.2
   },
   {
@@ -8490,8 +8490,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": -702,
-   "changePct": -62.2,
+   "change": -706,
+   "changePct": -62.3,
    "estPct": 4.2
   },
   {
@@ -8510,8 +8510,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 34,
-   "changePct": 30.9,
+   "change": 32,
+   "changePct": 28.6,
    "estPct": 4.2
   },
   {
@@ -8577,9 +8577,9 @@
   {
    "name": "Christchurch",
    "council": "Canterbury",
-   "icps": 7417,
-   "kW": 52811.5,
-   "res": 6956,
+   "icps": 7422,
+   "kW": 52879.8,
+   "res": 6962,
    "bus": 663,
    "lat": -43.588,
    "lng": 172.5547,
@@ -8590,8 +8590,8 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": 3906,
-   "changePct": 111.3,
+   "change": 3900,
+   "changePct": 110.7,
    "estPct": 4.1
   },
   {
@@ -8630,8 +8630,8 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": -165,
-   "changePct": -16.8,
+   "change": -168,
+   "changePct": -17.0,
    "estPct": 4.1
   },
   {
@@ -8650,8 +8650,8 @@
    "councilBattInstalls": 1068,
    "councilBattPct": 37.1,
    "councilBattBase": 2882,
-   "change": 46,
-   "changePct": 28.2,
+   "change": 44,
+   "changePct": 26.7,
    "estPct": 4.1
   },
   {
@@ -8670,8 +8670,8 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": -326,
-   "changePct": -73.6,
+   "change": -328,
+   "changePct": -73.7,
    "estPct": 4.1
   },
   {
@@ -8710,8 +8710,8 @@
    "councilBattInstalls": 1312,
    "councilBattPct": 29.8,
    "councilBattBase": 4409,
-   "change": -6,
-   "changePct": -11.5,
+   "change": -8,
+   "changePct": -14.8,
    "estPct": 4.1
   },
   {
@@ -8790,8 +8790,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 423,
-   "changePct": 13.8,
+   "change": 417,
+   "changePct": 13.6,
    "estPct": 4.0
   },
   {
@@ -8810,8 +8810,8 @@
    "councilBattInstalls": 1068,
    "councilBattPct": 37.1,
    "councilBattBase": 2882,
-   "change": -7,
-   "changePct": -6.5,
+   "change": -9,
+   "changePct": -8.2,
    "estPct": 4.0
   },
   {
@@ -8890,8 +8890,8 @@
    "councilBattInstalls": 1312,
    "councilBattPct": 29.8,
    "councilBattBase": 4409,
-   "change": 90,
-   "changePct": 6.5,
+   "change": 82,
+   "changePct": 5.9,
    "estPct": 3.9
   },
   {
@@ -8910,8 +8910,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": -16,
-   "changePct": -5.8,
+   "change": -18,
+   "changePct": -6.5,
    "estPct": 3.9
   },
   {
@@ -8930,8 +8930,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -3,
-   "changePct": -1.5,
+   "change": -9,
+   "changePct": -4.3,
    "estPct": 3.9
   },
   {
@@ -9038,7 +9038,7 @@
    "name": "Whanganui",
    "council": "Manawat\u016b-Whanganui",
    "icps": 877,
-   "kW": 5932.0,
+   "kW": 5937.0,
    "res": 814,
    "bus": 92,
    "lat": -39.9172,
@@ -9050,8 +9050,8 @@
    "councilBattInstalls": 1312,
    "councilBattPct": 29.8,
    "councilBattBase": 4409,
-   "change": 27,
-   "changePct": 3.2,
+   "change": 25,
+   "changePct": 2.9,
    "estPct": 3.8
   },
   {
@@ -9070,8 +9070,8 @@
    "councilBattInstalls": 135,
    "councilBattPct": 20.1,
    "councilBattBase": 673,
-   "change": 31,
-   "changePct": 4.9,
+   "change": 30,
+   "changePct": 4.7,
    "estPct": 3.8
   },
   {
@@ -9150,8 +9150,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -172,
-   "changePct": -22.3,
+   "change": -178,
+   "changePct": -22.9,
    "estPct": 3.7
   },
   {
@@ -9290,8 +9290,8 @@
    "councilBattInstalls": 1312,
    "councilBattPct": 29.8,
    "councilBattBase": 4409,
-   "change": 54,
-   "changePct": 14.8,
+   "change": 56,
+   "changePct": 15.4,
    "estPct": 3.6
   },
   {
@@ -9410,8 +9410,8 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": 10,
-   "changePct": 10.0,
+   "change": 8,
+   "changePct": 7.8,
    "estPct": 3.5
   },
   {
@@ -9430,8 +9430,8 @@
    "councilBattInstalls": 1312,
    "councilBattPct": 29.8,
    "councilBattBase": 4409,
-   "change": 12,
-   "changePct": 19.4,
+   "change": 10,
+   "changePct": 15.6,
    "estPct": 3.5
   },
   {
@@ -9530,7 +9530,7 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -2589,
+   "change": -2599,
    "changePct": -97.3,
    "estPct": 3.4
   },
@@ -9570,8 +9570,8 @@
    "councilBattInstalls": 2862,
    "councilBattPct": 36.3,
    "councilBattBase": 7875,
-   "change": -35,
-   "changePct": -81.4,
+   "change": -36,
+   "changePct": -81.8,
    "estPct": 3.4
   },
   {
@@ -9810,8 +9810,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": -134,
-   "changePct": -32.2,
+   "change": -139,
+   "changePct": -33.0,
    "estPct": 3.1
   },
   {
@@ -9850,8 +9850,8 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": 532,
-   "changePct": 64.2,
+   "change": 529,
+   "changePct": 63.6,
    "estPct": 3.0
   },
   {
@@ -9950,8 +9950,8 @@
    "councilBattInstalls": 104,
    "councilBattPct": 28.7,
    "councilBattBase": 362,
-   "change": 36,
-   "changePct": 25.9,
+   "change": 34,
+   "changePct": 24.1,
    "estPct": 2.9
   },
   {
@@ -9990,7 +9990,7 @@
    "councilBattInstalls": 3656,
    "councilBattPct": 35.8,
    "councilBattBase": 10200,
-   "change": -195,
+   "change": -197,
    "changePct": -96.1,
    "estPct": 2.9
   },
@@ -10070,8 +10070,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": 0,
-   "changePct": 0.0,
+   "change": 2,
+   "changePct": 2.8,
    "estPct": 2.8
   },
   {
@@ -10170,8 +10170,8 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -65,
-   "changePct": -23.3,
+   "change": -69,
+   "changePct": -24.4,
    "estPct": 2.7
   },
   {
@@ -10270,8 +10270,8 @@
    "councilBattInstalls": 182,
    "councilBattPct": 17.4,
    "councilBattBase": 1046,
-   "change": 24,
-   "changePct": 17.1,
+   "change": 22,
+   "changePct": 15.5,
    "estPct": 2.6
   },
   {
@@ -10377,21 +10377,21 @@
   {
    "name": "Auckland",
    "council": "Auckland",
-   "icps": 13105,
-   "kW": 112474.6,
-   "res": 12051,
+   "icps": 13118,
+   "kW": 112683.6,
+   "res": 12062,
    "bus": 1606,
    "lat": -36.9769,
    "lng": 174.8554,
    "ruralBus": 34,
-   "ruralBusKW": 193.1,
+   "ruralBusKW": 193.7,
    "councilPct": 2.4,
    "councilIcps": 17029,
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": 8157,
-   "changePct": 164.9,
+   "change": 8143,
+   "changePct": 163.7,
    "estPct": 2.5
   },
   {
@@ -10410,8 +10410,8 @@
    "councilBattInstalls": 1672,
    "councilBattPct": 20.6,
    "councilBattBase": 8111,
-   "change": 787,
-   "changePct": 53.6,
+   "change": 784,
+   "changePct": 53.3,
    "estPct": 2.5
   },
   {
@@ -10630,8 +10630,8 @@
    "councilBattInstalls": 1066,
    "councilBattPct": 17.5,
    "councilBattBase": 6101,
-   "change": 231,
-   "changePct": 26.0,
+   "change": 226,
+   "changePct": 25.3,
    "estPct": 2.3
   },
   {
@@ -10738,7 +10738,7 @@
    "name": "Invercargill",
    "council": "Southland",
    "icps": 671,
-   "kW": 4727.2,
+   "kW": 4726.2,
    "res": 610,
    "bus": 70,
    "lat": -46.426,
@@ -10750,8 +10750,8 @@
    "councilBattInstalls": 182,
    "councilBattPct": 17.4,
    "councilBattBase": 1046,
-   "change": 90,
-   "changePct": 15.5,
+   "change": 86,
+   "changePct": 14.7,
    "estPct": 2.2
   },
   {
@@ -10770,7 +10770,7 @@
    "councilBattInstalls": 2482,
    "councilBattPct": 14.6,
    "councilBattBase": 17029,
-   "change": -1205,
+   "change": -1209,
    "changePct": -96.3,
    "estPct": 2.2
   },
@@ -10990,8 +10990,8 @@
    "councilBattInstalls": 1312,
    "councilBattPct": 29.8,
    "councilBattBase": 4409,
-   "change": 6,
-   "changePct": 60.0,
+   "change": 4,
+   "changePct": 33.3,
    "estPct": 1.8
   },
   {
@@ -11608,7 +11608,7 @@
    "councilBattInstalls": 2605,
    "councilBattPct": 16.4,
    "councilBattBase": 15850,
-   "change": -688,
+   "change": -690,
    "changePct": -98.6
   },
   {
