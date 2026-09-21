@@ -788,9 +788,9 @@ function pointFilter() {
 
 function applyPointFilter() {
   const f = pointFilter();
-  for (const id of ["street-labels", "install-dots"]) {
-    if (map.getLayer(id)) map.setFilter(id, f);
-  }
+  if (map.getLayer("street-labels")) map.setFilter("street-labels", f);
+  // install-dots are filtered per dot when built (installDotFeatures), not
+  // per street, so a homes-only toggle still shows a mixed street's homes.
   // street-points is set inside refreshInstallDots, which combines this
   // filter with "not already drawn as individual installs" -- both write
   // the same layer, so only one of them may own it.
@@ -844,7 +844,17 @@ function installDotFeatures() {
     seen.add(key);
     const centre = map.project({ lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] });
     const n = p.icps;
+    // Give each dot its own category rather than the street's colour, so
+    // a street with two homes and two businesses shows two of each. When
+    // the segments overshoot the total (both privacy-suppressed and
+    // counted as 2), split the dots in the same proportion instead.
+    const rural = p.rural == 1;
+    let nBus = Math.min(p.bus || 0, n);
+    if ((p.res || 0) + (p.bus || 0) > n) nBus = Math.round(n * (p.bus || 0) / (p.res + p.bus));
+    const busCat = rural ? "ruralBus" : "bus";
     for (let i = 0; i < n; i++) {
+      const cat = i < n - nBus ? "res" : busCat;
+      if (!pointCatOn[cat]) continue;
       // Rings of 8, growing outward, so even large streets stay compact
       // and readable rather than becoming a giant starburst.
       // Radius is set so the arc between neighbours stays comfortably
@@ -857,7 +867,7 @@ function installDotFeatures() {
       const ang = (2 * Math.PI * (i % PER_RING)) / inRing - Math.PI / 2;
       const ll = map.unproject([centre.x + radius * Math.cos(ang),
                                 centre.y + radius * Math.sin(ang)]);
-      out.push({ type: "Feature", properties: p,
+      out.push({ type: "Feature", properties: Object.assign({}, p, { cat }),
                  geometry: { type: "Point", coordinates: [ll.lng, ll.lat] } });
     }
     if (out.length > INSTALL_DOTS_MAX) break;
@@ -926,8 +936,14 @@ function showPopup(f) {
   // Marking the segments approximate in that case stops the popup
   // showing "7 connections / 6 residential + 2 business" as if both were
   // measured.
-  const segApprox = (p.res + p.bus !== p.icps) ? "≈" : a;
-  const segNote = (p.res + p.bus !== p.icps)
+  // Likewise any segment under 4 is our placeholder for a suppressed row
+  // (EMI never publishes an exact count below 4), so "Residential 2 ·
+  // Business 2" against an exact total of 4 is a guess that happens to
+  // add up, not two measured numbers.
+  const segSuppressed = (p.res > 0 && p.res < 4) || (p.bus > 0 && p.bus < 4);
+  const segRough = p.res + p.bus !== p.icps || segSuppressed;
+  const segApprox = segRough ? "≈" : a;
+  const segNote = segRough
     ? ` <small class="muted" title="EMI publishes the residential and business counts as separate rows and suppresses each one under four, so these are approximate and need not sum to the total above.">(approx.)</small>`
     : "";
   const change = p.change > 0
@@ -986,7 +1002,7 @@ function addLayers(data) {
       // Deliberately uniform and small: each dot is one install, so
       // sizing them by the street's total would double-encode the count.
       "circle-radius": ["interpolate", ["linear"], ["zoom"], 14, 3.4, 17, 5.2, 20, 7],
-      "circle-color": POINT_COLOR,
+      "circle-color": ["match", ["get", "cat"], "ruralBus", "#4ade80", "bus", "#c084fc", DOT_COLOR],
       "circle-opacity": 0.95,
       "circle-stroke-width": 1,
       "circle-stroke-color": "rgba(0,0,0,.85)",
@@ -1923,8 +1939,8 @@ function visibleRegions() {
 // privacy-suppressed and can't be summed. Badged "est" for that reason.
 const FARM_RANGE_TITLE =
   "Two independent estimates, shown as a range because neither is definitive. The upper figure "
-  + "counts business installs falling outside every town and rural settlement (Stats NZ urban/rural "
-  + "areas) -- that runs high, because it also catches rural schools, marae, packhouses and tourism. "
+  + "counts business installs falling more than 100 m outside every town and rural settlement (Stats NZ "
+  + "urban/rural areas) -- that runs high, because it also catches rural schools, marae, packhouses and tourism. "
   + "The lower figure applies agriculture's share of the region's non-residential connections (EMI's "
   + "own ANZSIC industry classification) to its business installs -- that likely runs low, since it "
   + "assumes farms adopt solar at the same rate as other businesses, while rural business systems "
@@ -1946,7 +1962,7 @@ function farmRangeHTML(row, opts) {
 }
 
 const RURAL_BUS_TITLE =
-  "Business installs outside any town or rural settlement -- mostly farms. "
+  "Business installs more than 100 m outside any town or rural settlement -- mostly farms. "
   + "Estimated: Stats NZ's urban/rural areas decide what counts as rural (a rural town's "
   + "supermarket is inside its urban area, a farm down the road is not), and that share is "
   + "applied to EMI's published business count for the region. EMI does not publish a "

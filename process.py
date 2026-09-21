@@ -112,6 +112,13 @@ URBAN_AREAS_SERVICE = (
 URBAN_AREAS_CACHE = "urban_areas.json"
 URBAN_CLASSES = ("11", "12", "13", "14", "21")   # major/large/medium/small urban, rural settlement
 URBAN_SIMPLIFY_DEG = 0.0001                      # ~11m
+# A street point within this distance of an urban/settlement boundary is
+# treated as inside it. Stats NZ boundaries hug the coastline and the
+# fetched polygons are simplified by ~11 m, so a shore road or edge street
+# can land a few metres outside the town it plainly belongs to (Frankton
+# Road, Queenstown: 27 m into the lake). Degrees of latitude, so 100 m
+# north-south and ~75 m east-west at NZ latitudes.
+URBAN_EDGE_TOLERANCE_M = 100
 
 # EMI's 39 "network reporting regions" (real distributor footprints, not
 # fabricated) grouped under their NZ regional council. A handful of
@@ -948,9 +955,10 @@ def fetch_urban_areas():
 
 
 def rural_test_fn(urban_geojson):
-    """A fn(lng, lat) -> True when that point is rural -- i.e. outside
-    every urban area and rural settlement. R-tree indexed, because this
-    runs once per geocoded street (~36,000 points).
+    """A fn(lng, lat) -> True when that point is rural -- i.e. more than
+    URBAN_EDGE_TOLERANCE_M outside every urban area and rural settlement.
+    R-tree indexed, because this runs once per geocoded street (~36,000
+    points).
     """
     from shapely.geometry import Point, shape
     from shapely.strtree import STRtree
@@ -958,9 +966,11 @@ def rural_test_fn(urban_geojson):
     polys = [shape(f["geometry"]) for f in urban_geojson["features"] if f.get("geometry")]
     tree = STRtree(polys)
 
+    tol_deg = URBAN_EDGE_TOLERANCE_M / 111_000
+
     def is_rural(lng, lat):
         p = Point(lng, lat)
-        return not any(polys[i].contains(p) for i in tree.query(p))
+        return len(tree.query(p, predicate="dwithin", distance=tol_deg)) == 0
 
     return is_rural
 
@@ -2409,8 +2419,8 @@ def build(records, cache, areas, previous, is_rural=None):
             "kW": round(rec["kW"], 1),
             "busShare": round(rec["bus"] / known, 2) if known else 0,
         }
-        # Rural means outside every urban area and rural settlement
-        # (see fetch_urban_areas). Only flagged, never inferred: with no
+        # Rural means clear of every urban area and rural settlement
+        # (see rural_test_fn for the edge tolerance). Only flagged, never inferred: with no
         # classifier available the key is simply absent rather than
         # defaulting to a guess.
         if is_rural is not None and is_rural(lng, lat):
