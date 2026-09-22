@@ -2,22 +2,83 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<script>
+  // Theme before first paint: light unless this browser chose dark from
+  // the (i) menu earlier (see applyTheme). Storage may be blocked in an
+  // embedded/private context, in which case light it is.
+  try { if (localStorage.getItem("ss-theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch (e) {}
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>NZ Solar Installations</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.20.2/maplibre-gl.js"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/5.20.2/maplibre-gl.css" rel="stylesheet">
 <style>
+  /* Light is the default; dark is opted into from the (i) menu (see
+     applyTheme). Every colour that differs between the two lives here
+     as a token, so the skins differ only in these two blocks. The
+     accents come in a pair: --amber/--cyan are button fills (dark text
+     on them), --amber-text/--cyan-text are for text on the panel,
+     which on white needs a much deeper shade to stay legible. The map
+     itself is satellite imagery either way, so its labels and dots
+     are not themed. */
   :root {
+    color-scheme: light;
+    --glass: rgba(255,255,255,.86);
+    --glass-hi: rgba(255,255,255,.95);
+    --border: rgba(0,0,0,.1);
+    --border-strong: rgba(0,0,0,.25);
+    --text: #111827;
+    --dim: #5b6573;
+    --hover: rgba(0,0,0,.05);
+    --hover-hi: rgba(0,0,0,.1);
+    --hover-strong: rgba(0,0,0,.2);
+    --shadow: rgba(0,0,0,.18);
+    --scrim: rgba(0,0,0,.35);
+    --grid: rgba(0,0,0,.08);
+    --cyan: #06b6d4;
+    --cyan-text: #0e7490;
+    --orange: #f97316;
+    --amber: #f59e0b;
+    --amber-text: #b45309;
+    --up: #15803d;
+    --red: #dc2626;
+    --glow-amber: none;
+    --glow-cyan: none;
+    --fuel-petrol: #dc2626;
+    --fuel-diesel: #8b2e22;
+    --fuel-hybrid: #e0524f;
+    --fuel-phev: #d9540a;
+    --fuel-rex: #d97706;
+    --fuel-gas: #6b7280;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
     --glass: rgba(10,14,20,.74);
     --glass-hi: rgba(20,26,36,.82);
     --border: rgba(255,255,255,.09);
+    --border-strong: rgba(255,255,255,.35);
     --text: #e9eef3;
     --dim: #8a96a3;
+    --hover: rgba(255,255,255,.06);
+    --hover-hi: rgba(255,255,255,.12);
+    --hover-strong: rgba(255,255,255,.25);
+    --shadow: rgba(0,0,0,.45);
+    --scrim: rgba(0,0,0,.6);
+    --grid: rgba(255,255,255,.08);
     --cyan: #22d3ee;
-    --orange: #f97316;
+    --cyan-text: #22d3ee;
     --amber: #ffb703;
+    --amber-text: #ffb703;
     --up: #4ade80;
     --red: #ff5a5a;
+    --glow-amber: 0 0 10px rgba(255,183,3,.4);
+    --glow-cyan: 0 0 10px rgba(34,211,238,.4);
+    --fuel-petrol: #ef4444;
+    --fuel-diesel: #b5483a;
+    --fuel-hybrid: #f87171;
+    --fuel-phev: #f97316;
+    --fuel-rex: #fbbf24;
+    --fuel-gas: #9ca3af;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
@@ -41,7 +102,7 @@
   .maplibregl-popup-close-button { color: var(--dim); font-size: 16px; }
   .muted { color: var(--dim); }
   .up { color: var(--up); font-weight: 600; }
-  .err { color: #f87171; font-weight: 600; }
+  .err { color: var(--red); font-weight: 600; }
 
   .hidden { display: none !important; }
 
@@ -55,7 +116,7 @@
     display: flex; background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid var(--border); border-radius: 999px; padding: 3px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    box-shadow: 0 8px 32px var(--shadow);
   }
   .dataset-btn {
     border: none; background: transparent; color: var(--dim); font-size: 11px; font-weight: 700;
@@ -71,7 +132,7 @@
     display: flex; align-items: center; background: var(--glass);
     backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid var(--border); border-radius: 999px;
-    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    box-shadow: 0 8px 32px var(--shadow);
   }
   /* Collapses to just the icon button when empty and unfocused, so the
      top row has room for the dataset tabs on narrow screens -- expands
@@ -90,7 +151,7 @@
   }
   #placeSearch.collapsed #placeSearchInput { width: 0; padding: 7px 0; opacity: 0; }
   #placeSearchInput::placeholder { color: var(--dim); }
-  #placeSearch.no-match #placeSearchInput { color: #f87171; }
+  #placeSearch.no-match #placeSearchInput { color: var(--red); }
   @media (max-width: 767px) { #placeSearchInput { width: 110px; } }
 
   /* Only shown once zoomed into anything smaller than the whole
@@ -104,7 +165,7 @@
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid var(--border); border-radius: 999px; padding: 5px 12px;
     color: var(--text); font-size: 11px; font-weight: 700; cursor: pointer;
-    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    box-shadow: 0 8px 32px var(--shadow);
   }
   #backToNzBtn.hidden { display: none; }
   #backToNzBtn:hover { background: var(--glass-hi); }
@@ -119,7 +180,7 @@
     -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid var(--border); border-radius: 10px; color: var(--text);
     width: max-content; max-width: calc(100vw - 20px);
-    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    box-shadow: 0 8px 32px var(--shadow);
     transition: width .22s ease;
   }
   /* Chart panel width: roomy on desktop, growing proportionally as the
@@ -136,9 +197,9 @@
   }
   .topbar-label .topbar-region {
     font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: normal;
-    color: var(--amber); text-shadow: 0 0 8px rgba(255,183,3,.35);
+    color: var(--amber-text); text-shadow: var(--glow-amber);
   }
-  body.dataset-ev .topbar-label .topbar-region { color: var(--cyan); text-shadow: 0 0 8px rgba(34,211,238,.35); }
+  body.dataset-ev .topbar-label .topbar-region { color: var(--cyan-text); text-shadow: var(--glow-cyan); }
   .stat-line {
     display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 0;
     font-size: 12px; color: var(--dim); line-height: 1.5; margin-top: 2px;
@@ -146,34 +207,50 @@
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
   .stat-line-seg { margin-top: 2px; }
-  .stat-line-batt { color: var(--cyan); margin-top: 2px; }
-  .stat-line-batt strong { color: var(--cyan); }
-  .stat-line-batt .batt-base { cursor: help; border-bottom: 1px dotted rgba(122,224,255,.5); }
+  .stat-line-batt { color: var(--cyan-text); margin-top: 2px; }
+  .stat-line-batt strong { color: var(--cyan-text); }
+  .stat-line-batt .batt-base { cursor: help; border-bottom: 1px dotted color-mix(in srgb, currentColor 50%, transparent); }
   .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
   .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; white-space: nowrap; flex: none; }
 
   .topbar-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .chart-toggle-btn, .map-mode-btn, .fuel-btn {
+  .chart-toggle-btn, .map-mode-btn, .fuel-btn, .theme-btn {
     padding: 4px 12px; border: none; border-radius: 7px; font-size: 11px; font-weight: 700;
     letter-spacing: .2px; cursor: pointer;
   }
-  .chart-toggle-btn { background: var(--amber); color: #241a00; box-shadow: 0 0 10px rgba(255,183,3,.3); }
-  body.dataset-ev .chart-toggle-btn { background: var(--cyan); color: #062229; box-shadow: 0 0 10px rgba(34,211,238,.3); }
+  .chart-toggle-btn { background: var(--amber); color: #241a00; box-shadow: var(--glow-amber); }
+  body.dataset-ev .chart-toggle-btn { background: var(--cyan); color: #062229; box-shadow: var(--glow-cyan); }
   .chart-toggle-btn:hover { filter: brightness(1.08); }
-  .map-mode-btn, .fuel-btn { background: rgba(255,255,255,.08); color: var(--dim); }
-  .map-mode-btn.active, .fuel-btn.active { background: var(--amber); color: #241a00; box-shadow: 0 0 10px rgba(255,183,3,.3); }
-  .map-mode-btn:not(.active):hover, .fuel-btn:not(.active):hover { background: rgba(255,255,255,.16); color: var(--text); }
-  body.dataset-ev .fuel-btn.active { background: var(--cyan); color: #062229; box-shadow: 0 0 10px rgba(34,211,238,.3); }
+  .map-mode-btn, .fuel-btn, .theme-btn { background: var(--hover); color: var(--dim); }
+  .map-mode-btn.active, .fuel-btn.active, .theme-btn.active { background: var(--amber); color: #241a00; box-shadow: var(--glow-amber); }
+  .map-mode-btn:not(.active):hover, .fuel-btn:not(.active):hover, .theme-btn:not(.active):hover { background: var(--hover-hi); color: var(--text); }
+  body.dataset-ev .fuel-btn.active { background: var(--cyan); color: #062229; box-shadow: var(--glow-cyan); }
   .vehicle-fuel-toggle { display: flex; gap: 4px; margin-bottom: 8px; }
   .vehicle-fuel-toggle.hidden { display: none; }
   .lb-fuel { color: var(--dim); font-weight: 400; }
+  /* Fuel words carry their own colour so a mixed list scans by fuel:
+     reds for what burns petrol/diesel, orange for plug-ins, cyan for
+     electric (the EV accent), grey for gas. */
+  .lb-fuel[data-fuel="petrol"] { color: var(--fuel-petrol); }
+  .lb-fuel[data-fuel="diesel"] { color: var(--fuel-diesel); }
+  .lb-fuel[data-fuel="hybrid"] { color: var(--fuel-hybrid); }
+  .lb-fuel[data-fuel="PHEV"] { color: var(--fuel-phev); }
+  .lb-fuel[data-fuel="range-extended EV"] { color: var(--fuel-rex); }
+  .lb-fuel[data-fuel="LPG"], .lb-fuel[data-fuel="CNG"] { color: var(--fuel-gas); }
+  .lb-fuel[data-fuel="electric"] { color: var(--cyan-text); }
+  /* The fossil-fuel list is the "what needs replacing" view, so its
+     switch and counts go red rather than the EV cyan. */
+  #vehicleFuelToggle .fuel-btn[data-fuel="ice"].active { background: var(--fuel-petrol); color: #fff; box-shadow: none; }
+  #vehicleDetailsView.fuel-ice .lb-count { color: var(--fuel-petrol); }
+  .theme-row { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; font-size: 11px; color: var(--dim); }
+  .theme-row span { margin-right: 4px; }
   .point-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
   .point-chip {
     display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border);
-    background: rgba(255,255,255,.04); color: var(--text); font: inherit; font-size: 10.5px;
+    background: var(--hover); color: var(--text); font: inherit; font-size: 10.5px;
     font-weight: 600; padding: 3px 8px; border-radius: 7px; cursor: pointer;
   }
-  .point-chip:hover { background: rgba(255,255,255,.12); }
+  .point-chip:hover { background: var(--hover-hi); }
   /* Switched-off categories stay listed so it is obvious they exist
      and what colour they are on the map. */
   .point-chip.off { opacity: .45; text-decoration: line-through; }
@@ -206,7 +283,7 @@
   @media (max-width: 767px) {
     .grabber {
       display: block; width: 40px; height: 4px; border-radius: 3px;
-      background: rgba(255,255,255,.25); margin: 8px auto 0;
+      background: var(--hover-strong); margin: 8px auto 0;
     }
   }
 
@@ -216,10 +293,10 @@
     background: var(--glass-hi); border: 1px solid var(--border); color: var(--text);
     backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
-    box-shadow: 0 4px 14px rgba(0,0,0,.4);
+    box-shadow: 0 4px 14px var(--shadow);
     transition: left .28s ease, bottom .28s ease, background .15s;
   }
-  .edge-arrow:hover { background: rgba(255,255,255,.14); }
+  .edge-arrow:hover { background: var(--hover-hi); }
   .edge-arrow .glyph { display: inline-block; font-size: 13px; transition: transform .28s ease; }
   .edge-arrow .arrow-label {
     font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
@@ -260,7 +337,7 @@
     backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
     border: 1px solid var(--border); color: var(--text);
     display: flex; flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0,0,0,.45);
+    box-shadow: 0 8px 32px var(--shadow);
     transition: transform .28s ease;
   }
   /* Desktop: left sidebar, below the top bar */
@@ -288,7 +365,7 @@
 
   .board { overflow-y: auto; flex: 1; padding: 4px 10px 10px; }
   .board::-webkit-scrollbar { width: 7px; }
-  .board::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 4px; }
+  .board::-webkit-scrollbar-thumb { background: var(--hover-strong); border-radius: 4px; }
 
   .row-main {
     display: flex; align-items: flex-start; gap: 8px; padding: 7px 8px;
@@ -302,15 +379,15 @@
   .row-region:hover { color: var(--text); text-decoration: underline; }
   /* Battery figures in cyan throughout, matching the EV dashboard, so
      they read as a distinct measure from the amber solar ones. */
-  .row-batt { font-size: 10.5px; color: var(--cyan); line-height: 1.3; }
+  .row-batt { font-size: 10.5px; color: var(--cyan-text); line-height: 1.3; }
   /* Town rows: headline beside the name, own detail under it, then the
      region's figures as a distinct indented block. The left rule and
      the small caps label are what mark "this is the region, not the
      town"; the Solar/Battery tags and amber/cyan keep the two measures
      apart. */
   .row-title { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-  .row-primary { font-size: 13.5px; font-weight: 700; color: var(--amber);
-    text-shadow: 0 0 10px rgba(255,183,3,.4); white-space: nowrap; }
+  .row-primary { font-size: 13.5px; font-weight: 700; color: var(--amber-text);
+    text-shadow: var(--glow-amber); white-space: nowrap; }
   .row-own { font-size: 10.5px; color: var(--dim); line-height: 1.4; }
   .row-ctx { margin-top: 5px; padding: 2px 0 1px 8px; border-left: 2px solid var(--border); }
   .row-ctx-label { font-size: 9px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
@@ -318,20 +395,20 @@
   .row-ctx-line { font-size: 10.5px; line-height: 1.45; }
   .row-ctx-tag { display: inline-block; min-width: 52px; margin-right: 6px; font-size: 9px; font-weight: 700;
     letter-spacing: .4px; text-transform: uppercase; opacity: .8; }
-  .row-ctx-solar { color: rgba(255,183,3,.8); }
-  .row-ctx-batt { color: var(--cyan); }
+  .row-ctx-solar { color: var(--amber-text); opacity: .85; }
+  .row-ctx-batt { color: var(--cyan-text); }
   .seg-line { color: var(--dim); }
   .seg-rural { cursor: help; border-bottom: 1px dotted var(--dim); }
   .town-approx { cursor: help; border-bottom: 1px dotted currentColor; }
-  .row-batt .batt-base { cursor: help; border-bottom: 1px dotted rgba(122,224,255,.5); }
+  .row-batt .batt-base { cursor: help; border-bottom: 1px dotted color-mix(in srgb, currentColor 50%, transparent); }
   /* Whole-row click target for district/town rows that fly the map. */
   .row-main.row-clickable { cursor: pointer; }
-  .row-main.row-clickable:hover { background: rgba(255,255,255,.06); }
-  .row-nz .row-name { color: var(--amber); }
-  body.dataset-ev .row-nz .row-name { color: var(--cyan); }
+  .row-main.row-clickable:hover { background: var(--hover); }
+  .row-nz .row-name { color: var(--amber-text); }
+  body.dataset-ev .row-nz .row-name { color: var(--cyan-text); }
   .row-nz-sep { border: none; border-top: 1px solid var(--border); margin: 8px 4px 4px; }
   .row-metric { flex: none; text-align: right; }
-  .row-metric .headline { font-size: 13.5px; font-weight: 700; color: var(--amber); text-shadow: 0 0 10px rgba(255,183,3,.4); white-space: nowrap; }
+  .row-metric .headline { font-size: 13.5px; font-weight: 700; color: var(--amber-text); text-shadow: var(--glow-amber); white-space: nowrap; }
   .row-metric .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
   .est-badge { cursor: help; border-bottom: 1px dotted var(--dim); }
   .est-badge b { color: var(--red); font-weight: 700; letter-spacing: .02em; }
@@ -341,12 +418,12 @@
      installs/MW are supporting detail underneath. Solar figures in
      amber, battery figures in the same cyan as the EV dashboard, so the
      two are visually distinct at a glance, not just by wording. */
-  .popup-pct { font-size: 16px; font-weight: 700; color: var(--amber); margin: 2px 0; }
+  .popup-pct { font-size: 16px; font-weight: 700; color: var(--amber-text); margin: 2px 0; }
   .popup-sub { font-size: 12px; color: var(--dim); }
-  .popup-solar { color: var(--amber); }
-  .popup-battery { color: var(--cyan); }
+  .popup-solar { color: var(--amber-text); }
+  .popup-battery { color: var(--cyan-text); }
   .popup-section { margin-top: 8px; }
-  .popup-divider { border: none; border-top: 1px solid rgba(255,255,255,.35); margin: 10px 0 8px; }
+  .popup-divider { border: none; border-top: 1px solid var(--border-strong); margin: 10px 0 8px; }
   .popup-region-header { font-weight: 700; color: var(--text); font-size: 12.5px; margin-bottom: 4px; }
 
   /* ============ Methodology button + popup ============ */
@@ -362,11 +439,11 @@
     border: 1px solid var(--border); border-radius: 50%;
     color: var(--dim); font-size: 14px; font-weight: 700; font-style: italic;
     font-family: Georgia, "Times New Roman", serif; line-height: 1; cursor: pointer;
-    box-shadow: 0 4px 14px rgba(0,0,0,.4);
+    box-shadow: 0 4px 14px var(--shadow);
   }
   #methodologyBtn:hover { color: var(--text); }
   #methodologyOverlay {
-    position: absolute; inset: 0; z-index: 100; background: rgba(0,0,0,.6);
+    position: absolute; inset: 0; z-index: 100; background: var(--scrim);
     display: flex; align-items: center; justify-content: center; padding: 20px;
   }
   #methodologyOverlay.hidden { display: none; }
@@ -375,13 +452,13 @@
     -webkit-backdrop-filter: blur(20px) saturate(140%);
     border: 1px solid var(--border); border-radius: 14px;
     max-width: 480px; width: 100%; max-height: 82vh; overflow-y: auto;
-    padding: 20px 22px; box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    padding: 20px 22px; box-shadow: 0 20px 60px var(--shadow);
     color: var(--text); font-size: 12.5px; line-height: 1.55;
   }
   #methodologyModal h2 { font-size: 15px; margin: 0 0 10px; padding-right: 24px; }
   #methodologyModal h3 {
     font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px;
-    color: var(--amber); margin: 16px 0 6px;
+    color: var(--amber-text); margin: 16px 0 6px;
   }
   #methodologyModal h3:first-of-type { margin-top: 0; }
   #methodologyModal p { margin: 0 0 8px; color: var(--dim); }
@@ -398,7 +475,7 @@
   .ev-row { padding: 8px 8px 10px; border-radius: 10px; margin: 2px 0; }
   .ev-row-head { display: flex; align-items: flex-start; gap: 8px; }
   .ev-row-overall { text-align: right; flex: none; }
-  .ev-row-overall .headline { font-size: 13.5px; font-weight: 700; color: var(--cyan); text-shadow: 0 0 10px rgba(34,211,238,.4); white-space: nowrap; }
+  .ev-row-overall .headline { font-size: 13.5px; font-weight: 700; color: var(--cyan-text); text-shadow: var(--glow-cyan); white-space: nowrap; }
   .ev-row-overall .detail { display: block; font-size: 10px; font-weight: 500; color: var(--dim); white-space: nowrap; }
   .ev-categories { margin: 6px 0 0; padding-left: 24px; }
   .ev-cat-line { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--dim); line-height: 1.65; white-space: nowrap; }
@@ -412,18 +489,18 @@
   /* ============ Trend chart (inline, inside the top bar) ============ */
   .chart-tabs { display: flex; gap: 4px; margin-bottom: 8px; align-items: center; }
   .csv-btn {
-    border: 1px solid var(--border); background: rgba(255,255,255,.04); color: var(--dim);
+    border: 1px solid var(--border); background: var(--hover); color: var(--dim);
     font-size: 10px; font-weight: 700; padding: 4px 8px; border-radius: 7px;
     cursor: pointer; letter-spacing: .2px; white-space: nowrap; font-family: inherit;
   }
-  .csv-btn:hover { color: var(--text); background: rgba(255,255,255,.12); }
+  .csv-btn:hover { color: var(--text); background: var(--hover-hi); }
   /* Pushed to the far end of the tab row so it never reads as a
      fourth view to switch to. */
   .csv-btn-chart { margin-left: auto; }
   .popup-actions { margin-top: 9px; }
-  .maplibregl-popup-content .csv-btn { background: rgba(0,0,0,.25); }
+  .maplibregl-popup-content .csv-btn { background: var(--hover-hi); }
   .chart-tab {
-    border: none; background: rgba(255,255,255,.06); color: var(--dim);
+    border: none; background: var(--hover); color: var(--dim);
     font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 7px;
     cursor: pointer; letter-spacing: .2px;
   }
@@ -456,11 +533,11 @@
   .lb-change.up { color: var(--up); }
   .lb-change small { font-weight: 600; opacity: .8; }
   .leaderboard-empty { padding: 10px 0; font-size: 12px; color: var(--dim); }
-  .lb-count { font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--cyan); }
+  .lb-count { font-size: 12px; font-weight: 700; white-space: nowrap; color: var(--cyan-text); }
   .lb-count small { font-weight: 600; opacity: .8; color: var(--dim); }
 
   .chart-select {
-    background: rgba(255,255,255,.06); border: 1px solid var(--border); color: var(--text);
+    background: var(--hover); border: 1px solid var(--border); color: var(--text);
     border-radius: 8px; padding: 5px 8px; font-size: 12px; max-width: 100%;
   }
   .chart-svg-wrap { width: 100%; margin-top: 8px; }
@@ -555,6 +632,10 @@
   <div id="methodologyOverlay" class="hidden">
     <div id="methodologyModal">
       <button id="methodologyClose" type="button" aria-label="Close">&times;</button>
+      <div class="theme-row"><span>Appearance</span>
+        <button type="button" class="theme-btn" data-theme="light">Light</button>
+        <button type="button" class="theme-btn" data-theme="dark">Dark</button>
+      </div>
       <h2>Where this data comes from</h2>
       <p>A quick summary, not the full technical detail — see
         <a href="https://github.com/rewiring-nz/solar-streets/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md</a>
@@ -2537,7 +2618,7 @@ function trendValues(s) {
 function renderTrendLegend(available) {
   chartLegendEl.innerHTML = available.map(d => {
     const off = trendVisible[d.key] ? "" : " off";
-    const sw = `<i class="swatch" style="background:${d.color}"></i>`;
+    const sw = `<i class="swatch" style="background:${seriesColor(d)}"></i>`;
     const tip = d.note ? `${d.label}. ${d.note}` : "Show or hide this line";
     return `<button type="button" class="legend-toggle${off}" data-series="${d.key}" ` +
       `title="${tip.replace(/"/g, "&quot;")}">${sw}${d.label}${d.note ? ' <span class="legend-note">?</span>' : ""}</button>`;
@@ -2587,15 +2668,15 @@ function drawTrendChart(dates, series) {
   let grid = "";
   for (let f = 0; f <= 1; f += 0.25) {
     const y = (y1 - f * (y1 - y0)).toFixed(1);
-    grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="rgba(255,255,255,.08)"/>`;
+    grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="${cssVar("--grid")}"/>`;
     lefts.forEach((d, col) => {
       // Right-aligned columns, innermost last, so the numbers line up
       // against the plot regardless of how many are showing.
       const x = x0 - 6 - (lefts.length - 1 - col) * COL;
-      grid += `<text x="${x}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="${d.color}">${d.tick(f * maxOf(d))}</text>`;
+      grid += `<text x="${x}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="${seriesColor(d)}">${d.tick(f * maxOf(d))}</text>`;
     });
     rights.forEach(d => {
-      grid += `<text x="${x1 + 6}" y="${+y + 3}" text-anchor="start" font-size="9.5" fill="${d.color}">${d.tick(f * 100)}</text>`;
+      grid += `<text x="${x1 + 6}" y="${+y + 3}" text-anchor="start" font-size="9.5" fill="${seriesColor(d)}">${d.tick(f * 100)}</text>`;
     });
   }
 
@@ -2603,14 +2684,14 @@ function drawTrendChart(dates, series) {
   const ticks = Math.min(6, n);
   for (let t = 0; t < ticks; t++) {
     const idx = Math.round(t / Math.max(1, ticks - 1) * (n - 1));
-    xLabels += `<text x="${xAt(idx).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9.5" fill="#8a96a3">${dates[idx].slice(0, 4)}</text>`;
+    xLabels += `<text x="${xAt(idx).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9.5" fill="${cssVar("--dim")}">${dates[idx].slice(0, 4)}</text>`;
   }
 
   const lines = visible.map(d => {
     const yFn = yFor(d);
     const pts = values[d.key].map((v, i) => `${xAt(i).toFixed(1)},${yFn(v).toFixed(1)}`).join(" L");
     const dash = d.dash ? ' stroke-dasharray="4,3"' : "";
-    return `<path d="M${pts}" fill="none" stroke="${d.color}" stroke-width="${d.dash ? 1.6 : 2}"${dash}/>`;
+    return `<path d="M${pts}" fill="none" stroke="${seriesColor(d)}" stroke-width="${d.dash ? 1.6 : 2}"${dash}/>`;
   }).join("");
 
   chartSvgEl.innerHTML = grid + xLabels + lines;
@@ -2685,14 +2766,14 @@ function drawEvStackedChart(dates, seriesByCategory) {
   let grid = "";
   for (let f = 0; f <= 1; f += 0.25) {
     const y = (y1 - f * (y1 - y0)).toFixed(1);
-    grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="rgba(255,255,255,.08)"/>`;
-    grid += `<text x="${x0 - 6}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="#8a96a3">${fmt(Math.round(f * maxV))}</text>`;
+    grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="${cssVar("--grid")}"/>`;
+    grid += `<text x="${x0 - 6}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="${cssVar("--dim")}">${fmt(Math.round(f * maxV))}</text>`;
   }
   let xLabels = "";
   const ticks = Math.min(6, n);
   for (let t = 0; t < ticks; t++) {
     const idx = Math.round(t / Math.max(1, ticks - 1) * (n - 1));
-    xLabels += `<text x="${xAt(idx).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9.5" fill="#8a96a3">${dates[idx]}</text>`;
+    xLabels += `<text x="${xAt(idx).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9.5" fill="${cssVar("--dim")}">${dates[idx]}</text>`;
   }
 
   const areas = bands.map(b => {
@@ -2873,14 +2954,41 @@ function vehiclePctLabel() {
 }
 
 function vehicleLabel(v, html) {
-  const fuel = v.fuel ? (html ? ` <span class="lb-fuel">(${v.fuel})</span>` : ` (${v.fuel})`) : "";
+  const fuel = v.fuel ? (html ? ` <span class="lb-fuel" data-fuel="${v.fuel}">(${v.fuel})</span>` : ` (${v.fuel})`) : "";
   return `${v.make} ${v.model}${fuel}`;
 }
+
+/* ================= THEME ================= */
+// Light by default; dark is a per-browser choice from the (i) menu.
+// The stylesheet's tokens do the work (see :root); the chart is the
+// one thing drawn with literal colours, so it's redrawn on switch.
+const THEME_KEY = "ss-theme";
+function currentTheme() { return document.documentElement.dataset.theme === "dark" ? "dark" : "light"; }
+function applyTheme(theme, persist) {
+  if (theme === "dark") document.documentElement.dataset.theme = "dark";
+  else delete document.documentElement.dataset.theme;
+  document.querySelectorAll(".theme-btn").forEach(b => b.classList.toggle("active", b.dataset.theme === theme));
+  if (persist) { try { localStorage.setItem(THEME_KEY, theme); } catch (e) {} }
+  if (persist && typeof renderFocusChart === "function") renderFocusChart().catch(() => {});
+}
+document.getElementById("methodologyModal").addEventListener("click", e => {
+  const btn = e.target.closest(".theme-btn");
+  if (btn) applyTheme(btn.dataset.theme, true);
+});
+applyTheme(currentTheme(), false);
+
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+// Chart series colours were picked for dark glass; the pale ones vanish
+// against white, so on the light theme each maps to a deeper shade of
+// the same hue (used for the line, its axis numbers and legend swatch).
+const LIGHT_SERIES_COLORS = { "#ffb703": "#b45309", "#4ade80": "#15803d", "#c084fc": "#7e22ce", "#38bdf8": "#0369a1", "#22d3ee": "#0e7490" };
+function seriesColor(d) { return currentTheme() === "dark" ? d.color : (LIGHT_SERIES_COLORS[d.color] || d.color); }
 
 function renderVehicleDetails() {
   // Older data files predate the fossil-fuel list; no toggle until it exists.
   vehicleFuelToggleEl.classList.toggle("hidden", !evTopVehiclesFossil);
   if (!evTopVehiclesFossil) vehicleFuelFilter = "ev";
+  vehicleDetailsViewEl.classList.toggle("fuel-ice", vehicleFuelFilter === "ice");
   vehicleFuelToggleEl.querySelectorAll(".fuel-btn").forEach(b =>
     b.classList.toggle("active", b.dataset.fuel === vehicleFuelFilter));
   const byCategory = vehiclesFor(currentFocus.level, currentFocus.name);
