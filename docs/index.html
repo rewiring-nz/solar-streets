@@ -2263,6 +2263,7 @@ const vehicleFuelToggleEl = document.getElementById("vehicleFuelToggle");
 // category for the chart's stacked areas, the map choropleth legend
 // swatches, and anywhere else the categories need telling apart.
 const EV_CHART_ORDER = ["Cars", "Utes", "Vans", "Motorbikes", "Buses", "Trucks", "Tractors"];
+const EV_CATS_PER_LINE = 4;   // category counts under the EV headline (renderEvTopbarStats)
 const EV_CATEGORY_COLORS = {
   Cars: "#3b82f6", Utes: "#a855f7", Vans: "#14b8a6", Motorbikes: "#ec4899",
   Buses: "#f97316", Trucks: "#eab308", Tractors: "#ef4444",
@@ -2493,7 +2494,13 @@ function renderEvTopbarStats() {
         `<i class="swatch" style="background:${EV_CATEGORY_COLORS[cat]}"></i>` +
         `<strong>${fmt(c.ev)}</strong> ${cat.toLowerCase()}</span>`;
     });
-  if (catSegs.length) html += `<div class="stat-line stat-line-seg stat-line-cats">${catSegs.join("")}</div>`;
+  // Four to a line, then wrap: all seven on one row made the panel wider
+  // than the map deserves to lose, and a fixed break keeps the columns
+  // roughly aligned across regions instead of wrapping wherever the
+  // numbers happen to fall.
+  for (let i = 0; i < catSegs.length; i += EV_CATS_PER_LINE) {
+    html += `<div class="stat-line stat-line-seg stat-line-cats">${catSegs.slice(i, i + EV_CATS_PER_LINE).join("")}</div>`;
+  }
   html += `<div class="topbar-actions"><button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button></div>`;
   topbarStatsEl.innerHTML = html;
   updateBackToNzButton();
