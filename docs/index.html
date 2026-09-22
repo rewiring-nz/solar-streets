@@ -2336,7 +2336,7 @@ function addEvLayer(boundaries) {
       features: evTlas.filter(t => t.lat != null).map(t => ({
         type: "Feature",
         geometry: { type: "Point", coordinates: [t.lng, t.lat] },
-        properties: { pct: t.pct },
+        properties: { pct: t.pct, ev: t.ev },
       })),
     },
   });
@@ -2345,11 +2345,18 @@ function addEvLayer(boundaries) {
     minzoom: DISTRICT_LABEL_MINZOOM,   // same clutter as solar's districts
     layout: {
       visibility: "none",
+      // Share of the local fleet as the headline, with the count in
+      // smaller text beneath it -- a 0.3% district with 3,000 EVs and one
+      // with 30 read the same on percentage alone.
       "text-field": [
         "case", ["==", ["get", "pct"], null], "",
-        ["concat", ["number-format", ["get", "pct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"]
+        ["format",
+          ["concat", ["number-format", ["get", "pct"], { "min-fraction-digits": 1, "max-fraction-digits": 1 }], "%"], {},
+          "\n", {},
+          ["number-format", ["get", "ev"], { "max-fraction-digits": 0 }], { "font-scale": 0.7 }
+        ]
       ],
-      "text-font": ["Noto Sans Bold"], "text-size": 15, "text-allow-overlap": true
+      "text-font": ["Noto Sans Bold"], "text-size": 15, "text-line-height": 1.05, "text-allow-overlap": true
     },
     paint: { "text-color": "#ffffff", "text-halo-color": "rgba(0,0,0,.45)", "text-halo-width": 1 }
   }, beforeId);
