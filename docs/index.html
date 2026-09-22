@@ -207,6 +207,7 @@
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
   .stat-line-seg { margin-top: 2px; }
+  .stat-line-cats .swatch { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; vertical-align: middle; }
   .stat-line-batt { color: var(--cyan-text); margin-top: 2px; }
   .stat-line-batt strong { color: var(--cyan-text); }
   .stat-line-batt .batt-base { cursor: help; border-bottom: 1px dotted color-mix(in srgb, currentColor 50%, transparent); }
@@ -2157,13 +2158,10 @@ function setDashHidden(hidden) {
   // Again once the slide finishes, since the height is only final then.
   setTimeout(() => { syncDashArrow(); applyViewPadding(); }, 300);
 }
-// Open by default on desktop, where it is a side panel and the map is
-// still fully usable beside it. Closed by default on mobile, where it
-// is a bottom sheet covering up to 55vh of a small screen -- landing on
-// a map that is already half hidden is a poor first impression.
-// ?dash=open / ?dash=closed still win either way.
-const startsHidden = DASH_PARAM === "closed"
-  || (DASH_PARAM !== "open" && window.matchMedia("(max-width: 767px)").matches);
+// Closed by default on every screen size -- the map is the first thing
+// to see; the Regions tab on the left edge opens the list. ?dash=open
+// still forces it open for links that want the list up front.
+const startsHidden = DASH_PARAM !== "open";
 setDashHidden(startsHidden);
 
 function isChartOpen() { return topbarEl.classList.contains("expanded"); }
@@ -2481,6 +2479,21 @@ function renderEvTopbarStats() {
   }
   html += `</div>`;
   html += `<div class="stat-line">${segs.join("")}</div>`;
+  // Category split under the headline, the EV counterpart of the solar
+  // bar's homes/business line: the same real per-category counts the
+  // chart and district rows use, in the chart's order and colours, and
+  // adding up to the headline above. Empty categories are left out
+  // rather than shown as a row of zeros.
+  const catSegs = EV_CHART_ORDER
+    .map(cat => [cat, stats.categories && stats.categories[cat]])
+    .filter(([, c]) => c && c.ev > 0)
+    .map(([cat, c]) => {
+      const share = c.pct != null ? ` -- ${c.pct.toFixed(1)}% of the ${cat.toLowerCase()} here are electric` : "";
+      return `<span class="stat-seg" title="Electric ${cat.toLowerCase()}${share}">` +
+        `<i class="swatch" style="background:${EV_CATEGORY_COLORS[cat]}"></i>` +
+        `<strong>${fmt(c.ev)}</strong> ${cat.toLowerCase()}</span>`;
+    });
+  if (catSegs.length) html += `<div class="stat-line stat-line-seg stat-line-cats">${catSegs.join("")}</div>`;
   html += `<div class="topbar-actions"><button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button></div>`;
   topbarStatsEl.innerHTML = html;
   updateBackToNzButton();
