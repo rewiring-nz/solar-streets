@@ -258,7 +258,14 @@
   .chip-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block;
     border: 1px solid rgba(0,0,0,.6); }
 
-  .topbar-chart { max-height: 0; overflow: hidden; transition: max-height .25s ease; border-top: 1px solid transparent; }
+  /* contain: inline-size keeps the collapsed chart from setting the
+     panel's width: the topbar is width:max-content so it hugs the stats,
+     but the folded-away chart (a 700-unit SVG, the sources line) still
+     counted toward that, stretching the panel to ~700px of mostly empty
+     glass. With containment the stats alone size the panel; once
+     expanded, #topbar.expanded's explicit width takes over and the
+     chart fills it as before. */
+  .topbar-chart { max-height: 0; overflow: hidden; contain: inline-size; transition: max-height .25s ease; border-top: 1px solid transparent; }
   /* A fixed cap silently clipped the panel: the chart SVG keeps its
      aspect ratio at width:100%, so a wider viewport (or zooming out,
      which widens it in CSS pixels) makes it taller, and at 1600px the
