@@ -214,16 +214,17 @@
   .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; white-space: nowrap; flex: none; }
 
   .topbar-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
-  .chart-toggle-btn, .map-mode-btn, .fuel-btn, .theme-btn {
+  .chart-toggle-btn, .map-mode-btn, .fuel-btn, .theme-btn, .lb-sort-btn {
     padding: 4px 12px; border: none; border-radius: 7px; font-size: 11px; font-weight: 700;
     letter-spacing: .2px; cursor: pointer;
   }
   .chart-toggle-btn { background: var(--amber); color: #241a00; box-shadow: var(--glow-amber); }
   body.dataset-ev .chart-toggle-btn { background: var(--cyan); color: #062229; box-shadow: var(--glow-cyan); }
   .chart-toggle-btn:hover { filter: brightness(1.08); }
-  .map-mode-btn, .fuel-btn, .theme-btn { background: var(--hover); color: var(--dim); }
-  .map-mode-btn.active, .fuel-btn.active, .theme-btn.active { background: var(--amber); color: #241a00; box-shadow: var(--glow-amber); }
-  .map-mode-btn:not(.active):hover, .fuel-btn:not(.active):hover, .theme-btn:not(.active):hover { background: var(--hover-hi); color: var(--text); }
+  .map-mode-btn, .fuel-btn, .theme-btn, .lb-sort-btn { background: var(--hover); color: var(--dim); }
+  .map-mode-btn.active, .fuel-btn.active, .theme-btn.active, .lb-sort-btn.active { background: var(--amber); color: #241a00; box-shadow: var(--glow-amber); }
+  .map-mode-btn:not(.active):hover, .fuel-btn:not(.active):hover, .theme-btn:not(.active):hover, .lb-sort-btn:not(.active):hover { background: var(--hover-hi); color: var(--text); }
+  body.dataset-ev .lb-sort-btn.active { background: var(--cyan); color: #062229; box-shadow: var(--glow-cyan); }
   body.dataset-ev .fuel-btn.active { background: var(--cyan); color: #062229; box-shadow: var(--glow-cyan); }
   .vehicle-fuel-toggle { display: flex; gap: 4px; margin-bottom: 8px; }
   .vehicle-fuel-toggle.hidden { display: none; }
@@ -360,7 +361,7 @@
        content up to (100vw - 20px), so four full-size buttons don't
        all fit on a narrow phone. */
     .topbar-actions { gap: 4px; }
-    .chart-toggle-btn, .map-mode-btn, .fuel-btn { padding: 3px 7px; font-size: 9.5px; }
+    .chart-toggle-btn, .map-mode-btn, .fuel-btn, .lb-sort-btn { padding: 3px 7px; font-size: 9.5px; }
   }
 
   .board { overflow-y: auto; flex: 1; padding: 4px 10px 10px; }
@@ -529,6 +530,7 @@
   .lb-row:last-child { border-bottom: none; }
   .lb-rank { width: 16px; font-size: 10px; color: var(--dim); text-align: right; flex: none; }
   .lb-name { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; }
+  .lb-sort { display: flex; gap: 4px; margin-bottom: 8px; }
   .lb-change { font-size: 12px; font-weight: 700; white-space: nowrap; }
   .lb-change.up { color: var(--up); }
   .lb-change small { font-weight: 600; opacity: .8; }
@@ -2869,10 +2871,39 @@ function renderEvChartSelection() {
 // change/changePct are null until this feature has seen two real runs
 // to compare (see _change()'s doc comment), so rows without a change
 // are filtered out rather than shown as a false "no change".
+// Ranked by % growth by default: on raw numbers the biggest regions
+// (Auckland, Canterbury) would head the list every single month simply
+// by being biggest, which tells nobody anything. "Number" is one click
+// away for readers who want the absolute figure. Shared by the on-screen
+// list and the CSV so the two never disagree.
+let leaderboardSort = "pct";   // "pct" | "count"
+const LB_SORTS = [
+  { key: "pct",   label: "% growth" },
+  { key: "count", label: "Number" },
+];
+function leaderboardRows(list) {
+  return (list || [])
+    // A leaderboard is for "what grew" -- a negative figure here is more
+    // likely a reporting/attribution quirk (an EV re-registered to a new
+    // owner's district, an ICP counted under a different network this
+    // month) than a real solar system being torn out or a real EV
+    // parked up, so decliners are left off entirely rather than shown
+    // as a false "this fell" signal.
+    .filter(r => r.change != null && r.change > 0)
+    .slice()
+    .sort((a, b) => leaderboardSort === "pct"
+      ? (b.changePct || 0) - (a.changePct || 0) || b.change - a.change
+      : b.change - a.change || (b.changePct || 0) - (a.changePct || 0));
+}
+
 function renderLeaderboard() {
   const isEv = DATASET === "ev";
   const list = isEv ? evRegions : regionData;
   const unit = isEv ? "EVs" : "installs";
+  const byPct = leaderboardSort === "pct";
+  const sortBar = `<div class="lb-sort">` + LB_SORTS.map(o =>
+    `<button type="button" class="lb-sort-btn${o.key === leaderboardSort ? " active" : ""}" data-sort="${o.key}">${o.label}</button>`
+  ).join("") + `</div>`;
   // The data's own month, not "this month" -- the pipeline runs weekly
   // but EMI/NZTA only republish monthly, so metaUpdated/evUpdated is
   // whichever month the current snapshot actually reflects.
@@ -2882,36 +2913,37 @@ function renderLeaderboard() {
   // naturally as an adoption share -- it is growth against the previous
   // release, which is a much smaller number.
   const monthLine = asOf
-    ? `<div class="lb-month">Biggest increases &mdash; ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()} vs the previous release</div>`
+    ? `<div class="lb-month">${byPct ? "Fastest growth" : "Biggest increases"} &mdash; ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()} vs the previous release</div>`
     : "";
-  const rows = (list || [])
-    // A leaderboard is for "what grew" -- a negative figure here is more
-    // likely a reporting/attribution quirk (an EV re-registered to a new
-    // owner's district, an ICP counted under a different network this
-    // month) than a real solar system being torn out or a real EV
-    // parked up, so decliners are left off entirely rather than shown
-    // as a false "this fell" signal.
-    .filter(r => r.change != null && r.change > 0)
-    .slice()
-    .sort((a, b) => b.change - a.change)
-    .slice(0, 10);
+  const rows = leaderboardRows(list).slice(0, 10);
   if (!rows.length) {
-    leaderboardViewEl.innerHTML = monthLine +
+    leaderboardViewEl.innerHTML = sortBar + monthLine +
       `<div class="leaderboard-empty">No comparison data yet -- check back after next month's update.</div>`;
     return;
   }
+  const growthTitle = "Growth against this region's own total at the previous data release -- not its share of the fleet.";
   // Every row that survives the filter above is a real gain, so the
   // sign/colour is always the "up" case -- no down/flat branch needed.
-  leaderboardViewEl.innerHTML = monthLine + `<div class="leaderboard-list">` + rows.map((r, i) =>
+  // Whichever measure the list is ranked by leads; the other is the
+  // small print, so the ordering is always visibly justified.
+  leaderboardViewEl.innerHTML = sortBar + monthLine + `<div class="leaderboard-list">` + rows.map((r, i) =>
     `<div class="lb-row">` +
       `<span class="lb-rank">${i + 1}</span>` +
       `<span class="lb-name">${r.name}</span>` +
-      `<span class="lb-change up">+${fmt(r.change)} ${unit} ` +
-      `<small title="Growth against this region's own total at the previous data release -- not its share of the fleet.">` +
-      `(+${r.changePct.toFixed(1)}% growth)</small></span>` +
+      (byPct
+        ? `<span class="lb-change up"><span title="${growthTitle}">+${(r.changePct || 0).toFixed(1)}%</span> ` +
+          `<small>(+${fmt(r.change)} ${unit})</small></span>`
+        : `<span class="lb-change up">+${fmt(r.change)} ${unit} ` +
+          `<small title="${growthTitle}">(+${(r.changePct || 0).toFixed(1)}% growth)</small></span>`) +
     `</div>`
   ).join("") + `</div>`;
 }
+leaderboardViewEl.addEventListener("click", e => {
+  const btn = e.target.closest(".lb-sort-btn");
+  if (!btn || btn.dataset.sort === leaderboardSort) return;
+  leaderboardSort = btn.dataset.sort;
+  renderLeaderboard();
+});
 
 // Real NZTA Make/Model counts for whichever region/district/national
 // level is currently focused -- see vehiclesFor/build_top_vehicles in
@@ -3122,13 +3154,11 @@ function exportEvTrend() {
 function exportLeaderboard() {
   const isEv = DATASET === "ev";
   const list = (isEv ? evRegions : regionData) || [];
-  const rows = list.filter(r => r.change != null && r.change > 0)
-    .slice().sort((a, b) => b.change - a.change)
-    .map((r, i) => [i + 1, r.name, r.change, r.changePct]);
+  const rows = leaderboardRows(list).map((r, i) => [i + 1, r.name, r.change, r.changePct]);
   if (!rows.length) return false;
   const unit = isEv ? "EVs" : "solar installs";
   return downloadCSV(
-    ["nz", isEv ? "ev" : "solar", "leaderboard"],
+    ["nz", isEv ? "ev" : "solar", "leaderboard", leaderboardSort === "pct" ? "by-growth" : "by-number"],
     ["Rank", "Region", `Change in ${unit}`, "Change %"], rows, sourceNote(),
   );
 }
