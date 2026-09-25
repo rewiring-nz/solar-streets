@@ -33,8 +33,8 @@ Stats NZ boundaries ────┘    (weekly, in       (static files,         
                               GitHub Actions)    served by Pages)
 ```
 
-For how street positions are actually determined, how the region/town
-grouping works, and the reliability guards the pipeline runs under, see
+For where every figure comes from, what's measured versus estimated, and
+the reliability guards the pipeline runs under, see
 [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Setup (about ten minutes, once)
@@ -53,11 +53,11 @@ grouping works, and the reliability guards the pipeline runs under, see
 4. **Run the first build**
    Actions tab → *Update solar data* → *Run workflow*.
 
-   Takes roughly 15–20 minutes. Road positions are geocoded via
+   Takes roughly 45 minutes, most of it the vehicle register's
+   per-district make/model queries. Road positions are geocoded via
    OpenStreetMap in one query per regional council (~16 requests, not
-   one per street), so this isn't a "slow first run, fast after" split —
-   every run does the same fresh lookup and finishes in about the same
-   time.
+   one per street), so every run does the same fresh lookup and finishes
+   in about the same time.
 
 5. **Open your map** at `https://YOUR-USERNAME.github.io/YOUR-REPO/`
 
@@ -80,12 +80,23 @@ Query params customise what loads, for a specific-region embed or link:
 | Param | Values | Effect |
 |---|---|---|
 | `?dataset=` | `solar` (default) or `ev` | Which dashboard opens |
-| `?region=` | any region/district/town name | Flies there on load (macron-insensitive, e.g. `Wanaka` matches `Wānaka`) |
+| `?region=` | any region/district/town/street name | Flies there on load (macron-insensitive, e.g. `Wanaka` matches `Wānaka`). The bare form `?Wanaka` works too, as do `?q=` and `?place=` |
 | `?chart=` | `open` | Opens the trend chart by default (always closed on mobile-width screens) |
-| `?dash=` | `closed` | Starts with the regions/districts list collapsed |
+| `?dash=` | `open` | Starts with the regions/districts list open (it's closed by default) |
 | `?gestures=` | `free` | Turns off the iframe scroll-gesture lock, for a fullscreen embed with no page to scroll past |
 
 e.g. `https://YOUR-USERNAME.github.io/YOUR-REPO/?dataset=ev&region=Canterbury&chart=open`
+
+**Linking to a place through the page that embeds the map.** An iframe
+can't read its parent page's URL, but the map will pick up a place from
+the *parent's* query string (e.g. `https://example.org/solar-map?Wellington`)
+if the iframe is allowed to see it via the referrer:
+
+```html
+<iframe src="https://YOUR-USERNAME.github.io/YOUR-REPO/"
+        referrerpolicy="unsafe-url"
+        width="100%" height="600" style="border:0"></iframe>
+```
 
 On the map itself, the search box (top of the page) matches a street,
 suburb, region, or district by name and flies there — the interactive
@@ -94,9 +105,17 @@ equivalent of `?region=`.
 ## Keeping it current
 
 The workflow runs every Monday at 6am NZ time and commits only if
-something changed. EMI publishes monthly, so nothing goes stale. You can
-also trigger it by hand from the Actions tab any time; concurrent runs
-are queued rather than allowed to race each other.
+something changed. EMI's street data currently updates about weekly and
+NZTA's register about monthly, so the map stays within a week of both.
+You can also trigger it by hand from the Actions tab any time;
+concurrent runs are queued rather than allowed to race each other.
+
+If an upstream source fails, the run still publishes everything that did
+build, keeps the previous copy of whatever didn't, and then goes red with
+an annotation naming the dataset — so a stale dataset never goes
+unnoticed. A few things need a human occasionally (a new Census, a
+renamed electricity network); see the
+[maintenance calendar](ARCHITECTURE.md#maintenance-calendar).
 
 ## Configuration
 
@@ -110,7 +129,7 @@ top of `docs/index.html`.
 | File | Purpose |
 |---|---|
 | `process.py` | Downloads EMI/NZTA data, geocodes streets, writes the JSON/GeoJSON |
-| `requirements.txt` | Pinned Python dependencies for `process.py` |
+| `requirements.txt` | Python dependencies for `process.py` |
 | `.github/workflows/update-data.yml` | Runs the above weekly |
 | `docs/index.html` | The map (both dashboards) |
 
@@ -129,22 +148,25 @@ top of `docs/index.html`.
 | `road_cache.json` | Where each street is, from the latest successful run per council (see [ARCHITECTURE.md](ARCHITECTURE.md#reliability)) |
 | `sa2_areas.json` | Statistical area boundaries, cached |
 | `regc_bounds.json` | Real regional council boundaries (Stats NZ), cached — powers the council grouping and the "regions within map view" filter |
-| `tla_bounds.json` | Real territorial authority (district/city) boundaries (Stats NZ), cached — full precision, for the EV dashboard |
-| `town_anchors.json` | One point per real NZ town (LINZ), cached — powers the solar town grouping |
-| `sa1_dwellings.json` | Census dwelling counts by small area, cached — powers the estimated town/district % figures |
-| `previous_counts.json` | Last build's per-street numbers, for the "+N since last update" figures |
-| `previous_town_totals.json` | Last build's per-town solar totals, for the Leaderboard's month-over-month change |
-| `previous_ev_totals.json` | Last build's per-district EV totals, for the Leaderboard's month-over-month change |
+| `tla_bounds.json` | Territorial authority (district/city) bounding boxes and label points (Stats NZ), cached — for the EV dashboard |
+| `town_anchors.json` | One centre point per NZ town (LINZ), cached |
+| `town_polygons.json` | Each town's footprint, the union of its LINZ localities, cached — decides which town a street belongs to |
+| `urban_areas.json` | Stats NZ urban areas and rural settlements, cached — decides which business installs count as rural |
+| `sa1_dwellings.json` | 2018/2023 Census dwelling counts by small area, cached — powers the estimated town/district % figures |
+| `previous_counts.json` | Per-street counts at the current and previous EMI release, for the "+N since" figures |
+| `previous_town_totals.json` | Per-region solar totals at the current and previous EMI release, for the Leaderboard |
+| `previous_ev_totals.json` | Per-district EV totals at the current and previous NZTA release, for the Leaderboard |
 
 </details>
 
 ## Data sources
 
-- Solar installations: [EMI, Electricity Authority](https://www.emi.ea.govt.nz/) (CC BY 4.0)
-- Total ICP counts: [EMI, ICP and metering details](https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails) (CC BY 4.0)
+- Solar installations: [EMI, Electricity Authority](https://www.emi.ea.govt.nz/Retail/Datasets/SolarInstallations) (CC BY 4.0)
+- Uptake rates, battery counts and history: [EMI, Installed distributed generation trends](https://www.emi.ea.govt.nz/Retail/Reports/GUEHMT) (CC BY 4.0)
+- ICP counts by network and industry: [EMI, ICP and metering details](https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails) (CC BY 4.0)
 - Street locations: [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL)
 - Electric vehicle counts: [NZTA Waka Kotahi, Motor Vehicle Register](https://opendata-nzta.opendata.arcgis.com/datasets/NZTA::motor-vehicle-register) (CC BY 4.0)
-- Statistical areas, regional councils, and territorial authorities: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
+- Statistical areas, regional councils, territorial authorities, urban/rural areas and Census dwelling counts: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
 - Town/locality names: [LINZ, Suburbs and Localities](https://data.linz.govt.nz/layer/113764-nz-suburbs-and-localities/) (CC BY 4.0)
 
 ## Contributing

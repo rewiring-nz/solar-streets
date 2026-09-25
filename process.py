@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """
-Turn EMI's monthly solar CSVs into a map-ready GeoJSON.
+Turn EMI's solar data and NZTA's vehicle register into the static files
+the map serves.
 
 Runs weekly in GitHub Actions. Road positions come from OpenStreetMap via
 Overpass, queried once per regional council (~16 requests) rather than
-once per statistical area (~2,100) -- the whole run takes a few minutes.
+once per statistical area (~2,100). A full run takes about 45 minutes,
+most of it the vehicle register's per-district make/model queries.
 
     EMI street CSV ─┐
     EMI region CSV ─┼─> join on (SA2 area + street name) ─> docs/streets.geojson
     OSM road data ──┘
 
-Outputs docs/streets.geojson and docs/meta.json, which GitHub Pages
-serves to the map.
+    EMI trends report (GUEHMT) ─> docs/trends.json, council % and batteries
+    NZTA Motor Vehicle Register ─> docs/ev.json, docs/ev_boundaries.geojson
+
+Outputs everything under docs/, which GitHub Pages serves to the map.
+See ARCHITECTURE.md for the methodology behind each figure.
 """
 
 import json
@@ -47,17 +52,12 @@ ICP_TOTALS_LINK_RE = re.compile(r'href="([^"]*\d{8}_MarketShareByMEPandTrader\.c
 # estimate up to a full-ICP estimate (see fetch_anzsic_ratios).
 ANZSIC_LINK_RE = re.compile(r'href="([^"]*\d{8}_MeterCategoryByLevel1ANZSIC\.csv)"')
 
-# Real, official regional council boundaries (Eagle Technology, sourced
-# from Stats NZ, CC-BY-4.0) -- used to decide which council a SA2/town
-# falls inside, and to power the "regions within map view" filter.
-#
-# Earlier this was approximated by unioning EA's network-operator
-# boundaries per council, which is wrong: a network operator's footprint
-# doesn't follow council lines. Concretely, "Nelson (Nelson Electricity)"
-# is a tiny legacy embedded network covering a few blocks, while most of
-# Nelson city is actually served by "Tasman (Network Tasman)" -- so the
-# old approach had almost all of Nelson's real data geographically
-# misattributed to Tasman. Real council polygons don't have that problem.
+# Official regional council boundaries (Eagle Technology, sourced from
+# Stats NZ, CC-BY-4.0) -- used to decide which council an SA2/town falls
+# inside, and to power the "regions within map view" filter. Network
+# operators' footprints can't stand in for these: they don't follow
+# council lines (most of Nelson city is served by Network Tasman, while
+# "Nelson Electricity" is a small embedded network).
 REGC_SERVICE = (
     "https://services.arcgis.com/XTtANUDT8Va4DLwI/arcgis/rest/services/"
     "nz_regional_councils/FeatureServer/0/query"
@@ -97,14 +97,14 @@ SA1_CENSUS_CACHE = "sa1_dwellings.json"
 # apart from a business inside a rural town. Its own categories already
 # draw exactly that line: a small town's built-up area (supermarket and
 # all) is a "Small urban area" or "Rural settlement", while the paddocks
-# around it are "Rural other". Verified live -- Methven and Darfield
-# townships classify urban, points a few km out classify rural.
+# around it are "Rural other" (e.g. Methven and Darfield townships
+# classify urban, points a few km out classify rural).
 #
 # Only the *non*-rural polygons are fetched: rural is everything else.
 # That's 597 small areas rather than 68 enormous ones covering 96% of
 # the country, and it makes "is this rural?" a single negative test.
-# Geometry is simplified to ~11m, which cuts the cache from 46.6MB to
-# 1.6MB and (verified) classifies every test point identically.
+# Geometry is simplified to ~11m, which cuts the cache from ~47MB to
+# ~1.6MB without changing any classification at street-point scale.
 URBAN_AREAS_SERVICE = (
     "https://services2.arcgis.com/vKb0s8tBIA3bdocZ/arcgis/rest/services/"
     "Urban_Rural_Areas_2026/FeatureServer/0/query"
@@ -198,13 +198,13 @@ OUT_TRENDS = "docs/trends.json"
 OUT_REGION_BOUNDARIES = "docs/region_boundaries.geojson"
 OUT_TOWN_BOUNDARIES = "docs/town_boundaries.geojson"
 
-# Last run's town/TLA totals, kept purely so this run can attach a
-# month-over-month change/changePct to each region/town/district (the
-# leaderboard's data) -- see attach_changes(). Not used for anything
-# else, so unlike road_cache/sa2_areas these hold only the small summary
-# numbers, not full geometry.
-PREV_TOWN_TOTALS = "previous_town_totals.json"
+# The previous release's figures, kept purely so this run can attach a
+# release-over-release change/changePct -- per region (the leaderboard),
+# per district (EVs) and per street (the "+N since" in street popups).
+# See rolling_baseline(). Small summary numbers only, no geometry.
+PREV_TOWN_TOTALS = "previous_town_totals.json"   # per-region solar totals (historical name)
 PREV_EV_TOTALS = "previous_ev_totals.json"
+PREV_STREET_COUNTS = "previous_counts.json"
 
 # EMI's "Installed distributed generation trends" report (GUEHMT) --
 # monthly ICP-count history since 2014, exportable as CSV per fuel type
@@ -223,8 +223,7 @@ GUEHMT_URL = "https://www.emi.ea.govt.nz/Retail/Download/DataReport/CSV/GUEHMT"
 
 # NZTA names each published MVR service after the month they stood it
 # up -- "MVR_Mar26", and "MVR_May23" before that. The current one *is*
-# refreshed in place (verified live: MVR_Mar26 carries registrations
-# through Jul 2026), so the name is a birth date, not a data vintage --
+# refreshed in place, so the name is a birth date, not a data vintage --
 # but the day NZTA stands up the next one, a pinned name either 404s or,
 # worse, keeps quietly serving a frozen copy. So resolve it by searching
 # ArcGIS for whatever NZTA currently publishes, and keep the known-good
@@ -253,8 +252,7 @@ OUT_EV = "docs/ev.json"
 OUT_EV_BOUNDARIES = "docs/ev_boundaries.geojson"
 
 # Vehicle categories for the EV dashboard, drawn straight from the MVR's
-# own VEHICLE_TYPE/BODY_TYPE fields (verified live against real data),
-# not guessed from make/model. Vans are real BODY_TYPE values
+# own VEHICLE_TYPE/BODY_TYPE fields, not guessed from make/model. Vans are real BODY_TYPE values
 # ("LIGHT VAN"/"HEAVY VAN") that show up under *both* the
 # "PASSENGER CAR/VAN" and "GOODS VAN/TRUCK/UTILITY" VEHICLE_TYPE
 # buckets -- a real quirk of NZ's vehicle classification (e.g. a
@@ -275,6 +273,15 @@ EV_CATEGORIES = [
     ("Tractors", "VEHICLE_TYPE = 'TRACTOR'"),
 ]
 
+# The fleet an EV share is measured against: every registered vehicle
+# except trailers and caravans. Those are ~15% of the register (about
+# 880,000) and have no engine at all, so counting them would understate
+# every "% of the fleet" figure -- nationally 1.8% against a true 2.2%
+# of powered vehicles. Per-category shares are unaffected (no category
+# includes trailers).
+FLEET_WHERE = ("(VEHICLE_TYPE IS NULL OR VEHICLE_TYPE NOT IN "
+               "('TRAILER/CARAVAN','TRAILER NOT DESIGNED FOR H/WAY USE'))")
+
 # Rotorua Lakes District's territory straddles Bay of Plenty and
 # Waikato -- most of its area and Rotorua city itself is Bay of Plenty,
 # but the district's geometric centroid falls on its (larger, rural)
@@ -286,18 +293,12 @@ TLA_REGION_OVERRIDES = {
     "Rotorua District": "Bay of Plenty",
 }
 
-# GUEHMT (fetch_trends' battery-count source) spells one council's name
-# without macrons, unlike every other real council name used throughout
-# this file -- verified live: "Manawatu-Wanganui" (GUEHMT) vs the real
-# "Manawatū-Whanganui" is the only mismatch across all 16 councils, and
-# without this it would silently drop that one council's real battery
-# data (see council_battery/main()).
 # EMI spells one council without macrons across *every* one of its
 # datasets -- GUEHMT and the installs-by-region file both say
 # "Manawatu-Wanganui" where the real council name (and Stats NZ's
-# boundaries) say "Manawatū-Whanganui". Verified live: it is the only
-# mismatch across all 16 councils in both sources. Applied at every EMI
-# council-name boundary, not just the one where it was first noticed.
+# boundaries) say "Manawatū-Whanganui". It is the only mismatch across
+# all 16 councils in both sources. Applied at every point an EMI council
+# name enters this file, so every dataset keys on the same spelling.
 EMI_COUNCIL_ALIASES = {
     "Manawatu-Wanganui": "Manawatū-Whanganui",
 }
@@ -387,9 +388,8 @@ def normalise(name):
     a real marker of who owns/maintains the road, not part of the
     road's own name, and never present in OSM's name tag -- stripped
     before anything else so "Dryland Track (Pvt)" still finds OSM's
-    plain "Dryland Track". Verified live: 184 of 188 Northland (PVT)
-    streets that were otherwise completely unmatched turned out to
-    already be in OSM under their plain name.
+    plain "Dryland Track". Nearly all of Northland's otherwise-unmatched
+    (PVT) streets are in OSM under their plain name.
 
     Many OSM way names carry macrons on te reo Māori words ("Kākāpō
     Street") while EMI's own street field never does ("Kakapo Street") --
@@ -399,9 +399,6 @@ def normalise(name):
     *before* the character-class filter below, which would otherwise
     silently blank out each accented letter into a space and mangle the
     whole word (e.g. "KĀKĀPŌ" -> "K K P", never matching anything).
-    Verified live: every one of Ahipara's unmatched bird-named streets
-    (Kaka/Kakapo/Kokopu/Korora/Kotare) turned out to be exactly this --
-    already in OSM, just spelled with macrons.
     """
     if not name:
         return ""
@@ -453,8 +450,7 @@ def reconcile(totals, region_tree, towns):
     street file (necessarily approximate -- 82% of its rows are "3 or
     less"). A regression that quietly starts summing the second kind
     where the first kind belongs is invisible in the UI but makes the
-    whole dashboard irreconcilable, which is exactly what happened
-    before this check existed.
+    whole dashboard irreconcilable with its source.
 
     Anything reported here is a real disagreement to explain, not a
     tolerance to widen.
@@ -509,13 +505,16 @@ def reconcile(totals, region_tree, towns):
             "Reconciliation", f"{len(bad)} of {len(checks)} checks failed",
             "published figures disagree with EMI's own totals",
         )
-    # Towns are street-derived and cannot reconcile -- reported so the
-    # gap stays a known quantity rather than becoming a surprise.
+    # Towns are built from geocoded streets, with suppressed streets
+    # weighted to their council's measured average (suppressed_weights),
+    # so they should land a little *under* EMI's total -- short by
+    # roughly the streets that couldn't be placed on a road. Reported
+    # rather than asserted, so the gap stays a known quantity.
     if towns and totals.get("icps"):
         town_sum = sum(t["icps"] for t in towns)
         print(f"  [info] town install sum {town_sum:,} vs EMI's {totals['icps']:,} "
-              f"({town_sum / totals['icps'] * 100:.1f}%) -- expected high: each suppressed street "
-              f"row counts as {SUPPRESSED}. Town figures are published as approximate.")
+              f"({town_sum / totals['icps'] * 100:.1f}%) -- expected slightly under 100%: "
+              f"streets that couldn't be geocoded aren't in any town.")
     return not bad
 
 
@@ -535,30 +534,47 @@ def report_failures():
               f"(the previously committed file is still being served)")
 
 
-def rolling_baseline(path, vintage, totals):
-    """(baseline_totals, snapshot_to_save) for a leaderboard comparison.
+def content_vintage(*parts):
+    """A short fingerprint of the figures themselves, used as a dataset's
+    "vintage" for change tracking. EMI rewrites its files (and bumps
+    Last-Modified) far more often than the numbers in them change, so a
+    date-keyed baseline kept rolling forward onto identical data and
+    every change came out as zero. A fingerprint only moves when the
+    data does."""
+    import hashlib
+    return hashlib.sha1(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()[:12]
+
+
+def rolling_baseline(path, vintage, totals, date=None):
+    """(baseline_totals, snapshot_to_save) for a change comparison.
 
     The snapshot only moves on when the *source* publishes something new,
-    not on every pipeline run. EMI and NZTA republish monthly while this
-    runs weekly, so overwriting the baseline each run meant the
-    comparison was against figures identical to the current ones for
-    three runs out of four -- every change came out as zero and the
-    leaderboard, which drops non-gainers, showed "no comparison data
-    yet" almost all the time.
+    not on every pipeline run -- otherwise any run between two releases
+    compares the data with itself, every change comes out as zero, and
+    the leaderboard (which drops non-gainers) shows nothing.
 
-    Keyed on the source's own data vintage (EMI's Last-Modified, NZTA's
-    dataLastEditDate), so an interim run keeps showing the most recent
-    real release-over-release movement instead of blanking it.
+    `vintage` identifies the release (content_vintage for EMI, NZTA's
+    dataLastEditDate for the vehicle register); `date` is that release's
+    publication date, kept alongside so the UI can say what a change is
+    measured since. An older snapshot saved as a flat {key: value} dict
+    is read as totals of unknown vintage.
     """
     snap = load(path, {}) or {}
+    if snap and "vintage" not in snap:
+        snap = {"vintage": None, "totals": snap}
     if snap.get("vintage") == vintage:
         # Nothing new upstream: keep comparing against the same release
         # as last time, and leave the stored snapshot alone.
         return snap.get("baseline") or {}, snap
     return snap.get("totals") or {}, {
         "vintage": vintage,
+        "date": date,
         "totals": totals,
         "baselineVintage": snap.get("vintage"),
+        # Snapshots written before dates were stored used the date itself
+        # as the vintage, so fall back to that when it looks like one.
+        "baselineDate": snap.get("date") or (
+            snap.get("vintage") if re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(snap.get("vintage"))) else None),
         "baseline": snap.get("totals") or {},
     }
 
@@ -590,28 +606,48 @@ def save(path, obj, indent=None):
 # Step 1 - SA2 areas (cached; boundaries only change at census time)
 # ----------------------------------------------------------------------
 
-def get_areas():
+# EMI's data references a handful of SA2s with no land boundary (inlets,
+# oceanic areas), so a few unknown codes are normal. More than this means
+# EMI has moved to a boundary vintage the cache predates.
+SA2_UNKNOWN_TOLERANCE = 20
+
+
+def get_areas(required_codes=()):
+    """{SA2 code: [name, s, w, n, e]}, cached. Refetched when EMI's data
+    references more than SA2_UNKNOWN_TOLERANCE codes the cache doesn't
+    have -- Stats NZ revises SA2 boundaries with each Census, and without
+    this every street in a new-vintage SA2 would silently fail to place.
+    """
     cached = load(SA2_CACHE, None)
     if cached:
-        print(f"Areas: {len(cached)} (cached)")
-        return cached
+        unknown = {c for c in required_codes if c not in cached}
+        if len(unknown) <= SA2_UNKNOWN_TOLERANCE:
+            print(f"Areas: {len(cached)} (cached)")
+            return cached
+        print(f"{len(unknown)} SA2 codes in EMI's data aren't in {SA2_CACHE} -- refetching boundaries")
+        try:
+            return _fetch_areas(required_codes)
+        except Exception as exc:                       # noqa: BLE001
+            note_failure("SA2 boundaries", exc, "streets in new SA2s can't be placed until the refetch succeeds")
+            return cached
+    return _fetch_areas(required_codes)
 
-    # The archive (not just the current-year layer) matters: EMI's street
-    # data references a mix of SA2 vintages, including codes retired in
-    # the 2023 boundary revision. Querying every year and keeping the
-    # newest boundary per code covers current *and* legacy codes.
-    #
-    # No maxAllowableOffset -- full precision matters here (same reasoning
-    # as fetch_territorial_authorities): this geometry is only ever
-    # reduced to a bbox below, but a *simplified* polygon's bbox can be
-    # meaningfully smaller than the real one, not just coarser-looking.
-    # Verified live: with the previous maxAllowableOffset=500,
-    # Wellington's tiny "Ngaio North" SA2 cached a bbox barely half the
-    # true one's height, silently rejecting every real geocoded match
-    # near its (wrongly-cut-off) southern edge. The bbox is all this
-    # function keeps, so the extra precision costs nothing downstream --
-    # just a heavier one-time fetch (cached to disk afterwards, same as
-    # every other boundary layer in this file).
+
+def _fetch_areas(required_codes=()):
+    """Every SA2 boundary vintage from Stats NZ's archive layer, reduced
+    to bboxes and cached.
+
+    The archive (not just the current-year layer) matters: EMI's street
+    data references a mix of SA2 vintages, including codes retired in
+    boundary revisions. Querying every year and keeping the newest
+    boundary per code covers current *and* legacy codes.
+
+    No maxAllowableOffset: the geometry is only reduced to a bbox here,
+    and a simplified polygon's bbox can be much smaller than the real
+    one (small SA2s lose whole edges), which would reject genuine road
+    matches near the cut-off side. The bbox is all that's kept, so full
+    precision costs nothing downstream beyond a heavier fetch.
+    """
     print("Fetching SA2 boundaries from Stats NZ (all vintages)...")
     areas, offset = {}, 0
     while True:
@@ -650,6 +686,10 @@ def get_areas():
 
     save(SA2_CACHE, areas)
     print(f"Areas: {len(areas)}")
+    still = {c for c in required_codes if c not in areas}
+    if len(still) > SA2_UNKNOWN_TOLERANCE:
+        note_failure("SA2 boundaries", f"{len(still)} of EMI's SA2 codes have no boundary, e.g. "
+                     f"{', '.join(sorted(still)[:5])}", "their streets can't be placed on the map")
     return areas
 
 
@@ -728,17 +768,12 @@ def read_streets(text):
                 # (privacy: "3 or less" ICPs) -- but still publishes a
                 # real per-ICP Avg for that same row, since an average
                 # alone doesn't identify a household the way an exact
-                # count/sum pair could. Verified live: every one of the
-                # 6,569 non-suppressed rows has a real Sum (never blank),
-                # consistently ~= Avg * ICPs, while all 30,490 suppressed
-                # rows have a blank Sum but a real Avg -- so avg * this
-                # row's own (nominal, SUPPRESSED-constant) icps count is
-                # a real, grounded estimate, not a guess. Before this
-                # fix, every suppressed row's kW silently defaulted to a
-                # flatly wrong 0.0 -- 82% of all street records
-                # nationally, dragging every kW total that sums over
-                # them (region/town/national MW figures) well below the
-                # real number.
+                # count/sum pair could. Every non-suppressed row has a
+                # Sum (~= Avg * ICPs) and every suppressed row a blank Sum
+                # with a real Avg, so Avg * this row's placeholder count
+                # is a grounded estimate. Leaving it at 0 would drop the
+                # capacity of ~80% of street records from every total
+                # summed over them.
                 try:
                     avg = float(row.get("GenerationCapacityKilowattsAvg") or 0)
                     rec["kW"] = avg * n
@@ -755,8 +790,8 @@ def read_regions(text):
     """National and per-network-region solar totals for the dashboard,
     including EMI's own residential/business split.
 
-    Res and Bus are real published rows, not an apportionment: verified
-    live that Res + Bus equals the All row exactly for every region.
+    Res and Bus are real published rows, not an apportionment: Res + Bus
+    equals the All row exactly for every region (reconcile() checks it).
     """
     import csv
     import io
@@ -886,16 +921,10 @@ def fetch_anzsic_ratios():
         for c in council_totals if council_res.get(c)
     }
     # National blend across every network, as a fallback for a council
-    # whose own ratio is unrepresentative rather than simply missing --
-    # concretely "Nelson": its *network* footprint (Nelson Electricity)
-    # covers only a few blocks, while the real town's installs are
-    # mostly served by Network Tasman (see NETWORK_TO_COUNCIL), so
-    # Nelson's own ratio is built from a tiny, skewed sample. Applied to
-    # Nelson's real (much larger) dwelling count, that ratio produced an
-    # estimated total *smaller* than Nelson's real install count already
-    # observed -- the same "impossible" guard _estimate_town_pcts uses
-    # elsewhere -- which silently dropped Nelson's estimate entirely.
-    # Verified live: this is exactly why Nelson showed no estPct.
+    # whose own ratio is missing or unrepresentative (a council whose
+    # network rollup is dominated by a neighbour's network, e.g. Nelson).
+    # main() prefers GUEHMT's council-attributed ratio over these where
+    # it's available.
     total_res = sum(residential.values())
     if total_res:
         ratios["__national__"] = sum(totals.values()) / total_res
@@ -903,10 +932,9 @@ def fetch_anzsic_ratios():
     # Agriculture's share of each council's non-residential connections.
     # Used to narrow the rural-business figure towards actual farms: the
     # geographic test only asks "outside a town", which also catches
-    # rural schools, marae, packhouses and tourism. Verified live that
-    # the two agree closely in genuinely farming regions (Canterbury 412
-    # vs 413, Hawke's Bay 170 vs 171) and diverge where rural non-farm
-    # business is common (Auckland 101 vs 215).
+    # rural schools, marae, packhouses and tourism. The two agree closely
+    # in strongly agricultural regions (Canterbury, Hawke's Bay) and
+    # diverge where rural non-farm business is common (Auckland).
     c_agri, c_nonres = {}, {}
     for region, n in nonres.items():
         council = NETWORK_TO_COUNCIL.get(region)
@@ -1087,13 +1115,10 @@ def fetch_regional_councils():
 
     print("Fetching regional council boundaries from Stats NZ...")
     # No maxAllowableOffset: for these large, coastline-heavy polygons it
-    # doesn't just simplify, it corrupts -- verified live that offset=500
-    # collapsed Otago's ~9,000-point coastline into ten 4-point rectangles,
-    # which silently failed point-in-polygon tests for real towns (Wanaka
-    # tested as outside Otago). SA2-sized polygons are small enough that
-    # the same parameter barely changes their bbox, so only this fetch
-    # needed the fix. Full precision here is ~9k points per council,
-    # trivial for point-in-polygon.
+    # doesn't just simplify, it corrupts -- a coarse offset collapses a
+    # coastline like Otago's into a few rectangles, and real towns then
+    # fail point-in-polygon for their own council. Full precision is
+    # ~9k points per council, trivial for point-in-polygon.
     r = get(REGC_SERVICE, timeout=120, params={
         "where": "1=1", "outFields": "REGC_name",
         "returnGeometry": "true", "geometryPrecision": 6, "f": "geojson",
@@ -1118,19 +1143,40 @@ def fetch_regional_councils():
     return councils
 
 
+def _compact_tlas(tlas):
+    """{name: {"bbox", "point"}} -- all the pipeline uses from a TLA's
+    full-precision polygon: its bbox (map-view filtering) and one
+    representative point (region assignment and the label anchor). The
+    full geometry cached as 95 MB of JSON, uncomfortably close to
+    GitHub's 100 MB per-file limit, for two numbers per district."""
+    out = {}
+    for name, t in tlas.items():
+        if "point" in t:
+            out[name] = t
+        else:
+            lat, lng = _representative_point(t["coords"], t["multi"])
+            out[name] = {"bbox": t["bbox"], "point": [lat, lng]}
+    return out
+
+
 def fetch_territorial_authorities():
-    """Real TLA (district/city council) polygons, for the EV dashboard.
-    Cached, same reasoning as fetch_regional_councils -- these boundaries
-    essentially never change, and full precision matters for the same
-    reason (see the no-maxAllowableOffset note above).
+    """TLA (district/city council) bboxes and representative points, for
+    the EV dashboard. Cached -- these boundaries essentially never
+    change. Fetched at full precision (see fetch_regional_councils for
+    why simplification can corrupt a coastline) and then compacted; the
+    choropleth draws from a separate simplified fetch
+    (write_ev_boundaries).
 
     Unlike solar's towns, the EV data source (NZTA's vehicle register)
-    already tags every vehicle with its real TLA directly -- these
-    boundaries are only needed to draw the choropleth and to derive
-    each TLA's parent region (assign_tla_regions).
+    already tags every vehicle with its real TLA directly -- these are
+    only needed to derive each TLA's parent region (assign_tla_regions)
+    and to filter districts to the map view.
     """
     cached = load(TLA_BOUNDS_CACHE, None)
     if cached:
+        if any("coords" in t for t in cached.values()):
+            cached = _compact_tlas(cached)
+            save(TLA_BOUNDS_CACHE, cached)
         return cached
 
     print("Fetching territorial authority boundaries from Stats NZ...")
@@ -1152,6 +1198,7 @@ def fetch_territorial_authorities():
             "multi": geom["type"] == "MultiPolygon",
         }
 
+    tlas = _compact_tlas(tlas)
     save(TLA_BOUNDS_CACHE, tlas)
     return tlas
 
@@ -1262,7 +1309,7 @@ def write_region_boundaries(region_tree, tla_region, towns, sa1_dwellings, anzsi
     all_d18 = sum(v[0] for v in tla_dwell)
     all_d23 = sum(v[1] for v in tla_dwell)
     fallback_cagr = (all_d23 / all_d18) ** (1 / 5) - 1 if all_d18 else 0.0
-    years_ahead = max(datetime.now(timezone.utc).year - 2023, 0)
+    years_ahead = max(datetime.now(timezone.utc).year - CENSUS_YEAR, 0)
     national_ratio = anzsic_ratios.get("__national__")
 
     features = []
@@ -1330,9 +1377,8 @@ def assign_tla_regions(tlas, councils):
     point-in-polygon against council boundaries, same function used for
     every other region assignment in this file), not hand-typed, so it's
     checked against the same real boundary data everywhere else relies
-    on. Verified against all 67 real TLAs; TLA_REGION_OVERRIDES covers
-    the one genuine exception (a TLA whose territory itself straddles
-    two regions).
+    on. TLA_REGION_OVERRIDES covers the one exception among the 67
+    (a TLA whose territory itself straddles two regions).
 
     Also returns each TLA's representative point (see
     _representative_point) -- the frontend's EV choropleth label layer.
@@ -1340,7 +1386,7 @@ def assign_tla_regions(tlas, councils):
     result = {}
     centroids = {}
     for name, t in tlas.items():
-        lat, lng = _representative_point(t["coords"], t["multi"])
+        lat, lng = t["point"]
         centroids[name] = (lat, lng)
         if name in TLA_REGION_OVERRIDES:
             result[name] = TLA_REGION_OVERRIDES[name]
@@ -1349,56 +1395,56 @@ def assign_tla_regions(tlas, councils):
     return result, centroids
 
 
-def build_region_tree(networks, total_icps, council_bounds):
-    """Council-level stats: % of ICPs, installs, MW -- all real EMI
-    figures, joined at the network-reporting-region granularity where
-    EMI itself publishes both solar and total ICPs (see
-    fetch_total_icps). The council grouping on top is a display choice
-    (NETWORK_TO_COUNCIL), never a fabricated number.
+def build_region_tree(emi_councils, council_uptake, total_icps, council_bounds):
+    """One row per regional council: installs, MW and the residential/
+    business split from EMI's own per-council rows (read_regions), and
+    % of connections from EMI's own published uptake rate for that
+    council (council_snapshot). Both use EMI's regional-council
+    attribution, so the % always describes the same area as the count
+    beside it.
 
-    Powers the "National"/"within map view" stat aggregates (which need
-    a real total-ICP denominator that only exists at council
-    granularity), and -- via lat/lng, the same representative-point
-    idea used for the EV choropleth's labels -- the solar dashboard's
-    own "Regions" map mode.
+    Only if the trends report is unavailable does the % fall back to
+    total ICPs rolled up from network reporting regions through
+    NETWORK_TO_COUNCIL. Networks straddle council lines, so that
+    denominator is approximate; where it is plainly impossible (fewer
+    connections than solar installs -- Nelson, whose own network is a
+    few blocks) the % is omitted rather than published.
     """
-    councils = {}
-    # Union with total_icps: a network can have real connections but zero
-    # solar rows in the source (e.g. Nelson Electricity) -- it should
-    # still count, honestly, rather than silently vanishing.
-    for name in set(networks) | set(total_icps):
+    rolled = {}
+    for name, total in total_icps.items():
         council = NETWORK_TO_COUNCIL.get(name)
-        if not council:
-            print(f"  ! No council mapping for network region: {name}")
-            continue
-        s = networks.get(name, {"icps": 0, "kW": 0.0})
-        total = total_icps.get(name, 0)
-        acc = councils.setdefault(council, {"icps": 0, "kW": 0.0, "totalIcps": 0,
-                                            "resIcps": 0, "resKW": 0.0,
-                                            "busIcps": 0, "busKW": 0.0})
-        acc["icps"] += s["icps"]; acc["kW"] += s["kW"]; acc["totalIcps"] += total
-        # EMI's own Res/Bus rows for this network (see read_regions), so
-        # the split is published rather than apportioned.
-        for k in ("resIcps", "resKW", "busIcps", "busKW"):
-            acc[k] += s.get(k, 0)
+        if council:
+            rolled[council] = rolled.get(council, 0) + total
 
     tree = []
-    for council, acc in councils.items():
+    for council, row in emi_councils.items():
+        if "icps" not in row:
+            continue
         bounds = council_bounds.get(council)
         lat, lng = _representative_point(bounds["coords"], bounds["multi"]) if bounds else (None, None)
-        tree.append({
+        up = council_uptake.get(council)
+        if up:
+            total, pct, pct_source = up["totalIcps"], up["pct"], "EMI uptake rate"
+        else:
+            total = rolled.get(council) or None
+            pct = round(row["icps"] / total * 100, 2) if total and total >= row["icps"] else None
+            pct_source = "network rollup" if pct is not None else None
+        entry = {
             "name": council,
-            "icps": acc["icps"],
-            "kW": round(acc["kW"], 1),
-            "totalIcps": acc["totalIcps"],
-            "pct": round(acc["icps"] / acc["totalIcps"] * 100, 2) if acc["totalIcps"] else 0,
-            "resIcps": acc["resIcps"], "resKW": round(acc["resKW"], 1),
-            "busIcps": acc["busIcps"], "busKW": round(acc["busKW"], 1),
+            "icps": row["icps"],
+            "kW": row.get("kW", 0.0),
+            "totalIcps": total,
+            "pct": pct,
+            "pctSource": pct_source,
             "bbox": bounds.get("bbox") if bounds else None,
             "lat": round(lat, 4) if lat is not None else None,
             "lng": round(lng, 4) if lng is not None else None,
-        })
-    tree.sort(key=lambda r: r["pct"], reverse=True)
+        }
+        for k in ("resIcps", "resKW", "busIcps", "busKW"):
+            if k in row:
+                entry[k] = row[k]
+        tree.append(entry)
+    tree.sort(key=lambda r: r["pct"] if r["pct"] is not None else -1, reverse=True)
     return tree
 
 
@@ -1451,18 +1497,12 @@ def fetch_town_polygons():
     and the fetch is several MB.
 
     Used two ways: to *assign* streets and Census dwellings to a town
-    (see _nearest_town_fn) and to draw the Towns map mode. It used to be
-    fetched only for drawing, after assignment had already run against a
-    single point per town. That single-point Voronoi is what broke the
-    town figures: a small town beside a city gets one anchor, the city
-    one anchor at its centre, and the small town's cell swallows the
-    city's outer suburbs. Verified against LINZ's footprints: Taupaki
-    was publishing 2,671 installs (really ~72), Coatesville 2,558
-    (~137), Lyttelton 1,722 (~133), Takanini 1,255 (~46), while Auckland
-    was ~8,000 and Christchurch ~3,900 short. The same Voronoi let
-    Waiheke Island's south coast snap to Kawakawa Bay across the water.
-    Containment in the town's real footprint has none of those failure
-    modes.
+    (see _nearest_town_fn) and to draw the Towns map mode. Assigning by
+    nearest town centre instead (one point per town) goes badly wrong
+    beside cities: a small town's catchment swallows the city's outer
+    suburbs, and island coastlines snap to the nearest mainland town
+    across the water. Containment in the town's real footprint has
+    neither failure mode.
     """
     cached = load(TOWN_POLYGONS_CACHE, None)
     if cached:
@@ -1504,6 +1544,22 @@ def fetch_town_polygons():
     return out
 
 
+CENSUS_YEAR = 2023   # the Census SA1_CENSUS_SERVICE's dwelling counts come from
+
+
+def census_projection_check():
+    """Town and district estimates project Census dwellings forward from
+    CENSUS_YEAR. That's reasonable for a few years; beyond that the
+    projection error grows faster than the estimate is worth, and a
+    newer Census will have been published. Flags the run (once) so the
+    source gets updated rather than quietly extrapolating for a decade.
+    """
+    years = datetime.now(timezone.utc).year - CENSUS_YEAR
+    if years > 6 and not any(f["dataset"] == "Census vintage" for f in FAILURES):
+        note_failure("Census vintage", f"dwelling counts are from {CENSUS_YEAR}, projected {years} years forward",
+                     "update SA1_CENSUS_SERVICE and CENSUS_YEAR to the latest Census")
+
+
 def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios, polygons=None):
     """Attaches row["estPct"] in place to entries of `towns`, for towns
     small enough that EMI has no real per-town ICP total to divide by
@@ -1535,6 +1591,7 @@ def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios, polyg
     """
     if not sa1_dwellings or not anzsic_ratios or not town_anchors:
         return
+    census_projection_check()
 
     nearest_town = _nearest_town_fn(town_anchors, polygons)
     sums = {}   # name -> [dwellings_2018, dwellings_2023]
@@ -1550,7 +1607,7 @@ def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios, polyg
     all_d23 = sum(v[1] for v in sums.values())
     fallback_cagr = (all_d23 / all_d18) ** (1 / 5) - 1 if all_d18 else 0.0
 
-    years_ahead = max(datetime.now(timezone.utc).year - 2023, 0)
+    years_ahead = max(datetime.now(timezone.utc).year - CENSUS_YEAR, 0)
     by_name = {t["name"]: t for t in towns}
 
     national_ratio = anzsic_ratios.get("__national__")
@@ -1558,9 +1615,8 @@ def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios, polyg
     for name, (d18, d23) in sums.items():
         row = by_name.get(name)
         # Below ~30 dwellings the 2018->2023 ratio swings wildly on a
-        # handful of houses (a literal conservation park matched 9
-        # dwellings in testing) -- too little signal for a 3-year
-        # compounded projection to mean anything.
+        # handful of houses -- too little signal for a compounded
+        # projection to mean anything.
         if not row or d23 < 30:
             continue
         cagr = (d23 / d18) ** (1 / 5) - 1 if d18 else fallback_cagr
@@ -1584,25 +1640,17 @@ def _estimate_town_pcts(towns, town_anchors, sa1_dwellings, anzsic_ratios, polyg
 
 
 def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_ratios=None, polygons=None):
-    """docs/town_boundaries.geojson -- a real boundary per town, for
-    solar's "Towns" map mode (border lines rather than dots). Built by
-    merging LINZ's own locality polygons within each major_name
-    grouping -- the same field fetch_town_anchors already groups by for
-    its anchor point -- into one shape via shapely, a real union rather
-    than an approximation (e.g. a convex hull, which would bulge over
-    empty land for any spread-out town). A town's footprint can extend
-    well beyond its built-up area for locality groups with surrounding
-    rural land -- that's the real LINZ grouping, drawn here purely for
-    display; it's *narrower* in places than build_towns' actual
-    nearest-anchor install catchment, which is why the estPct step below
-    uses town_anchors instead of these polygons (see _estimate_town_pcts).
+    """docs/town_boundaries.geojson -- each town's footprint (the union
+    of its LINZ locality polygons, see fetch_town_polygons) for solar's
+    "Towns" map mode. The same footprints decide which town a street or
+    Census dwelling belongs to, so what's drawn is exactly the catchment
+    the numbers come from. A footprint can extend well beyond the
+    built-up area where a locality group includes surrounding rural
+    land; that's LINZ's own grouping.
 
-    Also computes each town's estPct (see _estimate_town_pcts), when
-    Census/ANZSIC data is available -- mutates `towns` in place, so
-    meta.json picks it up too.
-
-    Needs shapely (not used anywhere else in this file) for the union
-    itself; degrades gracefully (see main()) if it's not installed.
+    Also computes each town's estPct (see _estimate_town_pcts) when
+    Census and connection-mix data are available -- mutates `towns` in
+    place, so meta.json picks it up too.
     """
     from shapely.geometry import shape, mapping
 
@@ -1635,23 +1683,27 @@ def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_r
 
 GUEHMT_MW_COLUMN = "Total capacity installed (MW)"
 GUEHMT_NEW_AVG_COLUMN = "Avg. capacity - new installations (kW)"
+# EMI's own "% of ICPs with this fuel type" for the region -- solar ICPs
+# over that region's total ICPs, both counted under the same regional
+# council attribution. This is the figure the site publishes as a
+# region's "% of connections" (see council_snapshot).
+GUEHMT_UPTAKE_COLUMN = "ICP uptake rate (%)"
 
 
 def _fetch_guehmt(fuel_type, region_type, market_segment=None):
     """One slice of the GUEHMT report, as
-    {region name: {date: {"icps", "mw", "avgNew"}}}.
+    {region name: {date: {"icps", "mw", "avgNew", "uptake"}}}, with EMI's
+    council names normalised through emi_council().
 
     Every metric comes out of one response: GUEHMT's CSV export carries
-    all of its columns regardless of the report's own "Show" setting
-    (verified live -- this request never asks for capacity and gets it
-    anyway), so capacity and the new-installation average cost nothing
-    beyond the request already being made.
+    all of its columns regardless of the report's own "Show" setting,
+    so capacity, uptake rate and the new-installation average cost
+    nothing beyond the request already being made.
 
     market_segment picks EMI's own market split -- None/"All", "Res",
     "Com", "Ind" (also "SME", but that one is a cross-cutting subset,
-    not a fourth exclusive bucket: verified live that Res + Com + Ind
-    sums exactly to All in every month, while SME on its own is larger
-    than Com).
+    not a fourth exclusive bucket: Res + Com + Ind sums exactly to All,
+    while SME on its own is larger than Com).
     """
     params = {
         "DateFrom": "20130901",
@@ -1676,6 +1728,16 @@ def _fetch_guehmt(fuel_type, region_type, market_segment=None):
         except ValueError:
             return 0.0
 
+    def rate(row):
+        # None rather than 0 when the column is missing or blank, so a
+        # renamed column falls back to the network-derived % instead of
+        # publishing 0% everywhere.
+        try:
+            v = float(row.get(GUEHMT_UPTAKE_COLUMN) or "")
+        except ValueError:
+            return None
+        return v if v > 0 else None
+
     by_region = {}
     for row in csv.DictReader(io.StringIO("\n".join(lines[start:]))):
         name = row.get("Region name")
@@ -1687,7 +1749,8 @@ def _fetch_guehmt(fuel_type, region_type, market_segment=None):
         except (TypeError, ValueError):
             continue
         d, m, y = date.split("/")
-        by_region.setdefault(name, {})[f"{y}-{m}-{d}"] = {
+        by_region.setdefault(emi_council(name), {})[f"{y}-{m}-{d}"] = {
+            "uptake": rate(row),
             "icps": icps,
             "mw": num(row, GUEHMT_MW_COLUMN, 3),
             # Average size of the systems connected *that month*, as EMI
@@ -1706,6 +1769,10 @@ def fetch_trends():
     also have a battery -- real EMI figures, the time-series view of the
     same "Installed distributed generation trends" report the rest of
     this pipeline draws a single snapshot from.
+
+    Returns (trends, snapshot). trends is docs/trends.json. snapshot is
+    the latest month's council and national figures EMI publishes in
+    the same report -- see council_snapshot().
     """
     print("Fetching historical install trends from EMI...")
     council_all = _fetch_guehmt("solar_all", "REG_COUNCIL")
@@ -1714,15 +1781,16 @@ def fetch_trends():
     network_all = _fetch_guehmt("solar_all", "NWK_REPORTING_REGION_DIST")
     network_batt = _fetch_guehmt("solarplusbattery", "NWK_REPORTING_REGION_DIST")
     network_res = _fetch_guehmt("solar_all", "NWK_REPORTING_REGION_DIST", "Res")
-    # The national new-install average is an average, so it can't be
-    # summed from the councils the way counts and capacity can -- taken
-    # from GUEHMT's own New Zealand row instead.
+    # The national new-install average and uptake rate are ratios, so they
+    # can't be summed from the councils the way counts and capacity can --
+    # taken from GUEHMT's own New Zealand rows instead.
+    nz_all = _fetch_guehmt("solar_all", "NZ")
     nz_res = _fetch_guehmt("solar_all", "NZ", "Res")
 
     dates = sorted({d for series in council_all.values() for d in series}
                     | {d for series in network_all.values() for d in series})
 
-    BLANK = {"icps": 0, "mw": 0.0, "avgNew": 0.0}
+    BLANK = {"icps": 0, "mw": 0.0, "avgNew": 0.0, "uptake": None}
 
     def series_for(all_map, batt_map, res_map):
         out = {}
@@ -1753,7 +1821,65 @@ def fetch_trends():
         "resAvgNewKW": [nz_row.get(d, BLANK)["avgNew"] for d in dates],
     }
 
-    return {"dates": dates, "national": national, "councils": councils, "networks": networks}
+    trends = {"dates": dates, "national": national, "councils": councils, "networks": networks}
+    snapshot = council_snapshot(council_all, council_res, council_batt,
+                                nz_all.get("New Zealand", {}), nz_row)
+    return trends, snapshot
+
+
+def council_snapshot(council_all, council_res, council_batt, nz_all, nz_res):
+    """The latest month's council and national figures from GUEHMT, each
+    measured under EMI's own regional-council attribution:
+
+      pct            EMI's published uptake rate (solar ICPs / all ICPs)
+      totalIcps      the all-ICP count that rate implies
+      resTotalIcps   residential ICPs, from the residential uptake rate
+      battery        solar ICPs that also have a battery
+
+    This is what "% of connections" is published from. The alternative
+    -- dividing a council's solar count by total ICPs rolled up from
+    EMI's network reporting regions -- mixes two attributions: networks
+    don't follow council lines (Network Tasman serves most of Nelson
+    city, Network Waitaki serves Oamaru in Otago, Electra serves
+    Horowhenua in Manawatū-Whanganui), so the rolled-up denominator
+    belongs to a different area from the numerator. That put Tasman at
+    roughly half its real rate and left Nelson without one.
+    """
+    def latest(series):
+        if not series:
+            return None, None
+        d = max(series)
+        return d, series[d]
+
+    out, month = {}, None
+    for name, series in council_all.items():
+        d, row = latest(series)
+        if not row or not row["uptake"] or not row["icps"]:
+            continue
+        month = max(month or d, d)
+        entry = {
+            "month": d,
+            "icps": row["icps"],
+            "pct": round(row["uptake"], 2),
+            "totalIcps": round(row["icps"] / row["uptake"] * 100),
+        }
+        res = (council_res.get(name) or {}).get(d)
+        if res and res["uptake"] and res["icps"]:
+            entry["resTotalIcps"] = round(res["icps"] / res["uptake"] * 100)
+        batt = (council_batt.get(name) or {}).get(d)
+        if batt is not None:
+            entry["battery"] = batt["icps"]
+        out[name] = entry
+
+    national = None
+    d, row = latest(nz_all)
+    if row and row["uptake"] and row["icps"]:
+        national = {"month": d, "icps": row["icps"], "pct": round(row["uptake"], 2),
+                    "totalIcps": round(row["icps"] / row["uptake"] * 100)}
+        res = nz_res.get(d)
+        if res and res["uptake"] and res["icps"]:
+            national["resTotalIcps"] = round(res["icps"] / res["uptake"] * 100)
+    return {"month": month, "councils": out, "national": national}
 
 
 # ----------------------------------------------------------------------
@@ -1843,8 +1969,9 @@ def _mvr_query(where, group_fields=None):
 def fetch_ev_snapshot(tla_names):
     """Current EV counts, and each category's real % of the *local*
     vehicle fleet, by TLA -- one groupBy-TLA query per category for EVs
-    and one for that category's total fleet (2 x 5 categories + 2
-    overall = 12 queries total, each aggregated server-side).
+    and one for that category's total fleet, plus the two overall ones
+    (see FLEET_WHERE for what "the fleet" includes), each aggregated
+    server-side.
 
     tla_names maps the MVR's own ALL-CAPS TLA spelling (e.g. "FAR NORTH
     DISTRICT") to the boundary layer's proper-case name ("Far North
@@ -1865,7 +1992,7 @@ def fetch_ev_snapshot(tla_names):
         return out
 
     overall_ev = counts_by_tla("MOTIVE_POWER = 'ELECTRIC'")
-    overall_total = counts_by_tla("1=1")
+    overall_total = counts_by_tla(FLEET_WHERE)
 
     categories = {}
     for name, clause in EV_CATEGORIES:
@@ -2221,15 +2348,66 @@ def _nearest_town_fn(town_anchors, polygons=None):
     return nearest_town
 
 
-def build_towns(features, town_anchors, council_bounds, rural_known=False, polygons=None):
-    """Group placed streets into real towns (nearest named-locality
-    centre) -- e.g. "Wanaka" and "Queenstown" as separate entries -- each
-    tagged with the regional council it falls inside and its own
-    coordinates (so the dashboard can filter towns to the current map
-    view directly, not via their council's much coarser bbox). No %:
-    EMI publishes total ICPs per network-reporting-region, not per town,
-    so there's no honest denominator at this granularity -- installs and
-    MW only.
+SUPPRESSED_WEIGHT_RANGE = (1.0, 3.0)   # "3 or less" can only mean 1, 2 or 3
+
+
+def suppressed_weights(records, areas, council_bounds, emi_councils):
+    """{SA2 code: installs to count per "3 or less" street} for adding
+    streets up into towns and districts.
+
+    Counting every suppressed street as SUPPRESSED (2) is fine for one
+    street, but summed over a town it drifts: most suppressed streets
+    hold one install, so the flat 2 overstates town totals -- by
+    anything from ~1% (Nelson) to ~40% (Southland) depending on how many
+    of a region's streets are suppressed. EMI's exact per-council total
+    pins that down. In each council the suppressed streets must hold
+    whatever the exact streets don't:
+
+        weight = (EMI council total - exact street installs) / suppressed streets
+
+    so a council's streets add back up to EMI's own figure, and every
+    town inherits its council's measured average rather than an
+    assumption. Clamped to 1-3, the only values "3 or less" can mean.
+    SA2s are assigned to a council by centre point, the same rule
+    geocode() batches by.
+    """
+    exact, suppressed, council_of = {}, {}, {}
+    for (code, _), rec in records.items():
+        if code not in areas:
+            continue
+        if code not in council_of:
+            _, s, w, n, e = areas[code]
+            council_of[code] = council_of_point((s + n) / 2, (w + e) / 2, council_bounds)
+        c = council_of[code]
+        if rec["est"]:
+            suppressed[c] = suppressed.get(c, 0) + 1
+        else:
+            exact[c] = exact.get(c, 0) + rec["icps"]
+
+    per_council = {}
+    lo, hi = SUPPRESSED_WEIGHT_RANGE
+    for c, n in suppressed.items():
+        total = (emi_councils.get(c) or {}).get("icps")
+        if total and n:
+            per_council[c] = round(min(hi, max(lo, (total - exact.get(c, 0)) / n)), 3)
+    if per_council:
+        print("Installs per suppressed street, by council: " +
+              ", ".join(f"{c} {w:.2f}" for c, w in sorted(per_council.items())))
+    return {code: per_council[c] for code, c in council_of.items() if c in per_council}
+
+
+def build_towns(features, town_anchors, council_bounds, rural_known=False, polygons=None,
+                weights=None):
+    """Group placed streets into real towns -- e.g. "Wānaka" and
+    "Queenstown" as separate entries -- by containment in each town's
+    LINZ footprint (see _nearest_town_fn). Each is tagged with the
+    regional council its anchor falls inside and its own coordinates, so
+    the dashboard can filter towns to the current map view directly.
+
+    Suppressed ("3 or less") streets count as their council's measured
+    weight (see suppressed_weights) rather than a flat SUPPRESSED, and
+    their capacity scales with it, so town totals don't systematically
+    overstate. Without weights they fall back to SUPPRESSED.
 
     Returns a flat list, sorted by installs descending.
     """
@@ -2237,18 +2415,24 @@ def build_towns(features, town_anchors, council_bounds, rural_known=False, polyg
         return []
 
     nearest_town = _nearest_town_fn(town_anchors, polygons)
+    weights = weights or {}
 
     towns = {}   # town name -> accumulator
     for f in features:
         p = f["properties"]
         lng, lat = f["geometry"]["coordinates"]
         name = nearest_town(lat, lng)
-        t = towns.setdefault(name, {"icps": 0, "kW": 0.0, "res": 0, "bus": 0,
-                                    "ruralBus": 0, "ruralBusKW": 0.0, "rural": False})
-        t["icps"] += p["icps"]; t["kW"] += p["kW"]
+        t = towns.setdefault(name, {"icps": 0.0, "kW": 0.0, "res": 0, "bus": 0,
+                                    "ruralBus": 0, "ruralBusKW": 0.0})
+        icps, kW = p["icps"], p["kW"]
+        w = weights.get(p["sa2"]) if p.get("est") else None
+        if w and icps:
+            # kW for a suppressed row is EMI's per-install average times
+            # the placeholder count (see read_streets), so rescale it.
+            kW, icps = kW / icps * w, w
+        t["icps"] += icps; t["kW"] += kW
         t["res"] += p.get("res", 0); t["bus"] += p.get("bus", 0)
         if p.get("rural"):
-            t["rural"] = True
             t["ruralBus"] += p.get("bus", 0)
             # Apportion this street's capacity to its business share --
             # EMI publishes one kW total per street, not one per market
@@ -2263,7 +2447,7 @@ def build_towns(features, town_anchors, council_bounds, rural_known=False, polyg
         council = council_of_point(alat, alng, council_bounds)
         row = {
             "name": name, "council": council,
-            "icps": t["icps"], "kW": round(t["kW"], 1),
+            "icps": round(t["icps"]), "kW": round(t["kW"], 1),
             "res": t["res"], "bus": t["bus"],
             "lat": round(alat, 4), "lng": round(alng, 4),
         }
@@ -2314,13 +2498,9 @@ def roads_in_bbox(bbox):
     residential street straddling two suburbs, a road running the
     length of a gorge) -- that way's overall centre can land outside
     the specific SA2 an install is actually in, even though part of
-    the very same way genuinely passes through it. Verified live: in
-    one real case (Chelmsford Street, Wellington) a single 68-node way
-    had 28 nodes in one SA2 and 56 in the neighbouring one, so its
-    centre fell only in the second -- the first SA2's real install
-    would go unmatched under the old centre-only approach. Keeping
-    every node lets geocode() place a street using only the nodes that
-    actually fall inside the SA2 in question.
+    the very same way genuinely passes through it. Keeping every node
+    lets geocode() place a street using only the nodes that actually
+    fall inside the SA2 in question.
     """
     s, w, n, e = bbox
     data = overpass(
@@ -2342,9 +2522,8 @@ def roads_in_bbox(bbox):
 def geocode(records, areas, council_bounds):
     """One Overpass query per regional council (~16), not per SA2
     (~2,100). Batching by a much larger area cuts network round-trips by
-    two orders of magnitude -- verified live: a whole-council query
-    (Wellington, ~18,800 roads, full node geometry) took 24s, comfortably
-    inside the pipeline's budget even at that scale.
+    two orders of magnitude; even a large council (Wellington, ~18,800
+    roads with full node geometry) returns in well under a minute.
 
     Each SA2's roads are then matched from its council's result set by
     keeping only the candidate *nodes* that fall inside *that SA2's own
@@ -2378,11 +2557,9 @@ def geocode(records, areas, council_bounds):
     # are only ever touched below once its query actually succeeds. If
     # Overpass is having a bad day for one council, that council simply
     # keeps last week's real positions instead of every street in it
-    # silently vanishing from the map. Verified live: this is exactly
-    # what happened to Northland/Nelson/Tasman/Gisborne during a spell of
-    # Overpass mirror outages -- without this fallback, a single bad
-    # geocoding run would have erased four regions' worth of real,
-    # previously-placed streets on the next publish.
+    # silently vanishing from the map. Overpass mirrors do have multi-day
+    # outages, so without this one bad run could erase whole regions'
+    # worth of previously placed streets.
     cache = load(ROAD_CACHE, {})
     n_councils = len(codes_by_council)
     for i, (council, codes) in enumerate(codes_by_council.items(), 1):
@@ -2494,8 +2671,6 @@ def build(records, cache, areas, previous, is_rural=None):
 
 
 def main():
-    areas = get_areas()
-
     records = read_streets(fetch_csv(STREET_CSV))
     print(f"EMI: {len(records):,} streets")
     # A real run has ~35-40k records; a number this far below that means
@@ -2511,6 +2686,7 @@ def main():
         print("Suspiciously few street records -- likely an EMI CSV schema "
               "change; failing so nothing broken gets published")
         sys.exit(1)
+    areas = get_areas({code for code, _ in records})
     data_date = fetch_data_date(STREET_CSV) or datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     try:
@@ -2518,6 +2694,11 @@ def main():
     except Exception as exc:                       # noqa: BLE001
         note_failure("Region file", exc, "region totals continue from the previous run")
         totals, networks, emi_councils = {}, {}, {}
+
+    # Identifies this EMI release by its figures rather than its file date
+    # (see content_vintage), for the per-street and per-region changes.
+    solar_vintage = content_vintage(
+        sorted((f"{c}|{n}", r["icps"]) for (c, n), r in records.items()), totals, emi_councils)
 
     try:
         total_icps = fetch_total_icps()
@@ -2548,8 +2729,9 @@ def main():
 
     council_battery = {}   # {council: {"installs": N, "battery": N, "pct": N}} -- see below
     national_battery = None   # same, for the whole country
+    snapshot = {"councils": {}, "national": None}   # see council_snapshot
     try:
-        trends = fetch_trends()
+        trends, snapshot = fetch_trends()
         # So the frontend can offer "drill into a network region within
         # this council" without a separate lookup.
         by_council = {}
@@ -2574,23 +2756,18 @@ def main():
         }
         save(OUT_TRENDS, trends)
 
-        # Real council-level battery counts, for the region list/popups
-        # (see below, after region_tree/towns exist). The most recent
-        # month of the same real EMI series the trend chart already
-        # draws on -- installs and battery come from the same GUEHMT
-        # pull here, so the % is a real join, not a number paired across
-        # two different sources (which is exactly the kind of mismatch
-        # that caused the Nelson estPct bug elsewhere in this file).
-        # Only council granularity is published, not per-TLA/town, so
-        # those show this same council figure labelled as such rather
-        # than a number of their own that doesn't exist.
-        for name, series in trends["councils"].items():
-            name = emi_council(name)
-            installs, battery = series["installs"][-1], series["battery"][-1]
-            if installs:
+        # Council-level battery counts, for the region list/popups (see
+        # below, after region_tree/towns exist). The most recent month of
+        # the same EMI series the trend chart draws on -- installs and
+        # battery come from the same GUEHMT month, so the % is a real
+        # join rather than two figures from different reports. Only
+        # council granularity is published, not per-TLA/town, so those
+        # show this same council figure labelled as such.
+        for name, s in snapshot["councils"].items():
+            if s.get("battery") is not None and s["icps"]:
                 council_battery[name] = {
-                    "installs": installs, "battery": battery,
-                    "pct": round(battery / installs * 100, 1),
+                    "installs": s["icps"], "battery": s["battery"],
+                    "pct": round(s["battery"] / s["icps"] * 100, 1),
                 }
 
         # Whole-country equivalent, for the topbar's national view --
@@ -2628,16 +2805,14 @@ def main():
                     f"EV make/model rows sum to {ev_total_from_models:,} but the EV total is "
                     f"{ev_national['ev']:,} -- the two queries no longer agree")
 
-            # Month-over-month change, for the leaderboard -- see
-            # _change() and PREV_EV_TOTALS. TLA totals compare directly
-            # against last run's own snapshot; each region's previous
-            # total is summed from that same snapshot grouped by *this*
-            # run's tla_region (regions are static, so last run's real
-            # per-TLA numbers grouped today are equivalent to -- and
-            # simpler than -- also having archived last run's grouping).
+            # Release-over-release change, for the leaderboard -- see
+            # _change() and rolling_baseline(). District totals compare
+            # against the previous release's own snapshot; each region's
+            # previous total is that snapshot summed by this run's
+            # tla_region (districts don't change region).
             ev_totals = {row["name"]: {"ev": row["ev"]} for row in ev_tlas}
             prev_ev, ev_snapshot = rolling_baseline(
-                PREV_EV_TOTALS, ev_data_date or "unknown", ev_totals)
+                PREV_EV_TOTALS, ev_data_date or content_vintage(ev_totals), ev_totals, ev_data_date)
             for row in ev_tlas:
                 row["change"], row["changePct"] = _change(row["ev"], prev_ev.get(row["name"], {}).get("ev"))
             prev_region_ev = {}
@@ -2661,14 +2836,37 @@ def main():
                 "trends": ev_trends,
                 "topVehicles": top_vehicles,
                 "topVehiclesFossil": top_vehicles_fossil,
+                # The release the leaderboard's changes are measured from.
+                "changeSince": ev_snapshot.get("baselineDate") or ev_snapshot.get("baselineVintage"),
             })
             write_ev_boundaries(ev_tlas)
         except Exception as exc:                       # noqa: BLE001
             note_failure("EV data", exc, "EV dashboard will be omitted")
 
-    region_tree = build_region_tree(networks, total_icps, council_bounds) if networks else []
-    national_total = sum(total_icps.values())
-    if totals and national_total:
+    unmapped = sorted(n for n in set(networks) | set(total_icps) if n and n not in NETWORK_TO_COUNCIL)
+    if unmapped:
+        # EMI has renamed, merged or added a network reporting region.
+        # Council figures don't depend on this mapping any more, but the
+        # chart's network drill-down, the ANZSIC farm share and the
+        # fallback % all do -- so it needs a human to extend the table.
+        note_failure("Network-to-council mapping", f"unmapped: {', '.join(unmapped)}",
+                     "add them to NETWORK_TO_COUNCIL in process.py")
+
+    region_tree = build_region_tree(emi_councils, snapshot["councils"], total_icps, council_bounds)
+    if not region_tree:
+        # The region file failed or came back empty. Publishing an empty
+        # region list would blank every regional figure on the site, so
+        # keep last run's (real, if a week old) figures instead.
+        prev_meta = load(OUT_META, {}) or {}
+        if prev_meta.get("regions"):
+            print("  ! No region rows this run -- keeping the previously published regions")
+            region_tree = prev_meta["regions"]
+            totals = totals or prev_meta.get("national") or {}
+    nat_up = snapshot.get("national")
+    if totals and nat_up:
+        totals["totalIcps"], totals["pct"] = nat_up["totalIcps"], nat_up["pct"]
+    elif totals and total_icps:
+        national_total = sum(total_icps.values())
         totals["totalIcps"] = national_total
         totals["pct"] = round(totals["icps"] / national_total * 100, 2)
     if totals and national_battery:
@@ -2687,7 +2885,8 @@ def main():
     except Exception as exc:                       # noqa: BLE001
         note_failure("Urban/rural areas", exc, "the rural business breakdown will be omitted")
 
-    previous = load("previous_counts.json", {})
+    street_counts = {f"{c}|{n}": r["icps"] for (c, n), r in records.items()}
+    previous, street_snapshot = rolling_baseline(PREV_STREET_COUNTS, solar_vintage, street_counts, data_date)
     features, missing = build(records, cache, areas, previous, is_rural)
 
     # Real town footprints for assignment (see fetch_town_polygons).
@@ -2699,44 +2898,9 @@ def main():
         town_polygons = fetch_town_polygons()
     except Exception as exc:                       # noqa: BLE001
         note_failure("Town footprints", exc, "towns fall back to single-anchor assignment, which over-counts small towns near cities")
-    towns = build_towns(features, town_anchors, council_bounds, is_rural is not None, town_polygons)
-
-    # Region installs/kW/Res/Bus come from EMI's own per-council rows,
-    # not from summing the geocoded streets underneath them.
-    #
-    # The street file exists to place installs on a map, and 82% of its
-    # rows are privacy-suppressed ("3 or less", counted as SUPPRESSED
-    # each), so summing it overstates the country by ~11% -- verified
-    # live: 100,054 against EMI's published 90,416. Publishing that as a
-    # region's install count made the dashboard irreconcilable with its
-    # own source, and put a count next to a percentage that was computed
-    # from a different (correct) numerator.
-    #
-    # Using EMI's council rows also removes the reason the old override
-    # existed: it was there because rolling networks up through
-    # NETWORK_TO_COUNCIL mis-assigns embedded networks (most of Nelson
-    # city is served by Network Tasman). EMI's own council attribution
-    # already handles that -- Nelson reads 1,810 rather than its 14-ICP
-    # embedded network -- so the geographic workaround is no longer
-    # needed for these figures.
-    for r in region_tree:
-        emi_row = emi_councils.get(r["name"])
-        if not emi_row:
-            continue
-        r["icps"] = emi_row["icps"]
-        r["kW"] = emi_row["kW"]
-        for k in ("resIcps", "resKW", "busIcps", "busKW"):
-            if k in emi_row:
-                r[k] = emi_row[k]
-        # totalIcps is still only published per network reporting
-        # region, so its council rollup keeps the embedded-network
-        # problem the numerator no longer has: Nelson's denominator is
-        # 14 connections while Tasman's silently includes Nelson city.
-        # Omit the % rather than publish one built on that.
-        if r["totalIcps"] and r["icps"] > r["totalIcps"]:
-            r["pct"] = None
-        elif r["totalIcps"]:
-            r["pct"] = round(r["icps"] / r["totalIcps"] * 100, 2)
+    weights = suppressed_weights(records, areas, council_bounds, emi_councils) if emi_councils else {}
+    towns = build_towns(features, town_anchors, council_bounds, is_rural is not None, town_polygons,
+                        weights)
 
     # Rural business installs. Deliberately NOT a sum of the street
     # rows: 98% of the street file's business rows are privacy-
@@ -2777,7 +2941,7 @@ def main():
     council_pct = {r["name"]: r["pct"] for r in region_tree}
     council_icps = {r["name"]: r["icps"] for r in region_tree}
     for t in towns:
-        t["councilPct"] = council_pct.get(t["council"], 0)
+        t["councilPct"] = council_pct.get(t["council"])
         t["councilIcps"] = council_icps.get(t["council"])
 
     # Real battery counts (see council_battery, above) -- council-level
@@ -2786,16 +2950,13 @@ def main():
     # councilPct just above.
     #
     # battBase is the install count GUEHMT itself counted the batteries
-    # against, and it is NOT the same as this region's "icps" -- the two
-    # come from different EMI reports that group ICPs by council
-    # differently (SolarInstallationsByRegion rolled up through
-    # NETWORK_TO_COUNCIL, whose networks straddle council lines, versus
-    # GUEHMT's own REG_COUNCIL classification). Verified live across all
-    # 16 councils: GUEHMT runs lower nearly everywhere, e.g. Otago 5,960
-    # vs 6,578, so battInstalls/icps gives 14.5% where the real, reported
-    # rate is 16.0%. Publishing the base lets the UI show where the
-    # percentage actually comes from instead of inviting a division that
-    # silently disagrees with it.
+    # against. Both it and this region's "icps" use EMI's council
+    # attribution, but they come from different EMI publications on
+    # different dates (the trends report's latest month end versus the
+    # installs-by-region file), so they can differ slightly.
+    # Publishing the base lets the UI show exactly what the percentage
+    # was measured against instead of inviting a division that disagrees
+    # with it by a fraction of a percent.
     for r in region_tree:
         cb = council_battery.get(r["name"])
         if cb:
@@ -2807,39 +2968,20 @@ def main():
             t["councilBattInstalls"], t["councilBattPct"] = cb["battery"], cb["pct"]
             t["councilBattBase"] = cb["installs"]
 
-    # Month-over-month change, for the leaderboard -- see _change() and
-    # PREV_TOWN_TOTALS. Each council's previous total is summed from last
-    # run's own per-town snapshot grouped by *this* run's town->council
-    # assignment (real council boundaries barely ever move, so that's
-    # equivalent to -- and simpler than -- also archiving last run's
-    # grouping).
-    # A region's baseline has to be its own previous figure, not the sum
-    # of last run's towns. Those are two different bases: region installs
-    # are EMI's published per-council rows, while town installs are
-    # summed from the privacy-suppressed street file and run ~11% higher
-    # (Auckland 16,873 against a town sum of 19,410). Comparing one to
-    # the other made every region except Nelson report a large fall --
-    # the arithmetic gap, not anything real -- and the leaderboard drops
-    # decliners, so it showed a single row.
-    current_totals = {
-        "towns": {t["name"]: {"icps": t["icps"]} for t in towns},
-        "regions": {r["name"]: {"icps": r["icps"]} for r in region_tree},
-    }
-    baseline, town_snapshot = rolling_baseline(PREV_TOWN_TOTALS, data_date, current_totals)
-    # The file used to be a flat {town: {...}}; tolerate that shape so
-    # the first run after this change doesn't crash on it.
-    prev_towns = baseline.get("towns") if "towns" in baseline else baseline
+    # Release-over-release change per region, for the leaderboard -- see
+    # _change() and rolling_baseline(). Compared against the region's own
+    # figure at the previous EMI release: EMI's per-council rows on both
+    # sides, never a street-derived sum on either.
+    current_totals = {"regions": {r["name"]: {"icps": r["icps"]} for r in region_tree}}
+    baseline, region_snapshot = rolling_baseline(PREV_TOWN_TOTALS, solar_vintage, current_totals, data_date)
     prev_regions = baseline.get("regions", {})
-
-    for t in towns:
-        t["change"], t["changePct"] = _change(t["icps"], (prev_towns or {}).get(t["name"], {}).get("icps"))
     for r in region_tree:
-        # None until a snapshot exists on this same basis, which the
-        # leaderboard renders as "no comparison data yet" -- the honest
-        # state, rather than a fabricated jump on the changeover run.
+        # None until a baseline exists, which the leaderboard renders as
+        # "no comparison data yet" rather than a fabricated jump.
         r["change"], r["changePct"] = _change(r["icps"], prev_regions.get(r["name"], {}).get("icps"))
-
-    save(PREV_TOWN_TOTALS, town_snapshot)
+    if totals:
+        totals["changeSince"] = region_snapshot.get("baselineDate")
+    save(PREV_TOWN_TOTALS, region_snapshot)
 
     # Census dwellings / ANZSIC ratio: fetched once here and shared by
     # both write_region_boundaries (TLA-level estPct) and
@@ -2852,8 +2994,21 @@ def main():
     try:
         anzsic_ratios, agri_share = fetch_anzsic_ratios()
     except Exception as exc:                       # noqa: BLE001
-        note_failure("ANZSIC ICP breakdown", exc, "district/town % estimates will be omitted")
+        note_failure("ANZSIC ICP breakdown", exc, "farm estimates will be omitted")
         anzsic_ratios, agri_share = {}, {}
+    # All-connections / residential-connections per council, for scaling
+    # Census dwellings up to a connection estimate. Taken from GUEHMT's
+    # uptake rates where available -- total and residential ICPs under
+    # EMI's own council attribution -- and from the ANZSIC file rolled up
+    # through NETWORK_TO_COUNCIL otherwise. The two agree to within about
+    # 1% wherever both exist; GUEHMT also covers Nelson, whose own network
+    # is too small to give a representative ANZSIC ratio.
+    for c, s in snapshot["councils"].items():
+        if s.get("resTotalIcps"):
+            anzsic_ratios[c] = s["totalIcps"] / s["resTotalIcps"]
+    nat_up = snapshot.get("national") or {}
+    if nat_up.get("resTotalIcps"):
+        anzsic_ratios["__national__"] = nat_up["totalIcps"] / nat_up["resTotalIcps"]
 
     # A second, narrower estimate of farm solar, from EMI's own industry
     # classification rather than from geography. The two bracket the
@@ -2897,8 +3052,7 @@ def main():
     towns.sort(key=lambda t: (t.get("estPct") is not None, t.get("estPct", 0)), reverse=True)
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
-    save("previous_counts.json",
-         {f"{c}|{n}": r["icps"] for (c, n), r in records.items()})
+    save(PREV_STREET_COUNTS, street_snapshot)
 
     matched = len(features)
     total = len(records)

@@ -436,9 +436,8 @@
   .popup-region-header { font-weight: 700; color: var(--text); font-size: 12.5px; margin-bottom: 4px; }
 
   /* ============ Methodology button + popup ============ */
-  /* Sits under the fullscreen control, top-right. It used to be a pill
-     at bottom-centre, which on mobile landed on top of the regions
-     handle -- the only other thing down there. */
+  /* Sits under the fullscreen control, top-right -- clear of the
+     regions handle, which occupies the bottom edge on mobile. */
   #methodologyBtn {
     position: absolute; z-index: 20; top: 52px; right: 10px;
     width: 29px; height: 29px; padding: 0;
@@ -653,21 +652,23 @@
 
       <h3>Solar installs</h3>
       <ul>
-        <li>Real counts from EMI (the Electricity Authority), published monthly by street.</li>
-        <li>Street positions are matched to real OpenStreetMap roads — about 97% match; the rest are mostly private lanes, rural roads, or recent renames.</li>
-        <li><strong>Region %</strong> is a real EMI figure (they publish both solar count and total connections at that level).</li>
-        <li><strong>Town %</strong> is an estimate, always marked "est" — EMI doesn't publish a real total that fine, so it's modelled from real Census dwelling growth instead.</li>
-        <li><strong>Battery counts</strong> are real EMI figures, but only published at region level — town popups show their region's rate, not a town-specific count.</li>
+        <li><strong>Region figures</strong> — installs, capacity, homes/business and <strong>% of connections</strong> — are EMI's own published numbers (the Electricity Authority), exact.</li>
+        <li><strong>Streets</strong> come from EMI's street-level file, matched to OpenStreetMap roads<span id="methMatchRate"></span>. Streets with three or fewer installs are published as “3 or less” for privacy, shown here as 1–3.</li>
+        <li><strong>Town and district counts</strong> (marked “~”) are added up from those streets, counting each “3 or less” street at its region's measured average, so each region's streets add up to EMI's exact total.</li>
+        <li><strong>Town and district %</strong> (marked “est”) is modelled: 2023 Census dwellings projected forward, scaled up to all connections using the region's mix. EMI publishes no connection total that fine.</li>
+        <li><strong>Batteries</strong> are EMI figures, published by region only — towns show their region's rate.</li>
+        <li><strong>Farms</strong> are a range between two estimates, since EMI publishes no farm split (hover the figure for how each is made).</li>
       </ul>
 
       <h3>Electric vehicles</h3>
       <ul>
-        <li>From NZTA's live vehicle register — a real join (electric count vs total local fleet), not modelled, down to district level.</li>
+        <li>Counts by district from NZTA's Motor Vehicle Register, not modelled. “% of the fleet” is electric vehicles as a share of all registered vehicles in that district, excluding trailers and caravans.</li>
+        <li>Vehicle Details lists the most common electric and fossil-fuelled models (petrol, diesel, hybrid, plug-in hybrid) by region and district.</li>
       </ul>
 
       <h3>Keeping it current</h3>
       <ul>
-        <li>Refreshes automatically every week. EMI and NZTA publish monthly, so it's never more than a few weeks stale.</li>
+        <li>Refreshes automatically every week. EMI and NZTA publish on their own schedules (EMI's street data currently updates about weekly, NZTA's register about monthly); “Updated” shows each source's own release date.</li>
       </ul>
     </div>
   </div>
@@ -1026,36 +1027,55 @@ function unspiderfy() {
   map.getSource("spider-nodes").setData(empty);
 }
 
+// Street and place names come from the data files, not from this page,
+// so they're escaped before going into any innerHTML.
+function esc(s) {
+  return String(s == null ? "" : s).replace(/[&<>"']/g,
+    c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// EMI never publishes a count below four: those rows say "3 or less",
+// which the pipeline carries as a placeholder 2 (SUPPRESSED in
+// process.py). Anything under four is therefore that placeholder and is
+// shown as the range it stands for, never as a measured "2".
+const SUPPRESSED_TEXT = "1–3";
+const SUPPRESSED_TITLE = "EMI publishes any count of three or fewer as ‘3 or less’ to protect privacy.";
+function streetCount(n) {
+  return n > 0 && n < 4 ? `<span title="${SUPPRESSED_TITLE}">${SUPPRESSED_TEXT}</span>` : fmt(n);
+}
+
+function shortDate(iso) {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return "";
+  const d = new Date(iso + "T00:00:00Z");
+  return `${d.getUTCDate()} ${MONTHS3[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
 function showPopup(f) {
   const p = f.properties;
-  const a = p.est == 1 ? "≈" : "";
-  // EMI suppresses the Res and Bus rows independently of the All row, so
-  // a street can have an exact total whose segments still don't add up
-  // to it -- 8% of streets, and 17% of those with an exact total.
-  // Marking the segments approximate in that case stops the popup
-  // showing "7 connections / 6 residential + 2 business" as if both were
-  // measured.
-  // Likewise any segment under 4 is our placeholder for a suppressed row
-  // (EMI never publishes an exact count below 4), so "Residential 2 ·
-  // Business 2" against an exact total of 4 is a guess that happens to
-  // add up, not two measured numbers.
-  const segSuppressed = (p.res > 0 && p.res < 4) || (p.bus > 0 && p.bus < 4);
-  const segRough = p.res + p.bus !== p.icps || segSuppressed;
-  const segApprox = segRough ? "≈" : a;
-  const segNote = segRough
-    ? ` <small class="muted" title="EMI publishes the residential and business counts as separate rows and suppresses each one under four, so these are approximate and need not sum to the total above.">(approx.)</small>`
+  // EMI suppresses the Res and Bus rows independently of the All row,
+  // so a street can have an exact total with suppressed segments -- in
+  // which case the segments are ranges and needn't add up to it.
+  const segRough = p.res + p.bus !== p.icps || (p.res > 0 && p.res < 4) || (p.bus > 0 && p.bus < 4);
+  const segNote = segRough && p.est != 1
+    ? ` <small class="muted" title="EMI publishes the residential and business counts as separate rows and suppresses each one below four, so they needn't add up to the total above.">(approx.)</small>`
     : "";
+  const since = shortDate(metaNational && metaNational.changeSince);
   const change = p.change > 0
-    ? `<br><span class="up">+${p.change} since last update</span>` : "";
+    ? `<br><span class="up">+${p.change} since ${since || "the previous release"}</span>` : "";
+  // A suppressed row's capacity is EMI's published per-install average
+  // times the placeholder count, so only the average is a real figure.
+  const capacity = !(p.kW > 0)
+    ? `<small class="muted">Capacity not published</small>`
+    : p.est == 1
+      ? `Average system: ${p.kWper} kW <small class="muted">(EMI's figure for this street)</small>`
+      : `Capacity: ${p.kW} kW` + (p.kWper ? ` <small class="muted">(${p.kWper} kW each)</small>` : "");
   new maplibregl.Popup()
     .setLngLat(f.geometry.coordinates)
     .setHTML(
-      `<strong>${p.street}</strong><br><small class="muted">${p.area}</small><br>` +
-      `Solar connections: <strong>${a}${p.icps}</strong>${change}<br>` +
-      `Residential ${segApprox}${p.res} · Business ${segApprox}${p.bus}${segNote}<br>` +
-      (p.kW > 0
-        ? `Capacity: ${p.kW} kW` + (p.kWper ? ` <small class="muted">(${p.kWper} kW each)</small>` : "")
-        : `<small class="muted">Capacity suppressed (small count)</small>`)
+      `<strong>${esc(p.street)}</strong><br><small class="muted">${esc(p.area)}</small><br>` +
+      `Solar connections: <strong>${streetCount(p.icps)}</strong>${change}<br>` +
+      `Residential ${streetCount(p.res)} · Business ${streetCount(p.bus)}${segNote}<br>` +
+      capacity
     ).addTo(map);
 }
 
@@ -1228,50 +1248,39 @@ const fmtMW = kW => (kW / 1000).toLocaleString(undefined, {
 const MONTHS3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-// Small towns have no real per-town ICP total to divide by (EMI only
-// publishes that at network-region granularity) -- estPct is a
-// *modelled* stand-in: real Census dwellings in the town's real
-// catchment, projected to this year and scaled by its council's real
-// residential/business mix (see write_town_boundaries/process.py). The
-// "~" and "est" tag keep it visually distinct from the real region %
-// shown elsewhere -- it's a reasoned estimate, not a measurement.
-const TOWN_APPROX_TITLE = "Approximate. Town figures are summed from EMI's street-level file, where any street with " + "three or fewer installs is published as ‘3 or less’ for privacy and counted as 2 here. " + "That overstates the national total by about 11%, so a town's count is a close indication " + "rather than an exact figure. Region totals are EMI's own published numbers and are exact.";
+// Towns and districts have no published connection total, so their
+// counts are added up from EMI's street file and their % is modelled
+// (see suppressed_weights and _estimate_town_pcts in process.py). The
+// "~" and "est" tags keep both visibly distinct from the region
+// figures, which are EMI's own.
+const TOWN_APPROX_TITLE = "Approximate. Added up from EMI's street-level file, where streets with three or " +
+  "fewer installs are published as ‘3 or less’ for privacy. Those streets are counted at their region's " +
+  "measured average (so each region's streets add up to EMI's exact regional total), which makes a town's " +
+  "count a close estimate rather than an exact figure. Region totals are EMI's own and are exact.";
 
-const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this town, " +
-  "projected forward using its own 2018–2023 growth rate, then scaled to a full " +
-  "connections estimate using its council's real residential/business mix (EMI). " +
-  "Unlike the region %, this isn't a direct EMI figure.";
+const REGION_PCT_TITLE = "EMI's own published uptake rate: solar connections as a share of all electricity " +
+  "connections (ICPs) in this region.";
+const EV_FLEET_TITLE = "Electric vehicles as a share of all registered vehicles here, excluding trailers " +
+  "and caravans (which have no engine). NZTA Motor Vehicle Register.";
+
+const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this area, projected forward at " +
+  "its own 2018–2023 growth rate, then scaled up to all connections using its region's mix of " +
+  "residential and other connections (EMI). The region % is EMI's own published figure; this one is modelled.";
 
 // Battery counts come from EMI's distributed-generation trends report
-// (GUEHMT), which classifies each ICP by its real regional council.
-// The install counts everywhere else come from EMI's installs-by-region
-// file, rolled up from network reporting regions -- and several
-// networks straddle council lines. Nationally the two agree to within
-// 0.07% (90,287 vs 90,353), but per-council they diverge by up to ~30%,
-// so dividing the battery count by the install count shown next to it
-// gives a number that disagrees with the reported rate. Naming the base
-// the percentage was actually measured against keeps that honest
-// instead of hiding it.
+// (GUEHMT), as at its latest month end. The install counts beside them
+// come from EMI's installs-by-region file, published on a different
+// date, so the two can differ slightly. Naming the base the percentage
+// was measured against keeps that visible instead of inviting a
+// division that's a fraction of a percent out.
 function battBaseTitle(area, battInstalls, base) {
   return base
-    ? `${fmt(battInstalls)} of ${fmt(base)} ${area} solar installs have a battery. `
-      + `That base comes from EMI's distributed-generation trends report, which groups `
-      + `connections by council slightly differently from the install count shown above, `
-      + `so this isn't a straight division of it.`
+    ? `${fmt(battInstalls)} of ${fmt(base)} ${area} solar installs have a battery, in EMI's `
+      + `distributed-generation trends report. Its install count is as at its latest month end, `
+      + `so it can differ slightly from the install count shown above.`
     : `${fmt(battInstalls)} ${area} solar installs have a battery (EMI).`;
 }
 
-// Shared by both the region/TLA and town map-click popups -- same
-// structure, just fed real numbers from a different granularity.
-// Deliberately never shows a battery *count* here: EMI's GUEHMT report
-// only publishes that at council level, so pairing it with a smaller
-// TLA/town install count could show a battery count *larger* than the
-// installs sitting right above it -- not a data error, just two real
-// numbers from two different-sized areas, but confusing enough to read
-// as one (verified live: this happened for real in Westport). Only the
-// council's own real % is shown instead, explicitly labelled as the
-// council's rate and captioned "of solar installs" so it's never misread
-// as this shape's own count.
 /* ================= CSV EXPORT ================= */
 /* Every download hands over exactly the real numbers on screen -- no
    rounding beyond what's displayed, no derived columns the data can't
@@ -1325,49 +1334,44 @@ function downloadBtnHTML(kind, key, title) {
     `data-csv-key="${encodeURIComponent(key || "")}" title="${title}">&#8681; CSV</button>`;
 }
 
-function solarPopupHTML({ name, subtitle, pct, icps, kW, battPct, battLabel, contextLines, regionSection, segments, csv }) {
+// Shared by the district and town map-click popups. The shape's own
+// figures come first (its street-derived installs/MW and estimated %);
+// everything EMI publishes only at council level -- the measured %,
+// battery rate and homes/business split -- sits in a visibly separate
+// block under the region's name, so no council figure is ever read as
+// the district's or town's own. A battery *count* is deliberately not
+// shown here: set against a smaller area's installs it could exceed
+// them, which reads as an error even though both numbers are real.
+function solarPopupHTML({ name, subtitle, pct, icps, kW, regionSection, csv }) {
   const pctLine = pct != null
     ? `<div class="popup-pct popup-solar">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
     : "";
-  let lower;
+  let lower = "";
   if (regionSection) {
-    // Town popups: a visibly separate block for the parent region's own
-    // real figures, under its own heading -- rather than interleaving
-    // them with this town's numbers, so it's never ambiguous which shape
-    // a given line describes (see the header comment above).
     const lines = [];
-    if (regionSection.pct != null) lines.push(`${regionSection.pct.toFixed(1)}% of connections`);
+    if (regionSection.pct != null) lines.push(`${regionSection.pct.toFixed(1)}% of connections have solar`);
+    const seg = regionSection.segments;
+    if (seg && seg.resIcps != null && seg.busIcps != null) {
+      lines.push(`${fmt(seg.resIcps)} homes &middot; ${fmt(seg.busIcps)} business` +
+        (seg.ruralBus != null ? ` (${farmRangeHTML(seg)})` : ""));
+    }
     if (regionSection.battPct != null) {
       lines.push(`<strong class="popup-battery">${regionSection.battPct.toFixed(1)}%</strong> of solar installs have a battery`);
     }
     lower = lines.length
       ? `<hr class="popup-divider">` +
-        `<div class="popup-region-header">${regionSection.name}</div>` +
+        `<div class="popup-region-header">${esc(regionSection.name)}</div>` +
         lines.map(l => `<span class="popup-sub">${l}</span>`).join("<br>")
       : "";
-  } else {
-    const battLine = battPct != null
-      ? `<div class="popup-section"><span class="popup-sub"><strong class="popup-battery">${battPct.toFixed(1)}%</strong> of solar installs have a battery ` +
-        `<span style="opacity:.75">(${battLabel})</span></span></div>`
-      : "";
-    lower = battLine +
-      (contextLines.length ? `<div class="popup-section">${contextLines.map(l => `<span class="popup-sub">${l}</span>`).join("<br>")}</div>` : "");
   }
-  const segLine = (segments && segments.resIcps != null && segments.busIcps != null)
-    ? `<div class="popup-section"><span class="popup-sub">` +
-      `<strong class="popup-solar">${fmt(segments.resIcps)}</strong> homes &nbsp;|&nbsp; ` +
-      `<strong class="popup-solar">${fmt(segments.busIcps)}</strong> business` +
-      (segments.ruralBus != null ? ` (${farmRangeHTML(segments)})` : "") +
-      `</span></div>`
-    : "";
   const dl = csv
-    ? `<div class="popup-actions">${downloadBtnHTML(csv.kind, csv.key, `Download ${name}'s figures as a CSV`)}</div>`
+    ? `<div class="popup-actions">${downloadBtnHTML(csv.kind, csv.key, `Download ${esc(name)}'s figures as a CSV`)}</div>`
     : "";
-  return `<strong>${name}</strong><br>` +
-    (subtitle ? `<span style="opacity:.7">${subtitle}</span><br>` : "") +
+  return `<strong>${esc(name)}</strong><br>` +
+    (subtitle ? `<span style="opacity:.7">${esc(subtitle)}</span><br>` : "") +
     pctLine +
-    `<span class="popup-sub">Total solar installs: <strong class="popup-solar">${fmt(icps)}</strong> &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
-    segLine + lower + dl;
+    `<span class="popup-sub"><span class="town-approx" title="${TOWN_APPROX_TITLE}">~${fmt(icps)} solar installs</span> &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
+    lower + dl;
 }
 
 function bboxIntersects(b, view) {
@@ -1389,14 +1393,9 @@ function currentView() {
 // *nearest the viewport centre* belongs to -- grounded in the same
 // real point-in-polygon assignment used to place towns
 // (council_of_point in process.py), not a bounding-box guess, and
-// answers "what's in the middle of the map" directly rather than
-// summing installs across everything visible. That sum used to pick
-// the region with the most total installs among visible towns, which
-// could be a big region only just peeking into a corner of the view,
-// outvoting the region actually centred on screen -- e.g. panning to
-// a Waikato/Auckland border town could jump to "Auckland" the moment
-// Hamilton's install count entered the viewport, even dead-centred on
-// the smaller town. Distance-to-centre has no such bias.
+// answers "what's in the middle of the map" directly. Weighting by
+// installs across everything visible would instead let a big region
+// peeking into a corner of the view outvote the one actually centred.
 function focusRegion() {
   const view = currentView();
   if (!view || !map.getZoom || map.getZoom() < 6) return { level: "national", name: "New Zealand" };
@@ -1579,7 +1578,7 @@ function renderTopbarStats() {
   const stats = currentFocus.level === "national" ? metaNational : currentFocus.data;
   const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
   segs.push(`<span class="stat-seg"><strong>${fmtMW(stats.kW)}</strong> MW</span>`);
-  if (stats.pct) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of connections</span>`);
+  if (stats.pct) segs.push(`<span class="stat-seg" title="${REGION_PCT_TITLE}"><strong>${stats.pct.toFixed(1)}%</strong> of connections</span>`);
   const chartOpen = topbarEl.classList.contains("expanded");
   let html = `<div class="topbar-toprow">`;
   html += `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span></div>`;
@@ -1648,14 +1647,14 @@ function rowHTML(t, rank) {
   // granularity, so the town's own % of connections is an estimate and
   // its battery rate doesn't exist (see councilPct / council_battery in
   // process.py). Keeping them under a "region" heading is what stops
-  // them being misread as Waiheke's.
+  // them being misread as the town's.
   const est = t.estPct != null
     ? `<span class="row-primary">${t.estPct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></span>`
     : "";
   const own = `<span class="town-approx" title="${TOWN_APPROX_TITLE}">~${fmt(t.icps)} installs</span> &middot; ${fmtMW(t.kW)} MW`;
 
   const solarBits = [];
-  if (t.councilPct != null) solarBits.push(`${t.councilPct.toFixed(1)}% of connections`);
+  if (t.councilPct != null) solarBits.push(`<span title="${REGION_PCT_TITLE}">${t.councilPct.toFixed(1)}% of connections</span>`);
   if (t.councilIcps != null) solarBits.push(`${fmt(t.councilIcps)} installs`);
   // Battery % and count come from a different EMI report to the install
   // count above them, so they don't divide out (see battBaseTitle) --
@@ -1668,7 +1667,7 @@ function rowHTML(t, rank) {
     : "";
   const context = t.council
     ? `<div class="row-ctx">
-         <div class="row-ctx-label"><span class="row-region" data-council="${t.council}">${t.council} region</span></div>` +
+         <div class="row-ctx-label"><span class="row-region" data-council="${esc(t.council)}">${esc(t.council)} region</span></div>` +
       (solarBits.length
         ? `<div class="row-ctx-line row-ctx-solar"><span class="row-ctx-tag">Solar</span>${solarBits.join(" &middot; ")}</div>`
         : "") +
@@ -1680,7 +1679,7 @@ function rowHTML(t, rank) {
     <div class="row-main row-clickable" data-town="${encodeURIComponent(t.name)}">
       <span class="row-rank">${rank}</span>
       <div class="row-body">
-        <div class="row-title"><span class="row-name">${t.name}</span>${est}</div>
+        <div class="row-title"><span class="row-name">${esc(t.name)}</span>${est}</div>
         <div class="row-own">${own}</div>
         ${context}
       </div>
@@ -1890,10 +1889,9 @@ function loadSolarRegionsLayer() {
         layout: { visibility: "none" },
         paint: {
           // Coloured by this TLA's own estimated %, the same number its
-          // label shows -- not the parent council's shared "pct" (every
-          // TLA in a council used to render the same colour regardless
-          // of its own real number). Falls back to the council % only
-          // for the few small-sample TLAs with no estPct at all.
+          // label shows, rather than the parent council's shared "pct".
+          // Falls back to the council % only for the few small-sample
+          // TLAs with no estPct at all.
           "fill-color": [
             "interpolate", ["linear"], ["coalesce", ["get", "estPct"], ["get", "pct"], 0],
             0, "#fff6d6", 2, "#ffe08a", 4, "#ffb703", 8, "#c2410c",
@@ -1913,8 +1911,8 @@ function loadSolarRegionsLayer() {
       // (see write_region_boundaries/process.py), a district-level label
       // is real distinct information, not 67 repeats of one of 16
       // numbers. lat/lng is each feature's own server-computed
-      // representative point (_representative_point), same fix as the
-      // duplicate-label bug this file's history already covers.
+      // representative point (_representative_point), so a fragmented
+      // coastline gets one label rather than one per ring.
       map.addSource("solar-region-label-points", {
         type: "geojson",
         data: {
@@ -1952,18 +1950,18 @@ function loadSolarRegionsLayer() {
         // methodology as the Towns mode -- see EST_PCT_TITLE); r.pct is
         // the real council-wide % shown for context underneath.
         const isDistrict = p.tla && p.tla !== r.name;
-        const contextLines = [];
-        if (r.pct != null) contextLines.push(`${r.name} region: ${r.pct.toFixed(1)}% of connections`);
+        // Everything EMI publishes for this area is at council level, so
+        // it goes in the separate region block -- the district's own
+        // lines are only its street-derived installs/MW and estimate.
         new maplibregl.Popup().setLngLat(e.lngLat).setHTML(solarPopupHTML({
           name: isDistrict ? p.tla : r.name,
           subtitle: isDistrict ? `${r.name} region` : null,
           pct: p.estPct != null ? +p.estPct : null,
           icps: p.icps, kW: p.kW,
-          // Council granularity, not this TLA's own -- see solarPopupHTML.
-          battPct: r.battPct != null ? r.battPct : null,
-          battLabel: `${r.name} region`,
-          contextLines,
-          segments: r,
+          regionSection: {
+            name: `${r.name} region`,
+            pct: r.pct, battPct: r.battPct, segments: r,
+          },
           csv: { kind: "region", key: r.name },
         })
         ).addTo(map);
@@ -2038,14 +2036,14 @@ function visibleRegions() {
 // privacy-suppressed and can't be summed. Badged "est" for that reason.
 const FARM_RANGE_TITLE =
   "Two independent estimates, shown as a range because neither is definitive. The upper figure "
-  + "counts business installs falling more than 100 m outside every town and rural settlement (Stats NZ "
-  + "urban/rural areas) -- that runs high, because it also catches rural schools, marae, packhouses and tourism. "
-  + "The lower figure applies agriculture's share of the region's non-residential connections (EMI's "
-  + "own ANZSIC industry classification) to its business installs -- that likely runs low, since it "
-  + "assumes farms adopt solar at the same rate as other businesses, while rural business systems "
-  + "average 50 kW against 24 kW urban. The two agree closely in genuinely farming regions "
-  + "(Canterbury 412 vs 413) and diverge where rural non-farm business is common (Auckland 101 vs 215). "
-  + "EMI publishes no farm/solar split, so a single number here would imply precision neither method has.";
+  + "is the share of business installs more than 100 m outside every town and rural settlement (Stats NZ "
+  + "urban/rural areas), applied to EMI's business count -- that runs high, because it also catches rural "
+  + "schools, marae, packhouses and tourism. The lower figure applies agriculture's share of the region's "
+  + "non-residential connections (EMI's ANZSIC industry classification) to its business installs -- that "
+  + "likely runs low, since it assumes farms adopt solar at the same rate as other businesses, while rural "
+  + "business systems are typically much larger. The two agree closely in strongly agricultural regions and "
+  + "diverge where rural non-farm business is common. EMI publishes no farm/solar split, so a single number "
+  + "here would imply precision neither method has.";
 
 // Renders the farm figure as "low-high" where both estimates exist, and
 // falls back to the geographic one alone otherwise.
@@ -2059,13 +2057,6 @@ function farmRangeHTML(row, opts) {
   return `<span class="seg-rural" title="${FARM_RANGE_TITLE}">${text} ${label} ` +
     `<span class="est-badge"><b>est</b></span></span>`;
 }
-
-const RURAL_BUS_TITLE =
-  "Business installs more than 100 m outside any town or rural settlement -- mostly farms. "
-  + "Estimated: Stats NZ's urban/rural areas decide what counts as rural (a rural town's "
-  + "supermarket is inside its urban area, a farm down the road is not), and that share is "
-  + "applied to EMI's published business count for the region. EMI does not publish a "
-  + "rural split itself.";
 
 function segmentLineHTML(row) {
   if (row.resIcps == null || row.busIcps == null) return "";
@@ -2083,7 +2074,7 @@ function solarRegionRowHTML(r, rank) {
   // measured against. Cyan to match the EV dashboard, so battery reads
   // as a distinct figure from the amber solar ones.
   const battLine = r.battPct != null
-    ? `<span class="detail" style="color:var(--cyan)">${r.battPct.toFixed(1)}% ` +
+    ? `<span class="detail" style="color:var(--cyan-text)">${r.battPct.toFixed(1)}% ` +
       `<span class="batt-base" title="${battBaseTitle(r.name, r.battInstalls, r.battBase)}">` +
       `(${fmt(r.battInstalls)})</span> have batteries</span>`
     : "";
@@ -2095,7 +2086,7 @@ function solarRegionRowHTML(r, rank) {
       </div>
       <div class="row-metric">
         <span class="headline">${fmt(r.icps)} installs</span>
-        <span class="detail">${fmtMW(r.kW)} MW${r.pct != null ? ` · ${r.pct.toFixed(1)}%` : ""}</span>
+        <span class="detail">${fmtMW(r.kW)} MW${r.pct != null ? ` · <span title="${REGION_PCT_TITLE}">${r.pct.toFixed(1)}% of connections</span>` : ""}</span>
         ${segmentLineHTML(r)}
         ${battLine}
       </div>
@@ -2239,7 +2230,8 @@ new ResizeObserver(syncTopbarHeight).observe(topWrapEl);
 /* A second dataset the map can switch to (the buttons at the top).
    Built entirely from NZTA's Motor Vehicle Register -- current EV
    counts and real % of the local fleet, by district (TLA) and region,
-   for five vehicle categories, plus a historic cumulative-uptake trend.
+   for seven vehicle categories, plus a historic cumulative-uptake trend
+   and the most common models (electric and fossil-fuelled).
    Districts are shown as a shaded choropleth: unlike solar, the EV
    register has no street-level address to place a point at (only
    district + postcode), so there's no dot to draw. Lazy-loaded on
@@ -2277,6 +2269,7 @@ let evTopVehicles = null;
 let evTopVehiclesFossil = null;   // same shape, every combustion-engined vehicle (see FOSSIL_FUELS in process.py)
 let evCategoryNames = [];
 let evUpdated = null;
+let evChangeSince = null;   // release the EV leaderboard's changes are measured from
 let evLoadPromise = null;
 let evLayerReady = false;
 
@@ -2294,6 +2287,7 @@ function loadEvData() {
       evTopVehiclesFossil = ev.topVehiclesFossil || null;
       evCategoryNames = ev.categories || [];
       evUpdated = ev.updated ? new Date(ev.updated + "T00:00:00Z") : null;
+      evChangeSince = ev.changeSince || null;
       addEvLayer(boundaries);
     });
   }
@@ -2370,16 +2364,16 @@ function addEvLayer(boundaries) {
     if (!t) return;
     const catLines = EV_CHART_ORDER.map(cat => {
       const c = (t.categories && t.categories[cat]) || {};
-      const pctText = c.pct != null ? `${c.pct.toFixed(1)}%` : "no data";
+      const pctText = c.pct != null ? `${c.pct.toFixed(1)}% of all ${cat.toLowerCase()}` : "no data";
       const color = EV_CATEGORY_COLORS[cat] || "#888";
-      return `<div class="ev-cat-line"><span><i class="swatch" style="background:${color}"></i>Electric ${cat}</span><span class="n">${fmt(c.ev || 0)}, ${pctText} of total</span></div>`;
+      return `<div class="ev-cat-line"><span><i class="swatch" style="background:${color}"></i>Electric ${cat}</span><span class="n">${fmt(c.ev || 0)}, ${pctText}</span></div>`;
     }).join("");
     new maplibregl.Popup({ maxWidth: "260px" })
       .setLngLat(e.lngLat)
       .setHTML(
-        `<strong>${t.name}</strong><br><small class="muted">${t.region || ""}</small><br>` +
+        `<strong>${esc(t.name)}</strong><br><small class="muted">${esc(t.region || "")}</small><br>` +
         `Electric vehicles: <strong>${fmt(t.ev)}</strong>` +
-        (t.pct != null ? ` <small class="muted">(${t.pct.toFixed(1)}% of the local fleet)</small>` : "") +
+        (t.pct != null ? ` <small class="muted" title="${EV_FLEET_TITLE}">(${t.pct.toFixed(1)}% of the local fleet)</small>` : "") +
         `<div class="ev-categories" style="padding-left:0;margin-top:6px">${catLines}</div>` +
         `<div class="popup-actions">${downloadBtnHTML("ev", t.name, `Download ${t.name}'s EV figures as a CSV`)}</div>`
       ).addTo(map);
@@ -2438,7 +2432,7 @@ function evRowHTML(t, rank) {
     : "";
   const cats = evCategoryNames.map(cat => {
     const c = (t.categories && t.categories[cat]) || { ev: 0, pct: null };
-    const pctText = c.pct != null ? `${c.pct.toFixed(1)}% of total` : "no data";
+    const pctText = c.pct != null ? `${c.pct.toFixed(1)}% of all ${cat.toLowerCase()}` : "no data";
     const color = EV_CATEGORY_COLORS[cat] || "#888";
     return `<div class="ev-cat-line"><span><i class="swatch" style="background:${color}"></i>Electric ${cat}</span><span class="n">${fmt(c.ev)}, ${pctText}</span></div>`;
   }).join("");
@@ -2478,7 +2472,7 @@ function renderEvBoard() {
 function renderEvTopbarStats() {
   const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
   const segs = [`<span class="stat-seg">Electric vehicles: <strong>${fmt(stats.ev)}</strong></span>`];
-  if (stats.pct != null) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of the fleet</span>`);
+  if (stats.pct != null) segs.push(`<span class="stat-seg" title="${EV_FLEET_TITLE}"><strong>${stats.pct.toFixed(1)}%</strong> of the fleet</span>`);
   const chartOpen = topbarEl.classList.contains("expanded");
   let html = `<div class="topbar-toprow">`;
   html += `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span></div>`;
@@ -2488,10 +2482,12 @@ function renderEvTopbarStats() {
   html += `</div>`;
   html += `<div class="stat-line">${segs.join("")}</div>`;
   // Category split under the headline, the EV counterpart of the solar
-  // bar's homes/business line: the same real per-category counts the
-  // chart and district rows use, in the chart's order and colours, and
-  // adding up to the headline above. Empty categories are left out
-  // rather than shown as a row of zeros.
+  // bar's homes/business line: the same per-category counts the chart
+  // and district rows use, in the chart's order and colours. They don't
+  // quite add up to the headline -- it also counts electric vehicles
+  // outside these categories (forklifts and other mobile machines, ATVs,
+  // motor caravans). Empty categories are left out rather than shown as
+  // a row of zeros.
   const catSegs = EV_CHART_ORDER
     .map(cat => [cat, stats.categories && stats.categories[cat]])
     .filter(([, c]) => c && c.ev > 0)
@@ -2617,7 +2613,7 @@ const TREND_SERIES = [
   { key: "resAvgNewKW", label: "Avg. new residential system (kW)", color: "#c084fc", axis: "left",
     tick: v => v.toFixed(1),
     note: "The average size of the residential systems connected in each month, as EMI publishes it "
-        + "-- not the lifetime average of every install ever (that sits near 5.7 kW, held down by a "
+        + "-- not the lifetime average of every install ever (much lower, held down by a "
         + "decade of smaller systems). One month, July 2025, reads 17.1 kW against about 7.5 either "
         + "side: EMI's own figure, but that month it also moved 1,869 connections into the "
         + "residential segment while counting only 944 new installs, so it reflects a "
@@ -2637,10 +2633,8 @@ let lastTrend = null;
 
 // resAvgNewKW is the average size of the residential systems connected
 // in each month, exactly as EMI publishes it -- deliberately not the
-// lifetime average of every install ever (which sits near 5.7 kW
-// nationally and mostly reflects a decade of smaller systems), and not
-// derived here, because a month's average can't be recovered from
-// cumulative totals.
+// lifetime average of every install ever, and not derived here, because
+// a month's average can't be recovered from cumulative totals.
 function trendValues(s) {
   const out = {
     installs: s.installs,
@@ -2897,14 +2891,11 @@ function renderEvChartSelection() {
   renderEvChartLegend(level, name);
 }
 
-// Ranks regions by raw month-over-month change (see _change()/
-// PREV_TOWN_TOTALS/PREV_EV_TOTALS in process.py), biggest gain first --
-// the same "region" granularity as the Regions board (regionData/
-// evRegions), not individual towns/districts, since that's the level a
-// leaderboard reader can act on ("email people about Canterbury").
-// change/changePct are null until this feature has seen two real runs
-// to compare (see _change()'s doc comment), so rows without a change
-// are filtered out rather than shown as a false "no change".
+// Ranks regions by release-over-release change (see _change() and
+// rolling_baseline() in process.py) -- region granularity, the level a
+// reader can act on. change/changePct are null until two releases have
+// been seen, so rows without a change are left out rather than shown as
+// a false "no change".
 // Ranked by % growth by default: on raw numbers the biggest regions
 // (Auckland, Canterbury) would head the list every single month simply
 // by being biggest, which tells nobody anything. "Number" is one click
@@ -2938,24 +2929,28 @@ function renderLeaderboard() {
   const sortBar = `<div class="lb-sort">` + LB_SORTS.map(o =>
     `<button type="button" class="lb-sort-btn${o.key === leaderboardSort ? " active" : ""}" data-sort="${o.key}">${o.label}</button>`
   ).join("") + `</div>`;
-  // The data's own month, not "this month" -- the pipeline runs weekly
-  // but EMI/NZTA only republish monthly, so metaUpdated/evUpdated is
-  // whichever month the current snapshot actually reflects.
+  // Says what is being ranked and over what period: growth since the
+  // previous release of the data (the pipeline records its date), not
+  // an adoption share, which the % would otherwise read as. EMI and
+  // NZTA each publish on their own cadence, so the period is named
+  // rather than assumed to be a month.
+  const since = shortDate(isEv ? evChangeSince : (metaNational && metaNational.changeSince));
   const asOf = isEv ? evUpdated : metaUpdated;
-  // Says what is being ranked and over what period. "In the month of X"
-  // alone left the percentage beside each row unexplained, and it reads
-  // naturally as an adoption share -- it is growth against the previous
-  // release, which is a much smaller number.
-  const monthLine = asOf
-    ? `<div class="lb-month">${byPct ? "Fastest growth" : "Biggest increases"} &mdash; ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()} vs the previous release</div>`
-    : "";
+  const heading = byPct ? "Fastest growth" : "Biggest increases";
+  const monthLine = since
+    ? `<div class="lb-month">${heading} since ${since}</div>`
+    : asOf
+      ? `<div class="lb-month">${heading} &mdash; ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()} vs the previous release</div>`
+      : "";
   const rows = leaderboardRows(list).slice(0, 10);
   if (!rows.length) {
     leaderboardViewEl.innerHTML = sortBar + monthLine +
-      `<div class="leaderboard-empty">No comparison data yet -- check back after next month's update.</div>`;
+      `<div class="leaderboard-empty">No comparison data yet -- check back after the next data release.</div>`;
     return;
   }
-  const growthTitle = "Growth against this region's own total at the previous data release -- not its share of the fleet.";
+  const growthTitle = isEv
+    ? "Growth against this region's own EV count at the previous data release -- not its share of the fleet."
+    : "Growth against this region's own install count at the previous data release -- not its share of connections.";
   // Every row that survives the filter above is a real gain, so the
   // sign/colour is always the "up" case -- no down/flat branch needed.
   // Whichever measure the list is ranked by leads; the other is the
@@ -3191,9 +3186,11 @@ function exportLeaderboard() {
   const rows = leaderboardRows(list).map((r, i) => [i + 1, r.name, r.change, r.changePct]);
   if (!rows.length) return false;
   const unit = isEv ? "EVs" : "solar installs";
+  const since = isEv ? evChangeSince : (metaNational && metaNational.changeSince);
   return downloadCSV(
     ["nz", isEv ? "ev" : "solar", "leaderboard", leaderboardSort === "pct" ? "by-growth" : "by-number"],
-    ["Rank", "Region", `Change in ${unit}`, "Change %"], rows, sourceNote(),
+    ["Rank", "Region", `Change in ${unit}`, "Change %"], rows,
+    `${sourceNote()}${since ? ` Change measured since the release of ${since}.` : ""}`,
   );
 }
 
@@ -3252,8 +3249,9 @@ function townCsvRow(t) {
 // town's own -- EMI publishes no battery count at town granularity (see
 // council_battery in process.py). Spelled out in the file so a
 // downloaded row can't be mistaken for a town-level measurement.
-const TOWN_BATT_NOTE = "Note: battery columns on Town rows are that town's parent region's figures; " +
-  "EMI publishes no battery count at town level.";
+const TOWN_BATT_NOTE = "Note: Town install counts and capacity are estimates added up from EMI's street-level " +
+  "file (streets published as '3 or less' counted at their region's measured average); Region figures are EMI's " +
+  "own. Battery columns on Town rows are the parent region's figures; EMI publishes no battery count at town level.";
 
 function exportRegionCard(name) {
   const r = (regionData || []).find(x => x.name === name);
@@ -3426,10 +3424,13 @@ chartSelectEl.addEventListener("change", async () => {
           battInstalls: nat.battInstalls != null ? nat.battInstalls : null,
           battPct: nat.battPct != null ? nat.battPct : null,
           battBase: nat.battBase != null ? nat.battBase : null,
+          changeSince: nat.changeSince || null,
         }
       : { icps: 0, kW: 0, pct: 0, resIcps: null, busIcps: null, ruralBus: null, farmAnzsic: null,
-          battInstalls: null, battPct: null, battBase: null };
+          battInstalls: null, battPct: null, battBase: null, changeSince: null };
     metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
+    const matchEl = document.getElementById("methMatchRate");
+    if (matchEl && meta && meta.matchRate) matchEl.textContent = ` (${meta.matchRate}% of streets placed; the rest are mostly private lanes, rural roads and recent renames)`;
 
     renderBoard();
     map.on("moveend", renderBoard);

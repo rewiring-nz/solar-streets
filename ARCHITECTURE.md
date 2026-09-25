@@ -1,167 +1,269 @@
 # Architecture
 
-How the pipeline and the two dashboards actually work, and why they're
-built the way they are. Aimed at anyone modifying `process.py` or
-`docs/index.html` — if you just want to run or embed the map, see
-[README.md](README.md) instead.
+How the pipeline and the two dashboards work, where every published
+number comes from, and why they're built the way they are. Aimed at
+anyone modifying `process.py` or `docs/index.html` — if you just want to
+run or embed the map, see [README.md](README.md).
 
 ## Contents
 
+- [Measured versus estimated](#measured-versus-estimated)
 - [How streets get their positions](#how-streets-get-their-positions)
-- [The sidebar's region/town list](#the-sidebars-regiontown-list)
-- [The trend chart's Leaderboard tab](#the-trend-charts-leaderboard-tab)
-- [Searching for a street or suburb](#searching-for-a-street-or-suburb)
+- [Regions](#regions)
+- [Towns and districts](#towns-and-districts)
+- [Homes, business and farms](#homes-business-and-farms)
+- [Batteries](#batteries)
+- [The trend chart](#the-trend-chart)
+- [The leaderboard](#the-leaderboard)
 - [The EV dashboard](#the-ev-dashboard)
+- [Searching](#searching)
+- [Reliability](#reliability)
+- [Maintenance calendar](#maintenance-calendar)
+
+## Measured versus estimated
+
+Every figure on the map is one of two kinds, and the UI keeps them
+visibly apart:
+
+| Figure | Kind | Source |
+|---|---|---|
+| Region installs, MW, homes/business | Measured | EMI installs-by-region file (`SolarInstallationsByRegion.csv`) |
+| Region % of connections | Measured | EMI's published uptake rate (GUEHMT report) |
+| Region battery count and % | Measured | EMI GUEHMT report |
+| Street installs | Measured, but "3 or less" rows are suppressed | EMI street file (`SolarInstallationsByStreet.csv`) |
+| Town/district installs and MW ("~") | Estimated from streets | Street file, calibrated to EMI's region totals |
+| Town/district % ("est") | Modelled | Census dwellings + EMI connection mix |
+| Farms (a range, "est") | Modelled | Stats NZ urban/rural areas and EMI ANZSIC classification |
+| EV counts and % of fleet | Measured | NZTA Motor Vehicle Register |
+
+`reconcile()` in `process.py` checks the measured figures against EMI's
+own identities (residential + business = total, nationally and per
+region exactly; the regions summing to the national row within 1%,
+currently about 0.1%) on every run and fails the run if they disagree.
 
 ## How streets get their positions
 
 EMI publishes street *names*, not coordinates — and New Zealand has a
 great many Queen Streets. Each EMI row also carries a Statistical Area 2
-(SA2) code, and every SA2 has a known bounding box (from Stats NZ,
-covering all boundary vintages back to 2018 — EMI's data references a
-mix of them). A road only counts for a given street if its OpenStreetMap
+(SA2) code, and every SA2 has a known bounding box from Stats NZ's
+archive layer (every boundary vintage, since EMI's data references a mix
+of them). A road only counts for a given street if its OpenStreetMap
 position falls inside the exact SA2 EMI assigned it to, which is what
 keeps Auckland's Queen Street out of Invercargill.
 
-The OpenStreetMap side is queried once per regional council (~16
-requests covering the whole country), not once per SA2 (~2,100) — a
-council's worth of roads is fetched in one go, then matched to the right
-SA2 locally. Same accuracy, far fewer requests.
+OpenStreetMap is queried once per regional council (~16 requests covering
+the whole country), and each council's roads are then matched to the
+right SA2 locally, using only the parts of each road that fall inside
+that SA2. Names are normalised on both sides (abbreviations, macrons,
+Northland's "(PVT)" suffix), with a fallback that drops a trailing
+street-type word when the exact name finds nothing.
 
-Expect a match rate in the 95%+ range. The stragglers are usually
-private lanes, rural roads and recent renames. `process.py` prints the
-rate at the end of every run, and deliberately fails the build if it
-ever drops below 50%, so a bad build never gets published — see
-[Reliability](#reliability) below for the other failure modes this
-guards against.
+Expect a match rate around 97%; `process.py` prints it every run and
+fails the build below 50%. The map's methodology panel shows the current
+rate.
 
-## The sidebar's region/town list
+## Regions
 
-The sidebar ranks NZ's 16 regional councils by % of ICPs with solar,
-alongside installs and MW. The % figure is a real join, not an estimate:
-EMI publishes solar ICPs and total ICPs for the same 39 "network
-reporting regions", so both numbers come from the same source at the
-same granularity. The council grouping on top of that is a display
-choice (`NETWORK_TO_COUNCIL` in `process.py`) — a handful of networks
-straddle a council boundary and are marked there.
+The 16 regional councils. Installs, MW and the residential/business
+split are EMI's own per-council rows. **% of connections is EMI's own
+published uptake rate** for the council, from the "Installed distributed
+generation trends" report (GUEHMT), under the same council attribution
+as the counts.
 
-Expand a council to see its towns — e.g. "Wānaka" and "Queenstown" as
-separate entries — with their own installs and MW. No % at this level:
-EMI doesn't publish a total-ICP figure per town, only per network
-region, so there's no honest denominator to divide by that finely.
+It is deliberately *not* computed by dividing the council's solar count
+by total ICPs rolled up from EMI's 39 network reporting regions
+(`NETWORK_TO_COUNCIL`). Networks don't follow council lines — Network
+Tasman serves most of Nelson city, Network Waitaki serves Oamaru in
+Otago, Electra serves Horowhenua in Manawatū-Whanganui — so that
+denominator describes a different area from the numerator, and put some
+councils' rates badly out (Tasman at about half its real rate, Nelson
+with none). The rollup is kept only as a fallback if GUEHMT is
+unavailable, and a % it can't support is omitted rather than published.
 
-Towns are real places, not SA2 fragments: each solar record is assigned
-to its nearest named town centre from LINZ's Suburbs and Localities data
-(`fetch_town_anchors()`/`town_anchors.json`), grouped by that dataset's
-own `major_name` field. Plain SA2 would split "Wanaka" into "Wanaka
-North"/"Wanaka West"; a district-level grouping would merge Wānaka and
-Queenstown into one "Queenstown-Lakes" bucket. This sits at the
-granularity in between — one row per commonly-recognised town.
+Region boundaries (for "which council is this town in" and the
+map-view filter) are Stats NZ's regional council polygons.
 
-Both levels use real regional-council boundaries from Stats NZ
-(`fetch_regional_councils()`/`regc_bounds.json`) to decide which council
-a town falls inside, and to power the "regions within map view" filter.
-An earlier version approximated council boundaries by unioning network
-operators' own footprints, which don't follow council lines — Network
-Tasman serves most of Nelson city, for instance, so that approach had
-Nelson's real numbers geographically misattributed to Tasman. Real
-council polygons don't have that problem.
+## Towns and districts
 
-## The trend chart's Leaderboard tab
+**Which town.** Streets are assigned to towns by containment in each
+town's footprint — the union of its LINZ Suburbs and Localities polygons,
+grouped by LINZ's `major_name` (so "Wānaka" and "Queenstown" are
+separate, and neither is split into SA2 fragments). The ~1% of streets
+outside every footprint go to the nearest town centre. Census dwellings
+go through the identical rule, so both sides of the town % come from the
+same catchment. Districts (Stats NZ territorial authorities) sum the
+towns whose centre falls inside them.
 
-A second tab inside the trend chart panel (both dashboards) ranks
-regions/districts by real month-over-month change — raw count and %,
-biggest gain first — meant to answer "is there anything worth telling
-people about this month". Decliners are left off entirely: a negative
-figure is far more likely a reporting/attribution quirk (an EV
-re-registered to a new district, an ICP recounted under a different
-network) than a real drop, so showing it would read as a false signal.
+**Installs ("~").** Town counts are added up from the street file, where
+82% of rows say "3 or less". Counting those as a flat 2 overstated town
+totals by anything from 1% to 40% depending on the region, because most
+suppressed streets hold one install. Instead each council's suppressed
+streets are counted at the average that makes that council's streets add
+up to EMI's exact total (`suppressed_weights`):
 
-This is a *different* ranking from the sidebar's region/town list above
-— that one shows the current standing (installs, MW, % of connections);
-this one shows what changed since last time. Backed by
-`previous_town_totals.json`/`previous_ev_totals.json`, each holding the
-prior run's own totals purely so the next run can diff against them (see
-`_change()` in `process.py`) — so it needs at least two real runs before
-it has anything to show, and stays empty (rather than guessing) until
-then.
+```
+weight = (EMI council total − exact-street installs) / suppressed streets
+```
 
-## Searching for a street or suburb
+clamped to 1–3. Nationally it's about 1.6. Town totals therefore land
+slightly *under* EMI's national figure — short by the streets that
+couldn't be placed on a road. Individual street popups show suppressed
+counts as "1–3", never as a number EMI didn't publish.
 
-The search box next to the dataset tabs matches a region, town/district,
-or (solar only) an individual street name — same free-text matching as
-the `?region=` embed param (`findPlace()` in `docs/index.html`),
-extended with a flat search index built from the already-loaded street
-points. EVs have no individual-street data (NZTA's register only
-carries district-level addresses), so EV search covers regions/districts
-only.
+**% of connections ("est").** EMI publishes no connection total below
+region level, so this is modelled (`_estimate_town_pcts`):
+
+1. 2023 Census occupied dwellings inside the town (SA1 centroids).
+2. Projected to the current year at the town's own 2018–2023 growth rate
+   (clamped to −5%…+15% a year; towns under 30 dwellings are skipped).
+3. Scaled from dwellings to all connections by the council's ratio of
+   total to residential ICPs — from GUEHMT's uptake rates (EMI's council
+   attribution), or EMI's ANZSIC file rolled up by network if GUEHMT is
+   unavailable. The two agree to within ~1% where both exist.
+
+An estimate that comes out below the town's own install count is
+dropped rather than shown. The region lines under each town are always
+the region's own measured figures, labelled as such.
+
+## Homes, business and farms
+
+Homes and business are EMI's own published split (they add up exactly
+to the total). "Farms" is shown as a range, because EMI publishes no farm
+split and each available method is biased in a known direction:
+
+- **Upper:** the share of a region's street-level business installs more
+  than 100 m outside every Stats NZ urban area and rural settlement,
+  applied to EMI's business count. Catches rural schools, marae,
+  packhouses and tourism too, so it runs high. (100 m tolerance because
+  the boundaries hug shorelines and are simplified to ~11 m.)
+- **Lower:** agriculture's share of the region's non-residential
+  connections (EMI's ANZSIC classification), applied to its business
+  installs. Assumes farms adopt solar at the same rate as other
+  businesses, which likely runs low.
+
+On the street map, individual install dots are coloured by segment
+(home, business, rural business) using the street's own split.
+
+## Batteries
+
+EMI publishes solar-plus-battery counts by regional council only, in
+GUEHMT. Regions show their own count and rate; towns show their region's
+rate, labelled as the region's. The rate's base is GUEHMT's install
+count for the same month, which can differ slightly from the
+installs-by-region file's figure, so the tooltip names the base.
+
+## The trend chart
+
+Solar: GUEHMT's monthly series since 2014 at national, council and
+network level — installs, total MW, the average size of *new* residential
+systems each month (as EMI publishes it; one month, July 2025, reflects a
+reclassification rather than a real jump, and is annotated), and % of
+installs with a battery. National counts are the sum of councils;
+national averages come from GUEHMT's own NZ row.
+
+EVs: vehicles still on the road today, by the year they were first
+registered in NZ, stacked by category. Not a strict history (a vehicle
+scrapped or exported since wouldn't show), but EVs are young enough that
+the difference is small. The window starts at 2013; earlier curiosities
+are included in the running total.
+
+## The leaderboard
+
+Ranks regions by growth since the previous data release — % growth by
+default (raw numbers would put the biggest regions on top every time),
+with a toggle for the absolute number. Decliners are left off: a negative
+figure is far more likely an attribution quirk than a real removal.
+
+The comparison baseline only moves when the source publishes new
+figures (`rolling_baseline`). EMI rewrites its files daily without
+changing them, so a solar release is identified by a fingerprint of its
+figures (`content_vintage`) rather than the file date; NZTA's register by
+its own data-edit date. The date of the release being compared against
+is published and shown ("Fastest growth since 13 Sep 2026"). The same
+mechanism drives the "+N since …" line in street popups.
 
 ## The EV dashboard
 
-Built entirely from NZTA's Motor Vehicle Register (MVR) — the live
-register of every currently-registered NZ vehicle (~5.9M rows), queried
-as server-side aggregate counts (`fetch_ev_snapshot`/`fetch_ev_trends`
-in `process.py`), never downloaded whole.
+Built from NZTA's Motor Vehicle Register, queried as server-side grouped
+counts (never downloaded whole; grouped queries are paged past the
+server's 2,000-row cap). The service name changes whenever NZTA stands up
+a new one, so it's found by searching ArcGIS each run, with the last
+known name as a fallback.
 
-Every vehicle in the MVR carries its owner's real Territorial Authority
-(TLA — district/city council, e.g. "Queenstown-Lakes District")
-directly, so unlike solar's towns this needs no nearest-anchor
-approximation: TLA *is* the real "district level" granularity, straight
-from official data. Districts roll up to the same 16 regions solar uses,
-via `assign_tla_regions` — derived geometrically (real point-in-polygon
-against the regional council boundaries already fetched for solar), not
-hand-typed, and checked against all 67 real districts.
-`TLA_REGION_OVERRIDES` covers the one genuine exception: Rotorua Lakes
-District's own territory straddles Bay of Plenty and Waikato.
+Every vehicle carries its owner's territorial authority, so district
+figures need no approximation. Districts roll up to the 16 regions by
+point-in-polygon against the regional council boundaries
+(`TLA_REGION_OVERRIDES` covers Rotorua Lakes, whose territory straddles
+two regions).
 
-Five vehicle categories (Cars, Utes, Trucks, Buses, Tractors) are drawn
-straight from the MVR's own `VEHICLE_TYPE`/`BODY_TYPE` fields
-(`EV_CATEGORIES` in `process.py`), not guessed from make or model. Each
-one's % figure is a real join: electric count and *total local fleet*
-count for that category, in that district, from the same register at
-the same time — not population-normalised, so it answers "what fraction
-of this district's trucks/buses/etc. are electric", the same style of
-honest, real-join percentage as solar's "% of connections".
+- **Electric** means `MOTIVE_POWER = 'ELECTRIC'` (battery-electric).
+- **% of the fleet** is electric vehicles over all registered vehicles
+  in the area *excluding trailers and caravans* (`FLEET_WHERE`), which are
+  ~15% of the register and have no engine.
+- **Categories** (cars, utes, vans, motorbikes, trucks, buses, tractors)
+  come from the register's own `VEHICLE_TYPE`/`BODY_TYPE` (`EV_CATEGORIES`);
+  each category's % is against that category's local fleet. The headline
+  EV count also includes electric vehicles outside these categories
+  (forklifts and other mobile machines, ATVs), so the categories don't
+  quite sum to it.
+- **Vehicle Details** lists the 50 most common models per area, electric
+  or fossil-fuelled (petrol, diesel, hybrid, plug-in hybrid, LPG/CNG,
+  range-extended), with the fuel shown per model. The electric list's
+  total is checked against the EV headline every run.
 
-The uptake chart is a cumulative count of vehicles by first-NZ-
-registration year that are still on the road today — not a strict
-historical registration count (a vehicle scrapped or exported since
-wouldn't show), but EVs are almost all under ~12 years old, so the
-difference is negligible. The display window starts at 2013; a handful
-of EVs go back to the 1930s (early imports/curiosities), and including
-those 80-odd near-flat years would waste the whole chart width on
-nothing — the running total itself still starts from the real first
-year, so 2013's value correctly includes everything before it.
+The register has no street-level address, so districts are drawn as a
+choropleth rather than dots.
 
-Because the MVR has no street-level address (only district + postcode,
-for privacy), districts are shown as a shaded choropleth rather than
-individual dots like solar's streets — there's no honest point to place
-a dot at.
+## Searching
+
+The search box (and the `?region=` embed parameter) matches a region,
+town/district, or (solar only) a street name, macron-insensitively —
+exact, then prefix, then substring, broader places first. For a street
+name that exists in several places it prefers the one nearest the current
+view; "Queen Street, Auckland" narrows by suburb.
 
 ## Reliability
 
-The pipeline touches half a dozen external services (EMI, NZTA, Stats
-NZ, LINZ, OpenStreetMap) on every run, so it's built to degrade rather
-than break:
+The pipeline touches EMI, NZTA, Stats NZ, LINZ and OpenStreetMap on every
+run, so it's built to degrade rather than break — and to say so:
 
-- **Every non-Overpass network fetch retries transient failures** through
-  a single shared `get()` helper (`process.py`), instead of one bad
-  request dropping a whole feature for a week. Overpass gets its own
-  heavier retry-and-multi-mirror handling in `overpass()`, since it fails
-  far more often.
-- **`geocode()` starts from last run's own cache**, not empty — a
-  council's road positions are only overwritten once its Overpass query
-  actually succeeds. If Overpass is having a bad day for one council,
-  that council keeps last run's real positions instead of every street
-  in it vanishing from the map.
-- **A near-zero record count aborts the build** before any of the
-  expensive work runs. This catches an EMI CSV schema/column-rename
-  change, which the match-rate check alone can't: a schema change makes
-  both the matched and total counts collapse together, and 0 of 0 never
-  trips a percentage threshold.
-- **A match rate below 50% aborts the build** (see above), so a bad run
-  is never published over a good one.
-- **Every fetch (except the initial street CSV) is wrapped in a
-  try/except** that logs a warning and continues with that feature
-  omitted, rather than taking down the whole run over one missing data
-  source.
+- **Every optional dataset is isolated.** A failure leaves that dataset's
+  previously published file in place, records the failure in
+  `build_status.json`, and the workflow turns the run red *after*
+  committing whatever did build.
+- **Retries.** All HTTP goes through one retrying `get()`; Overpass has
+  its own multi-mirror retry, and a council whose query still fails keeps
+  last run's road positions rather than losing its streets.
+- **Hard stops.** Fewer than 1,000 street records (an EMI schema change)
+  or a match rate below 50% aborts before publishing anything.
+- **Reconciliation.** `reconcile()` checks published figures against
+  EMI's own identities; the EV model list is checked against the EV
+  total.
+- **Self-updating references.** The newest dated EMI ICP files are picked
+  by the date in their filename; the vehicle register service is found by
+  search; SA2 boundaries are refetched if EMI starts referencing codes
+  the cache doesn't have.
+- **Flagged for a human.** A network reporting region missing from
+  `NETWORK_TO_COUNCIL`, or a Census baseline more than six years old,
+  fails the run with a message saying what to update.
+
+## Maintenance calendar
+
+Things that won't fix themselves:
+
+- **Census.** Town and district estimates project the 2023 Census
+  forward. When the 2028 Census dwelling counts are published, point
+  `SA1_CENSUS_SERVICE` at them, set `CENSUS_YEAR`, and delete
+  `sa1_dwellings.json` so it's refetched. The run starts failing as a
+  reminder from 2030.
+- **Network changes.** If EMI renames or merges a network reporting
+  region, the run fails naming it; add it to `NETWORK_TO_COUNCIL`.
+- **Boundary caches.** `regc_bounds.json`, `tla_bounds.json`,
+  `town_anchors.json`, `town_polygons.json` and `urban_areas.json` are
+  fetched once and reused. If Stats NZ or LINZ publish revised
+  boundaries you want picked up, delete the relevant file and the next
+  run refetches it.
+- **Scheduled runs.** GitHub disables scheduled workflows on a public
+  repository after 60 days without repository activity. The weekly data
+  commits normally count, but if the data stops changing for two months
+  the schedule can pause; re-enable it from the Actions tab.
