@@ -156,8 +156,8 @@ top of `docs/index.html`.
 | `farm_evidence.json` | Per rural business road: farmland share and other businesses along it, rechecked yearly — the farm estimate's inputs |
 | `sa1_dwellings.json` | 2018/2023 Census dwelling counts by small area, cached — powers the estimated town/district % figures |
 | `previous_counts.json` | Per-street counts at the current and previous EMI release, for the "+N since" figures |
-| `previous_town_totals.json` | Per-region solar totals at the current and previous EMI release, for the Leaderboard |
-| `previous_ev_totals.json` | Per-district EV totals at the current and previous NZTA release, for the Leaderboard |
+| `previous_town_totals.json` | Per-region solar totals at the current and previous EMI release (kept for reference; the Leaderboard reads EMI's monthly series) |
+| `previous_ev_totals.json` | Per-district EV totals at the current and previous NZTA release (kept for reference; the Leaderboard reads monthly registrations) |
 
 </details>
 

@@ -245,18 +245,31 @@ are included in the running total.
 
 ## The leaderboard
 
-Ranks regions by growth since the previous data release — % growth by
+Ranks regions by growth over the last month, 3 months or 12 months — % growth by
 default (raw numbers would put the biggest regions on top every time),
-with a toggle for the absolute number. Decliners are left off: a negative
-figure is far more likely an attribution quirk than a real removal.
+with a toggle for the absolute number. It reads the published monthly
+series directly, so it always has data and never depends on when the
+pipeline ran:
 
-The comparison baseline only moves when the source publishes new
-figures (`rolling_baseline`). EMI rewrites its files daily without
-changing them, so a solar release is identified by a fingerprint of its
-figures (`content_vintage`) rather than the file date; NZTA's register by
-its own data-edit date. The date of the release being compared against
-is published and shown ("Fastest growth since 13 Sep 2026"). The same
-mechanism drives the "+N since …" line in street popups.
+- **Solar:** EMI's monthly install count per region (GUEHMT, the same
+  series as the trend chart). Growth = latest month-end minus the
+  month-end k months earlier.
+- **EVs:** vehicles first registered in NZ in each month, per region, from
+  the register's own `FIRST_NZ_REGISTRATION_YEAR/MONTH`
+  (`fetch_ev_recent`, `ev.json` → `recent`). Only months before the
+  register's data month count, so a part-reported month never looks like
+  a slump. % growth is against the region's EV count at the start of the
+  period.
+
+Falls are left off: in these series a negative is almost always a
+connection or vehicle moving between regions, not one removed. (An
+earlier version compared snapshots the pipeline saved between runs; EMI
+republishes near-daily with tiny changes, so it often compared two
+near-identical releases and showed nothing.)
+
+The "+N since …" line in street popups still uses a saved per-street
+snapshot (`rolling_baseline`, keyed on a fingerprint of the figures),
+since EMI publishes no street-level history.
 
 ## The EV dashboard
 

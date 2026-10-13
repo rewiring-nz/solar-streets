@@ -207,6 +207,8 @@
   .stat-line strong { color: var(--text); }
   .stat-seg { white-space: nowrap; }
   .stat-line-seg { margin-top: 2px; }
+  .stat-line-cats { gap: 2px 12px; max-width: 460px; }
+  .stat-line-cats .stat-seg + .stat-seg::before { content: none; }
   .stat-line-cats .swatch { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; vertical-align: middle; }
   .stat-line-batt { color: var(--cyan-text); margin-top: 2px; }
   .stat-line-batt strong { color: var(--cyan-text); }
@@ -1397,17 +1399,16 @@ const INFO = {
   }),
   "ev-types": () => ({
     title: "By vehicle type",
-    body: "Electric vehicles split by the register's own vehicle and body types.",
-    more: "The headline total also includes electric vehicles outside these types — mainly forklifts and other mobile machines, and ATVs — so the types don't quite add up to it.",
+    body: "Electric vehicles of each type, and in brackets the share of that type that's electric — e.g. the % of all cars in the area that are electric.",
+    more: "Types come from the register's own vehicle and body types. The headline total also includes electric vehicles outside these types — mainly forklifts and other mobile machines, and ATVs — so the types don't quite add up to it.",
   }),
-  leaderboard: () => {
-    const since = shortDate(DATASET === "ev" ? evChangeSince : (metaNational && metaNational.changeSince));
-    return {
-      title: "Leaderboard",
-      body: `Growth in each region since the previous data release${since ? ` (${since})` : ""}.`,
-      more: "Ranked by % growth by default, so large regions don't top the list just by being large; switch to Number for the raw count. Falls aren't shown — they're almost always reclassifications rather than systems removed.",
-    };
-  },
+  leaderboard: () => ({
+    title: "Leaderboard",
+    body: DATASET === "ev"
+      ? "Which regions added the most electric vehicles over the period, from the month each vehicle was first registered in NZ (NZTA)."
+      : "Which regions added the most solar over the period, from the Electricity Authority's monthly install counts.",
+    more: "% growth is new additions as a share of what the region already had at the start of the period, so small regions can compete with big ones; switch to Number for the raw count. Only complete months are used. Falls aren't shown — in these figures they're almost always a connection or vehicle moving between regions, not one removed.",
+  }),
   fuels: () => ({
     title: "Electric and fossil fuel",
     body: "Electric is battery-electric only, matching every EV figure on this page. Fossil fuel is anything with a combustion engine.",
@@ -2223,7 +2224,8 @@ function visibleRegions() {
 // rate (EMI) -- the share of homes, or of non-residential connections,
 // that have solar.
 function segPct(v) {
-  return v != null ? ` <span class="seg-pct">(${v.toFixed(1)}%)</span>` : "";
+  if (v == null) return "";
+  return ` <span class="seg-pct">(${v > 0 && v < 0.05 ? "<0.1" : v.toFixed(1)}%)</span>`;
 }
 
 // The farm figure: one central number, its range and method a click away
@@ -2429,7 +2431,6 @@ const vehicleFuelToggleEl = document.getElementById("vehicleFuelToggle");
 // category for the chart's stacked areas, the map choropleth legend
 // swatches, and anywhere else the categories need telling apart.
 const EV_CHART_ORDER = ["Cars", "Utes", "Vans", "Motorbikes", "Buses", "Trucks", "Tractors"];
-const EV_CATS_PER_LINE = 4;   // category counts under the EV headline (renderEvTopbarStats)
 const EV_CATEGORY_COLORS = {
   Cars: "#3b82f6", Utes: "#a855f7", Vans: "#14b8a6", Motorbikes: "#ec4899",
   Buses: "#f97316", Trucks: "#eab308", Tractors: "#ef4444",
@@ -2443,7 +2444,7 @@ let evTopVehicles = null;
 let evTopVehiclesFossil = null;   // same shape, every combustion-engined vehicle (see FOSSIL_FUELS in process.py)
 let evCategoryNames = [];
 let evUpdated = null;
-let evChangeSince = null;   // release the EV leaderboard's changes are measured from
+let evRecent = null;        // monthly first registrations per region, for the leaderboard
 let evLoadPromise = null;
 let evLayerReady = false;
 
@@ -2461,7 +2462,7 @@ function loadEvData() {
       evTopVehiclesFossil = ev.topVehiclesFossil || null;
       evCategoryNames = ev.categories || [];
       evUpdated = ev.updated ? new Date(ev.updated + "T00:00:00Z") : null;
-      evChangeSince = ev.changeSince || null;
+      evRecent = ev.recent || null;
       addEvLayer(boundaries);
     });
   }
@@ -2669,15 +2670,14 @@ function renderEvTopbarStats() {
       const share = c.pct != null ? ` -- ${c.pct.toFixed(1)}% of the ${cat.toLowerCase()} here are electric` : "";
       return `<span class="stat-seg" title="Electric ${cat.toLowerCase()}${share}">` +
         `<i class="swatch" style="background:${EV_CATEGORY_COLORS[cat]}"></i>` +
-        `<strong>${fmt(c.ev)}</strong> ${cat.toLowerCase()}</span>`;
+        `<strong>${fmt(c.ev)}</strong> ${cat.toLowerCase()}${segPct(c.pct)}</span>`;
     });
-  // Four to a line, then wrap: all seven on one row made the panel wider
-  // than the map deserves to lose, and a fixed break keeps the columns
-  // roughly aligned across regions instead of wrapping wherever the
-  // numbers happen to fall.
-  if (catSegs.length) catSegs[catSegs.length - 1] = catSegs[catSegs.length - 1].replace(/<\/span>$/, `${infoBtn("ev-types")}</span>`);
-  for (let i = 0; i < catSegs.length; i += EV_CATS_PER_LINE) {
-    html += `<div class="stat-line stat-line-seg stat-line-cats">${catSegs.slice(i, i + EV_CATS_PER_LINE).join("")}</div>`;
+  // One flowing line, separated by the coloured dots rather than pipes,
+  // so it wraps cleanly at any panel width (narrower with the chart open)
+  // without stranding a separator at the start of a line.
+  if (catSegs.length) {
+    catSegs[catSegs.length - 1] = catSegs[catSegs.length - 1].replace(/<\/span>$/, `${infoBtn("ev-types")}</span>`);
+    html += `<div class="stat-line stat-line-seg stat-line-cats">${catSegs.join("")}</div>`;
   }
   html += `<div class="topbar-actions"><button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button></div>`;
   topbarStatsEl.innerHTML = html;
@@ -3066,29 +3066,69 @@ function renderEvChartSelection() {
   renderEvChartLegend(level, name);
 }
 
-// Ranks regions by release-over-release change (see _change() and
-// rolling_baseline() in process.py) -- region granularity, the level a
-// reader can act on. change/changePct are null until two releases have
-// been seen, so rows without a change are left out rather than shown as
-// a false "no change".
-// Ranked by % growth by default: on raw numbers the biggest regions
-// (Auckland, Canterbury) would head the list every single month simply
-// by being biggest, which tells nobody anything. "Number" is one click
-// away for readers who want the absolute figure. Shared by the on-screen
-// list and the CSV so the two never disagree.
+// Ranks regions by growth over a recent period, read from the published
+// monthly series rather than from snapshots of past pipeline runs:
+//   solar -- EMI's monthly install counts per region (trends.json, the
+//            same series as the trend chart)
+//   EVs   -- vehicles first registered in NZ in each month, per region
+//            (ev.json "recent", from the register's own registration date)
+// Both always have a full history, so the board never depends on when
+// the pipeline happened to run. Ranked by % growth by default: on raw
+// numbers the biggest regions head the list just by being biggest.
 let leaderboardSort = "pct";   // "pct" | "count"
+let leaderboardPeriod = 1;     // months
 const LB_SORTS = [
   { key: "pct",   label: "% growth" },
   { key: "count", label: "Number" },
 ];
-function leaderboardRows(list) {
-  return (list || [])
-    // A leaderboard is for "what grew" -- a negative figure here is more
-    // likely a reporting/attribution quirk (an EV re-registered to a new
-    // owner's district, an ICP counted under a different network this
-    // month) than a real solar system being torn out or a real EV
-    // parked up, so decliners are left off entirely rather than shown
-    // as a false "this fell" signal.
+const LB_PERIODS = [
+  { months: 1,  label: "Last month" },
+  { months: 3,  label: "3 months" },
+  { months: 12, label: "12 months" },
+];
+
+function monthLabel(ym) {   // "2026-08" -> "Aug 2026"
+  const [y, m] = ym.split("-").map(Number);
+  return `${MONTHS3[m - 1]} ${y}`;
+}
+function periodLabel(months) {   // ["2026-06", ..., "2026-08"] -> "Jun–Aug 2026"
+  if (!months.length) return "";
+  const first = monthLabel(months[0]), last = monthLabel(months[months.length - 1]);
+  if (months.length === 1) return `${MONTHS_FULL[+months[0].slice(5) - 1]} ${months[0].slice(0, 4)}`;
+  return first.slice(-4) === last.slice(-4) ? `${first.slice(0, 3)}–${last}` : `${first} – ${last}`;
+}
+
+// {rows: [{name, change, changePct}], months: [...], unit} for the current
+// dataset and period, or null while the data is loading/unavailable.
+async function leaderboardData() {
+  const k = leaderboardPeriod;
+  if (DATASET === "ev") {
+    if (!evRecent || !evRecent.months) return null;
+    const n = Math.min(k, evRecent.months.length);
+    const rows = evRegions.map(r => {
+      const series = evRecent.regions[r.name];
+      if (!series) return null;
+      const added = series.slice(-n).reduce((a, b) => a + b, 0);
+      const before = r.ev - added;   // the region's fleet at the start of the period
+      return { name: r.name, change: added, changePct: before > 0 ? added / before * 100 : null };
+    }).filter(Boolean);
+    return { rows, months: evRecent.months.slice(-n), unit: "EVs" };
+  }
+  const td = await loadTrends();
+  if (!td || !td.dates || td.dates.length < 2) return null;
+  const last = td.dates.length - 1, n = Math.min(k, last);
+  const rows = Object.entries(td.councils).map(([name, s]) => {
+    const now = s.installs[last], then = s.installs[last - n];
+    return { name, change: now - then, changePct: then > 0 ? (now - then) / then * 100 : null };
+  });
+  return { rows, months: td.dates.slice(last - n + 1).map(d => d.slice(0, 7)), unit: "installs" };
+}
+
+function leaderboardRows(rows) {
+  return (rows || [])
+    // Falls are left off: in these monthly series a negative is almost
+    // always a reclassification (an ICP moved between regions, an EV
+    // re-registered to a new owner's district), not a system removed.
     .filter(r => r.change != null && r.change > 0)
     .slice()
     .sort((a, b) => leaderboardSort === "pct"
@@ -3096,56 +3136,41 @@ function leaderboardRows(list) {
       : b.change - a.change || (b.changePct || 0) - (a.changePct || 0));
 }
 
-function renderLeaderboard() {
-  const isEv = DATASET === "ev";
-  const list = isEv ? evRegions : regionData;
-  const unit = isEv ? "EVs" : "installs";
-  const byPct = leaderboardSort === "pct";
-  const sortBar = `<div class="lb-sort">` + LB_SORTS.map(o =>
-    `<button type="button" class="lb-sort-btn${o.key === leaderboardSort ? " active" : ""}" data-sort="${o.key}">${o.label}</button>`
+async function renderLeaderboard() {
+  const toggle = (opts, cls, key, cur) => `<div class="lb-sort">` + opts.map(o =>
+    `<button type="button" class="lb-sort-btn ${cls}${o[key] === cur ? " active" : ""}" data-${cls}="${o[key]}">${o.label}</button>`
   ).join("") + `</div>`;
-  // Says what is being ranked and over what period: growth since the
-  // previous release of the data (the pipeline records its date), not
-  // an adoption share, which the % would otherwise read as. EMI and
-  // NZTA each publish on their own cadence, so the period is named
-  // rather than assumed to be a month.
-  const since = shortDate(isEv ? evChangeSince : (metaNational && metaNational.changeSince));
-  const asOf = isEv ? evUpdated : metaUpdated;
-  const heading = byPct ? "Fastest growth" : "Biggest increases";
-  const monthLine = since
-    ? `<div class="lb-month">${heading} since ${since}${infoBtn("leaderboard")}</div>`
-    : asOf
-      ? `<div class="lb-month">${heading} &mdash; ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()} vs the previous release${infoBtn("leaderboard")}</div>`
-      : "";
-  const rows = leaderboardRows(list).slice(0, 10);
-  if (!rows.length) {
-    leaderboardViewEl.innerHTML = sortBar + monthLine +
-      `<div class="leaderboard-empty">No comparison data yet -- check back after the next data release.</div>`;
+  const bars = toggle(LB_PERIODS, "lb-period", "months", leaderboardPeriod) +
+               toggle(LB_SORTS, "lb-by", "key", leaderboardSort);
+  const data = await leaderboardData();
+  if (!data) {
+    leaderboardViewEl.innerHTML = bars + `<div class="leaderboard-empty">Loading…</div>`;
     return;
   }
-  const growthTitle = isEv
-    ? "Growth against this region's own EV count at the previous data release -- not its share of the fleet."
-    : "Growth against this region's own install count at the previous data release -- not its share of connections.";
-  // Every row that survives the filter above is a real gain, so the
-  // sign/colour is always the "up" case -- no down/flat branch needed.
-  // Whichever measure the list is ranked by leads; the other is the
-  // small print, so the ordering is always visibly justified.
-  leaderboardViewEl.innerHTML = sortBar + monthLine + `<div class="leaderboard-list">` + rows.map((r, i) =>
-    `<div class="lb-row">` +
-      `<span class="lb-rank">${i + 1}</span>` +
-      `<span class="lb-name">${r.name}</span>` +
-      (byPct
-        ? `<span class="lb-change up"><span title="${growthTitle}">+${(r.changePct || 0).toFixed(1)}%</span> ` +
-          `<small>(+${fmt(r.change)} ${unit})</small></span>`
-        : `<span class="lb-change up">+${fmt(r.change)} ${unit} ` +
-          `<small title="${growthTitle}">(+${(r.changePct || 0).toFixed(1)}% growth)</small></span>`) +
-    `</div>`
-  ).join("") + `</div>`;
+  const byPct = leaderboardSort === "pct";
+  const heading = `${byPct ? "Fastest growth" : "Most new"} ${data.unit === "EVs" ? "EVs" : "solar installs"}, ${periodLabel(data.months)}`;
+  const rows = leaderboardRows(data.rows);
+  const growthTitle = data.unit === "EVs"
+    ? "New EVs as a share of the region's EVs at the start of the period -- not its share of the fleet."
+    : "New installs as a share of the region's installs at the start of the period -- not its share of connections.";
+  leaderboardViewEl.innerHTML = bars + `<div class="lb-month">${heading}${infoBtn("leaderboard")}</div>` +
+    (rows.length ? `<div class="leaderboard-list">` + rows.map((r, i) =>
+      `<div class="lb-row">` +
+        `<span class="lb-rank">${i + 1}</span>` +
+        `<span class="lb-name">${esc(r.name)}</span>` +
+        (byPct
+          ? `<span class="lb-change up"><span title="${growthTitle}">+${(r.changePct || 0).toFixed(1)}%</span> ` +
+            `<small>(+${fmt(r.change)} ${data.unit})</small></span>`
+          : `<span class="lb-change up">+${fmt(r.change)} ${data.unit} ` +
+            `<small title="${growthTitle}">(+${(r.changePct || 0).toFixed(1)}%)</small></span>`) +
+      `</div>`
+    ).join("") + `</div>` : `<div class="leaderboard-empty">No growth recorded in this period.</div>`);
 }
 leaderboardViewEl.addEventListener("click", e => {
   const btn = e.target.closest(".lb-sort-btn");
-  if (!btn || btn.dataset.sort === leaderboardSort) return;
-  leaderboardSort = btn.dataset.sort;
+  if (!btn) return;
+  if (btn.dataset.lbBy) leaderboardSort = btn.dataset.lbBy;
+  if (btn.dataset.lbPeriod) leaderboardPeriod = +btn.dataset.lbPeriod;
   renderLeaderboard();
 });
 
@@ -3355,17 +3380,16 @@ function exportEvTrend() {
   );
 }
 
-function exportLeaderboard() {
-  const isEv = DATASET === "ev";
-  const list = (isEv ? evRegions : regionData) || [];
-  const rows = leaderboardRows(list).map((r, i) => [i + 1, r.name, r.change, r.changePct]);
+async function exportLeaderboard() {
+  const data = await leaderboardData();
+  const rows = data ? leaderboardRows(data.rows).map((r, i) => [i + 1, r.name, r.change,
+    r.changePct != null ? r.changePct.toFixed(1) : ""]) : [];
   if (!rows.length) return false;
-  const unit = isEv ? "EVs" : "solar installs";
-  const since = isEv ? evChangeSince : (metaNational && metaNational.changeSince);
+  const isEv = DATASET === "ev";
   return downloadCSV(
-    ["nz", isEv ? "ev" : "solar", "leaderboard", leaderboardSort === "pct" ? "by-growth" : "by-number"],
-    ["Rank", "Region", `Change in ${unit}`, "Change %"], rows,
-    `${sourceNote()}${since ? ` Change measured since the release of ${since}.` : ""}`,
+    ["nz", isEv ? "ev" : "solar", "leaderboard", `${data.months[0]}-to-${data.months[data.months.length - 1]}`],
+    ["Rank", "Region", isEv ? "New EVs" : "New solar installs", "Growth %"], rows,
+    `${sourceNote()} Period: ${periodLabel(data.months)}. Growth % is against the region's own count at the start of the period.`,
   );
 }
 

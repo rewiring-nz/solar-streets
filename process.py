@@ -2210,6 +2210,46 @@ def fetch_ev_trends(tla_names):
     return years, series
 
 
+EV_RECENT_MONTHS = 12   # complete months of first registrations kept for the leaderboard
+
+
+def fetch_ev_recent(tla_names, tla_region, vintage):
+    """Electric vehicles first registered in NZ in each of the last
+    EV_RECENT_MONTHS complete months, nationally and per region -- the
+    leaderboard's EV data, read straight from the register's own
+    FIRST_NZ_REGISTRATION_YEAR/MONTH rather than from snapshots of past
+    runs. "Complete" means before the register's own data month (its
+    dataLastEditDate), so a half-reported month never looks like a slump.
+    Counts vehicles still on the register, so a handful scrapped or
+    exported since won't appear -- negligible over a year.
+    """
+    today = datetime.fromisoformat(vintage).date() if vintage else datetime.now(timezone.utc).date()
+    y, m = today.year, today.month
+    months = []
+    for _ in range(EV_RECENT_MONTHS):
+        m -= 1
+        if m == 0:
+            y, m = y - 1, 12
+        months.append((y, m))
+    months.reverse()
+    rows = _mvr_query(f"MOTIVE_POWER = 'ELECTRIC' AND FIRST_NZ_REGISTRATION_YEAR >= {months[0][0]}",
+                      "TLA,FIRST_NZ_REGISTRATION_YEAR,FIRST_NZ_REGISTRATION_MONTH")
+    index = {ym: i for i, ym in enumerate(months)}
+    national = [0] * len(months)
+    regions = {}
+    for r in rows:
+        a = r["attributes"]
+        i = index.get((a["FIRST_NZ_REGISTRATION_YEAR"], a["FIRST_NZ_REGISTRATION_MONTH"]))
+        name = tla_names.get(a["TLA"])
+        if i is None or not name:
+            continue
+        national[i] += a["cnt"]
+        region = tla_region.get(name)
+        if region:
+            regions.setdefault(region, [0] * len(months))[i] += a["cnt"]
+    return {"months": [f"{yy}-{mm:02d}" for yy, mm in months], "national": national, "regions": regions}
+
+
 def build_ev_data(tlas, tla_region, tla_centroids, council_bounds, overall_ev, overall_total, categories, years, trend_series):
     """Assemble docs/ev.json: national + per-region + per-TLA snapshots
     (counts and real % of the local fleet, overall and per category),
@@ -3138,6 +3178,7 @@ def main():
                 tlas, tla_region, tla_centroids, council_bounds,
                 overall_ev, overall_total, ev_categories, ev_years, ev_trend_series,
             )
+            ev_recent = fetch_ev_recent(tla_names, tla_region, ev_data_date)
             vehicle_models = fetch_vehicle_models(tla_names)
             top_vehicles = build_top_vehicles(vehicle_models, tla_region, ("electric",))
             top_vehicles_fossil = build_top_vehicles(vehicle_models, tla_region, FOSSIL_FUELS)
@@ -3180,6 +3221,8 @@ def main():
                 "trends": ev_trends,
                 "topVehicles": top_vehicles,
                 "topVehiclesFossil": top_vehicles_fossil,
+                # Monthly first registrations, for the leaderboard.
+                "recent": ev_recent,
                 # The release the leaderboard's changes are measured from.
                 "changeSince": ev_snapshot.get("baselineDate") or ev_snapshot.get("baselineVintage"),
             })
