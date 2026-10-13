@@ -2689,7 +2689,11 @@ function loadEvData() {
     evLoadPromise = Promise.all([
       fetch(EV_URL).then(r => r.json()),
       fetch(EV_BOUNDARIES_URL).then(r => r.json()),
-    ]).then(([ev, boundaries]) => {
+    ]).then(async ([ev, boundaries]) => {
+      // The EV layer can only be added once the map style has loaded --
+      // a click on Electric Vehicles during a slow first load (or a page
+      // opened in a background tab) can get here before that.
+      await mapReady;
       evNational = ev.national;
       evRegions = ev.regions;
       evTlas = ev.tlas;
