@@ -245,15 +245,19 @@ are included in the running total.
 
 ## The leaderboard
 
-Ranks regions by growth over the last month, 3 months or 12 months — % growth by
+Ranks regions over the last month, 3 months or 12 months — by % by
 default (raw numbers would put the biggest regions on top every time),
 with a toggle for the absolute number. It reads the published monthly
 series directly, so it always has data and never depends on when the
 pipeline ran:
 
 - **Solar:** EMI's monthly install count per region (GUEHMT, the same
-  series as the trend chart). Growth = latest month-end minus the
-  month-end k months earlier.
+  series as the trend chart). New installs = latest month-end minus the
+  month-end k months earlier; the % is new installs as a share of ALL
+  the region's electricity connections (homes and businesses), not of
+  its existing solar. Growth on its own solar base let regions with
+  very few systems top the board on a handful of installs (West Coast
+  "won" August with 11).
 - **EVs:** vehicles first registered in NZ in each month, per region, from
   the register's own `FIRST_NZ_REGISTRATION_YEAR/MONTH`
   (`fetch_ev_recent`, `ev.json` → `recent`). Only months before the
@@ -282,7 +286,7 @@ listed. A toggle switches between:
 | | Last month (default) | Total adoption |
 |---|---|---|
 | EVs | New EVs in the latest complete month; regions by share of newly registered vehicles that were electric (trailers excluded; regions with < 50 new vehicles listed, not ranked) | EVs on the road; regions by share of the fleet that's electric |
-| Solar | New installs in the latest complete month; regions by growth that month (same measure as the Leaderboard tab) | Homes and businesses with solar; regions by EMI's % of connections |
+| Solar | New installs in the latest complete month; regions by new installs as a % of all their electricity connections (homes and businesses), the same measure as the Leaderboard tab | Homes and businesses with solar; regions by EMI's % of connections |
 
 Solar's "last month" is the latest month in EMI's trends report, which
 EMI publishes a few weeks after the month ends (installs are registered
@@ -304,10 +308,11 @@ no per-frame layout reads) and respects reduced-motion settings.
 DOM and can't be recorded, so `shareScene()` redraws the same sequence
 frame by frame on a canvas — portrait 9:16 for Reels, Stories and TikTok,
 keeping text clear of the top and bottom zones those apps cover. The
-video is a 13 s, 1080×1920 H.264 MP4 encoded in the browser (WebCodecs
+video is a ~16 s, 1080×1920 H.264 MP4 encoded in the browser (WebCodecs
 plus `mp4-muxer`, ~10 MB; browsers without WebCodecs record the canvas in
-real time with MediaRecorder instead). The GIF is 480×854 at 12 fps via
-`gifenc` (~5 MB). Both libraries load from jsDelivr on first click only.
+real time with MediaRecorder instead). The GIF is 450×800 at 10 fps via
+`gifenc` (~6 MB). Clips run until the last confetti has fallen off the
+bottom, then hold on the clean final frame. Both libraries load from jsDelivr on first click only.
 Confetti uses a seeded random generator, so a month's download always
 looks the same.
 

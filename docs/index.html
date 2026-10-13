@@ -1558,7 +1558,10 @@ const INFO = {
     body: DATASET === "ev"
       ? "Which regions added the most electric vehicles over the period, from the month each vehicle was first registered in NZ (NZTA)."
       : "Which regions added the most solar over the period, from the Electricity Authority's monthly install counts.",
-    more: "% growth is new additions as a share of what the region already had at the start of the period, so small regions can compete with big ones; switch to Number for the raw count. Only complete months are used. Falls aren't shown — in these figures they're almost always a connection or vehicle moving between regions, not one removed.",
+    more: (DATASET === "ev"
+      ? "% growth is new EVs as a share of the EVs the region already had at the start of the period, so small regions can compete with big ones."
+      : "% of connections is new installs as a share of all the region's electricity connections (homes and businesses), so small regions can compete with big ones — 0.20% means 1 in 500 homes and businesses got solar in the period.") +
+      " Switch to Number for the raw count. Only complete months are used. Falls aren't shown — in these figures they're almost always a connection or vehicle moving between regions, not one removed.",
   }),
   fuels: () => ({
     title: "Electric and fossil fuel",
@@ -3224,12 +3227,17 @@ function renderEvChartSelection() {
 //   EVs   -- vehicles first registered in NZ in each month, per region
 //            (ev.json "recent", from the register's own registration date)
 // Both always have a full history, so the board never depends on when
-// the pipeline happened to run. Ranked by % growth by default: on raw
-// numbers the biggest regions head the list just by being biggest.
+// the pipeline happened to run. Ranked by % by default -- on raw numbers
+// the biggest regions head the list just by being biggest:
+//   solar -- new installs as a share of ALL the region's electricity
+//            connections (homes and businesses), i.e. how much of the
+//            region went solar in the period; growth on its own installs
+//            would favour regions that start with very few
+//   EVs   -- new EVs as a share of the region's EVs at the start
 let leaderboardSort = "pct";   // "pct" | "count"
 let leaderboardPeriod = 1;     // months
 const LB_SORTS = [
-  { key: "pct",   label: "% growth" },
+  { key: "pct",   label: "%" },
   { key: "count", label: "Number" },
 ];
 const LB_PERIODS = [
@@ -3247,6 +3255,13 @@ function periodLabel(months) {   // ["2026-06", ..., "2026-08"] -> "Jun–Aug 20
   const first = monthLabel(months[0]), last = monthLabel(months[months.length - 1]);
   if (months.length === 1) return `${MONTHS_FULL[+months[0].slice(5) - 1]} ${months[0].slice(0, 4)}`;
   return first.slice(-4) === last.slice(-4) ? `${first.slice(0, 3)}–${last}` : `${first} – ${last}`;
+}
+
+// All electricity connections (ICPs) per region, from EMI's uptake rate.
+function solarConnections() {
+  const m = {};
+  for (const r of regionData) if (r.totalIcps) m[r.name] = r.totalIcps;
+  return m;
 }
 
 // {rows: [{name, change, changePct}], months: [...], unit} for the current
@@ -3267,10 +3282,10 @@ async function leaderboardData() {
   }
   const td = await loadTrends();
   if (!td || !td.dates || td.dates.length < 2) return null;
-  const last = td.dates.length - 1, n = Math.min(k, last);
+  const last = td.dates.length - 1, n = Math.min(k, last), conns = solarConnections();
   const rows = Object.entries(td.councils).map(([name, s]) => {
-    const now = s.installs[last], then = s.installs[last - n];
-    return { name, change: now - then, changePct: then > 0 ? (now - then) / then * 100 : null };
+    const change = s.installs[last] - s.installs[last - n];
+    return { name, change, changePct: conns[name] ? change / conns[name] * 100 : null };
   });
   return { rows, months: td.dates.slice(last - n + 1).map(d => d.slice(0, 7)), unit: "installs" };
 }
@@ -3291,29 +3306,33 @@ async function renderLeaderboard() {
   const toggle = (opts, cls, key, cur) => `<div class="lb-sort">` + opts.map(o =>
     `<button type="button" class="lb-sort-btn ${cls}${o[key] === cur ? " active" : ""}" data-${cls}="${o[key]}">${o.label}</button>`
   ).join("") + `</div>`;
+  const sorts = LB_SORTS.map(o => o.key === "pct" ? { ...o, label: DATASET === "ev" ? "% growth" : "% of connections" } : o);
   const bars = toggle(LB_PERIODS, "lb-period", "months", leaderboardPeriod) +
-               toggle(LB_SORTS, "lb-by", "key", leaderboardSort);
+               toggle(sorts, "lb-by", "key", leaderboardSort);
   const data = await leaderboardData();
   if (!data) {
     leaderboardViewEl.innerHTML = bars + `<div class="leaderboard-empty">Loading…</div>`;
     return;
   }
   const byPct = leaderboardSort === "pct";
-  const heading = `${byPct ? "Fastest growth" : "Most new"} ${data.unit === "EVs" ? "EVs" : "solar installs"}, ${periodLabel(data.months)}`;
+  const isEv = data.unit === "EVs", dp = isEv ? 1 : 2;
+  const heading = isEv
+    ? `${byPct ? "Fastest growth" : "Most new"} EVs, ${periodLabel(data.months)}`
+    : `${byPct ? "Fastest solar uptake" : "Most new solar installs"}, ${periodLabel(data.months)}`;
   const rows = leaderboardRows(data.rows);
-  const growthTitle = data.unit === "EVs"
+  const growthTitle = isEv
     ? "New EVs as a share of the region's EVs at the start of the period -- not its share of the fleet."
-    : "New installs as a share of the region's installs at the start of the period -- not its share of connections.";
+    : "New installs as a share of all the region's electricity connections (homes and businesses).";
   leaderboardViewEl.innerHTML = bars + `<div class="lb-month">${heading}${infoBtn("leaderboard")}</div>` +
     (rows.length ? `<div class="leaderboard-list">` + rows.map((r, i) =>
       `<div class="lb-row">` +
         `<span class="lb-rank">${i + 1}</span>` +
         `<span class="lb-name">${esc(r.name)}</span>` +
         (byPct
-          ? `<span class="lb-change up"><span title="${growthTitle}">+${(r.changePct || 0).toFixed(1)}%</span> ` +
+          ? `<span class="lb-change up"><span title="${growthTitle}">+${(r.changePct || 0).toFixed(dp)}%</span> ` +
             `<small>(+${fmt(r.change)} ${data.unit})</small></span>`
           : `<span class="lb-change up">+${fmt(r.change)} ${data.unit} ` +
-            `<small title="${growthTitle}">(+${(r.changePct || 0).toFixed(1)}%)</small></span>`) +
+            `<small title="${growthTitle}">(+${(r.changePct || 0).toFixed(dp)}%)</small></span>`) +
       `</div>`
     ).join("") + `</div>` : `<div class="leaderboard-empty">No growth recorded in this period.</div>`);
 }
@@ -3533,14 +3552,16 @@ function exportEvTrend() {
 
 async function exportLeaderboard() {
   const data = await leaderboardData();
-  const rows = data ? leaderboardRows(data.rows).map((r, i) => [i + 1, r.name, r.change,
-    r.changePct != null ? r.changePct.toFixed(1) : ""]) : [];
-  if (!rows.length) return false;
   const isEv = DATASET === "ev";
+  const rows = data ? leaderboardRows(data.rows).map((r, i) => [i + 1, r.name, r.change,
+    r.changePct != null ? r.changePct.toFixed(isEv ? 1 : 3) : ""]) : [];
+  if (!rows.length) return false;
   return downloadCSV(
     ["nz", isEv ? "ev" : "solar", "leaderboard", `${data.months[0]}-to-${data.months[data.months.length - 1]}`],
-    ["Rank", "Region", isEv ? "New EVs" : "New solar installs", "Growth %"], rows,
-    `${sourceNote()} Period: ${periodLabel(data.months)}. Growth % is against the region's own count at the start of the period.`,
+    ["Rank", "Region", isEv ? "New EVs" : "New solar installs", isEv ? "Growth %" : "% of connections"], rows,
+    `${sourceNote()} Period: ${periodLabel(data.months)}. ` + (isEv
+      ? "Growth % is against the region's own EV count at the start of the period."
+      : "% of connections is new installs as a share of all the region's electricity connections (homes and businesses)."),
   );
 }
 
@@ -3817,19 +3838,23 @@ async function awardsData(dataset, mode) {
   const last = td.dates.length - 1, monthName = periodLabel([td.dates[last].slice(0, 7)]);
   const monthOnly = MONTHS_FULL[+td.dates[last].slice(5, 7) - 1];
   const natNew = td.national.installs[last] - td.national.installs[last - 1];
+  const conns = solarConnections(), natConns = metaNational && metaNational.totalIcps;
+  // % = new installs / all the region's electricity connections, so a
+  // region with few systems to start with can't top the board on a
+  // handful of installs.
   const ranked = Object.entries(td.councils).map(([name, sr]) => {
-    const now = sr.installs[last], then = sr.installs[last - 1], added = now - then;
-    return { name, pct: then > 0 ? added / then * 100 : 0, detail: `+${fmt(added)} installs`, n: added };
-  }).filter(r => r.n > 0).sort((a, b) => b.pct - a.pct || b.n - a.n);
-  const before = td.national.installs[last - 1];
+    const added = sr.installs[last] - sr.installs[last - 1];
+    return { name, pct: conns[name] ? added / conns[name] * 100 : null, detail: `+${fmt(added)} installs`, n: added };
+  }).filter(r => r.n > 0 && r.pct != null).sort((a, b) => b.pct - a.pct || b.n - a.n);
   return {
-    title: "Solar Leaderboard", kicker: `${monthName} · latest month published`, total: natNew,
+    title: "Solar Leaderboard", kicker: `${monthName} · latest month published`, total: natNew, dp: 2,
     countLabel: `new solar installs in ${monthOnly}`,
-    sub: `${before ? `Up ${(natNew / before * 100).toFixed(1)}% in a month — ` : ""}${fmt(td.national.installs[last])} in all.`,
-    section: `Fastest-growing regions for solar in ${monthName}`, ranked, unranked: [],
-    note: "Growth in each region's solar installs over the month, from the Electricity Authority's monthly install counts (EMI). " +
-      "The % is new installs as a share of what the region already had. Installs are registered a few weeks after they're " +
-      "fitted, so EMI publishes each month a few weeks after it ends; this updates the day it does.",
+    sub: natConns ? `That's ${(natNew / natConns * 100).toFixed(2)}% of all homes and businesses in NZ in one month — ${fmt(td.national.installs[last])} have solar now.`
+                  : `${fmt(td.national.installs[last])} homes and businesses have solar now.`,
+    section: `Top regions for new solar in ${monthName}`, ranked, unranked: [],
+    note: "New solar installs in each region that month as a share of all its electricity connections (homes and businesses), " +
+      "so big and small regions compare fairly. Source: the Electricity Authority's monthly install counts (EMI). Installs are " +
+      "registered a few weeks after they're fitted, so EMI publishes each month a few weeks after it ends; this updates the day it does.",
   };
 }
 
@@ -3952,7 +3977,7 @@ async function awardsPlay() {
   // Podium: laid out 2nd-1st-3rd, revealed 3rd, 2nd, 1st.
   const top = d.ranked.slice(0, 3);
   const MEDALS = ["🥇", "🥈", "🥉"];
-  const podium = $("awardsPodium");
+  const podium = $("awardsPodium"), dp = d.dp || 1;
   podium.innerHTML = [1, 0, 2].map(i => top[i] ? `
     <div class="awards-card p${i + 1}" data-place="${i}">
       <div class="awards-medal">${MEDALS[i]}</div>
@@ -3963,7 +3988,7 @@ async function awardsPlay() {
   const rest = $("awardsRest");
   const restRow = (r, rank) => `
     <li><span class="rank">${rank}</span><span class="name">${esc(r.name)}</span>
-      <span class="pct">${r.pct.toFixed(1)}%</span><span class="of">${r.detail}</span></li>`;
+      <span class="pct">${r.pct.toFixed(dp)}%</span><span class="of">${r.detail}</span></li>`;
   rest.innerHTML = d.ranked.slice(3).map((r, k) => restRow(r, k + 4)).join("") + d.unranked.map(r => restRow(r, "–")).join("");
 
   // 1. The big count-up, then fireworks.
@@ -3979,7 +4004,7 @@ async function awardsPlay() {
     if (!card) return;
     card.classList.add("show");
     const pctEl = card.querySelector(".awards-pct");
-    awardsCount(pctEl, +pctEl.dataset.pct, 900, v => `${v.toFixed(1)}%`, () => { if (place === 0) awardsCelebrate(false); });
+    awardsCount(pctEl, +pctEl.dataset.pct, 900, v => `${v.toFixed(dp)}%`, () => { if (place === 0) awardsCelebrate(false); });
   });
   const t0 = COUNT_MS + 1400;
   awardsLater(t0 - 400, () => { $("awardsSection").classList.add("show"); podium.classList.add("show"); });
@@ -4083,7 +4108,9 @@ awardsBtnEl.classList.remove("hidden");
    every download of a month looks the same and ends cleanly. Libraries
    load on first use only. */
 
-const SHARE_FPS = 30, SHARE_SECONDS = 13;
+// Clips run until the last piece of confetti has fallen off the bottom,
+// then hold briefly (capped, should anything never settle).
+const SHARE_FPS = 30, SHARE_HOLD_MS = 1500, SHARE_MAX_MS = 30000, SHARE_EXPECT_MS = 16000;
 const SHARE_URL_TEXT = "rewiring.nz/electricstreets";
 
 function seededRandom(seed) {   // mulberry32
@@ -4115,8 +4142,8 @@ function shareScene(ctx, W, d, dataset) {
   const firework = (x, y) => { const n = 70, c = COLS[Math.floor(rnd() * COLS.length)];
     for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, v = (1.6 + rnd() * 3.4) * k * 1.5;
       parts.push({ s: 1, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: 55 + rnd() * 35, c: rnd() < .25 ? "#fff" : c, r: (2 + rnd() * 1.6) * k * 1.6 }); } };
-  const streamers = n => { for (let i = 0; i < n; i++) parts.push({ s: 0, x: rnd() * W, y: -X(20) - rnd() * X(400),
-      vx: (rnd() - .5) * 2.2 * k * 1.4, vy: (2.2 + rnd() * 3) * k * 1.8, rot: rnd() * 3.14, vr: (rnd() - .5) * .3,
+  const streamers = n => { for (let i = 0; i < n; i++) parts.push({ s: 0, x: rnd() * W, y: -X(20) - rnd() * X(300),
+      vx: (rnd() - .5) * 2.2 * k * 1.4, vy: (3 + rnd() * 3) * k * 1.8, rot: rnd() * 3.14, vr: (rnd() - .5) * .3,
       w: (6 + rnd() * 6) * k * 1.6, h: (9 + rnd() * 9) * k * 1.6, c: COLS[Math.floor(rnd() * COLS.length)], sway: rnd() * 6.28 }); };
   const events = [
     { at: T.count1, fn: () => { for (let b = 0; b < 6; b++) firework(X(160 + rnd() * 760), X(330 + rnd() * 420)); streamers(220); } },
@@ -4156,7 +4183,7 @@ function shareScene(ctx, W, d, dataset) {
     for (const c of str) { const w = cellW(c); ctx.fillText(c, x + w / 2, y); x += w; }
   };
 
-  return function draw(t) {
+  function draw(t) {
     advanceTo(t);
     const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, BG1); g.addColorStop(1, BG2);
     ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
@@ -4206,7 +4233,7 @@ function shareScene(ctx, W, d, dataset) {
       const namePx = Math.min(...nameLines.map(l => fitPx(l, colW - X(28), 700, 32)));
       nameLines.forEach((l, i) => text(l, x + colW / 2, y + X(place === 0 ? 140 : 124) + i * X(38), FONT(700, namePx), TEXT, "center", alpha));
       const pv = r.pct * ease4((t - at) / 900);
-      text(`${pv.toFixed(1)}%`, x + colW / 2, y + h - X(58), FONT(800, place === 0 ? 70 : 60), accent, "center", alpha);
+      text(`${pv.toFixed(d.dp || 1)}%`, x + colW / 2, y + h - X(58), FONT(800, place === 0 ? 70 : 60), accent, "center", alpha);
       text(r.detail, x + colW / 2, y + h - X(20), FONT(400, 22), DIM, "center", alpha);
     });
 
@@ -4217,7 +4244,7 @@ function shareScene(ctx, W, d, dataset) {
       const cw = (W - 2 * x0) / 2, x = x0 + col * cw, y = X(1468) + row * X(46);
       text(String(i + 4), x + X(30), y, FONT(600, 28), DIM, "right", a);
       text(clip(r.name, cw - X(46) - X(130), FONT(600, 28)), x + X(46), y, FONT(600, 28), TEXT, "left", a);
-      text(`${r.pct.toFixed(1)}%`, x + cw - X(24), y, FONT(700, 28), accent, "right", a);
+      text(`${r.pct.toFixed(d.dp || 1)}%`, x + cw - X(24), y, FONT(700, 28), accent, "right", a);
     });
 
     // Footer, above the Reels caption zone
@@ -4230,8 +4257,24 @@ function shareScene(ctx, W, d, dataset) {
         ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.sway))); ctx.restore(); }
     }
     ctx.globalAlpha = 1;
+  }
+  // True once every burst has fired and all of it has left the frame.
+  draw.cleared = () => events.every(e => e.done) && parts.length === 0;
+  return draw;
+}
+
+// Frame loop shared by the encoders: draws frame i at its time and keeps
+// going until the scene is clear plus the hold.
+function shareFrames(draw, fps) {
+  let clearAt = null;
+  return i => {
+    const t = i * 1000 / fps;
+    draw(t);
+    if (clearAt == null && draw.cleared()) clearAt = t;
+    return { t, last: (clearAt != null && t >= clearAt + SHARE_HOLD_MS) || t >= SHARE_MAX_MS };
   };
 }
+const shareProgress = t => Math.min(.99, t / SHARE_EXPECT_MS);
 
 function shareFileName(ext) {
   const what = awardsDataset === "ev" ? "ev" : "solar";
@@ -4250,7 +4293,6 @@ async function makeShareVideo(onProgress) {
   if (!d) throw new Error("no data");
   const W = 1080, H = 1920, canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d"), draw = shareScene(ctx, W, d, awardsDataset);
-  const frames = SHARE_FPS * SHARE_SECONDS;
 
   if (window.VideoEncoder && window.VideoFrame) {
     const { Muxer, ArrayBufferTarget } = await import("https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.mjs");
@@ -4263,12 +4305,13 @@ async function makeShareVideo(onProgress) {
       let failure = null;
       const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { failure = e; } });
       enc.configure({ codec, width: W, height: H, bitrate: 6e6, framerate: SHARE_FPS });
-      for (let i = 0; i < frames; i++) {
-        draw(i * 1000 / SHARE_FPS);
+      const frame = shareFrames(draw, SHARE_FPS);
+      for (let i = 0, last = false; !last; i++) {
+        const f = frame(i); last = f.last;
         const vf = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / SHARE_FPS), duration: Math.round(1e6 / SHARE_FPS) });
         enc.encode(vf, { keyFrame: i % (SHARE_FPS * 2) === 0 }); vf.close();
         if (failure) throw failure;
-        if (i % 8 === 0) { onProgress(i / frames); await pause(); while (enc.encodeQueueSize > 12) await pause(); }
+        if (i % 8 === 0) { onProgress(shareProgress(f.t)); await pause(); while (enc.encodeQueueSize > 12) await pause(); }
       }
       await enc.flush(); muxer.finalize();
       return { blob: new Blob([muxer.target.buffer], { type: "video/mp4" }), ext: "mp4" };
@@ -4283,8 +4326,11 @@ async function makeShareVideo(onProgress) {
   const stopped = new Promise(r => { rec.onstop = r; });
   rec.start();
   const start = performance.now();
-  await new Promise(res => { const tick = () => { const t = performance.now() - start; draw(t); onProgress(t / (SHARE_SECONDS * 1000));
-    if (t < SHARE_SECONDS * 1000) requestAnimationFrame(tick); else res(); }; requestAnimationFrame(tick); });
+  let clearAt = null;
+  await new Promise(res => { const tick = () => { const t = performance.now() - start; draw(t); onProgress(shareProgress(t));
+    if (clearAt == null && draw.cleared()) clearAt = t;
+    if ((clearAt != null && t >= clearAt + SHARE_HOLD_MS) || t >= SHARE_MAX_MS) res(); else requestAnimationFrame(tick); };
+    requestAnimationFrame(tick); });
   rec.stop(); await stopped;
   return { blob: new Blob(chunks, { type: mime.split(";")[0] }), ext: mime.includes("mp4") ? "mp4" : "webm" };
 }
@@ -4293,16 +4339,16 @@ async function makeShareGif(onProgress) {
   const d = await awardsData(awardsDataset, awardsMode);
   if (!d) throw new Error("no data");
   const { GIFEncoder, quantize, applyPalette } = await import("https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js");
-  const W = 480, H = 854, FPS = 12, canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
+  const W = 450, H = 800, FPS = 10, canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d", { willReadFrequently: true }), draw = shareScene(ctx, W, d, awardsDataset);
-  const frames = FPS * (SHARE_SECONDS - 2), gif = GIFEncoder();
-  for (let i = 0; i < frames; i++) {
-    draw(i * 1000 / FPS);
+  const gif = GIFEncoder(), frame = shareFrames(draw, FPS);
+  for (let i = 0, last = false; !last; i++) {
+    const f = frame(i); last = f.last;
     const { data } = ctx.getImageData(0, 0, W, H);
     const palette = quantize(data, 256), index = applyPalette(data, palette);
-    // Hold the final frame so the result can be read before it loops.
-    gif.writeFrame(index, W, H, { palette, delay: i === frames - 1 ? 4000 : Math.round(1000 / FPS) });
-    if (i % 4 === 0) { onProgress(i / frames); await pause(); }
+    // Hold the final, confetti-free frame so it can be read before it loops.
+    gif.writeFrame(index, W, H, { palette, delay: last ? 3000 : Math.round(1000 / FPS) });
+    if (i % 4 === 0) { onProgress(shareProgress(f.t)); await pause(); }
   }
   gif.finish();
   return { blob: new Blob([gif.bytes()], { type: "image/gif" }), ext: "gif" };
@@ -4372,6 +4418,7 @@ function awardsFromUrl() {
     metaNational = nat
       ? {
           icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0,
+          totalIcps: nat.totalIcps || null,
           resIcps: nat.resIcps != null ? nat.resIcps : null,
           busIcps: nat.busIcps != null ? nat.busIcps : null,
           resPct: nat.resPct != null ? nat.resPct : null,
