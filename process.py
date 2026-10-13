@@ -1763,10 +1763,18 @@ def _fetch_guehmt(fuel_type, region_type, market_segment=None):
     }
     if market_segment:
         params["MarketSegment"] = market_segment
-    r = get(GUEHMT_URL, timeout=180, params=params)
-    text = r.content.decode("utf-8-sig", errors="replace")
-    lines = text.splitlines()
-    start = next((i for i, ln in enumerate(lines) if ln.startswith("Month end,")), None)
+    # EMI occasionally answers one of these requests with an error page
+    # instead of the CSV (seen 14 Oct 2026; the same request worked a
+    # minute later), so retry a couple of times before calling it a
+    # format change.
+    for attempt in range(3):
+        r = get(GUEHMT_URL, timeout=180, params=params)
+        text = r.content.decode("utf-8-sig", errors="replace")
+        lines = text.splitlines()
+        start = next((i for i, ln in enumerate(lines) if ln.startswith("Month end,")), None)
+        if start is not None:
+            break
+        time.sleep(20 * (attempt + 1))
     if start is None:
         raise RuntimeError("GUEHMT CSV format changed -- no 'Month end,' header found")
 
