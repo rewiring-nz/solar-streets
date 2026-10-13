@@ -1,0 +1,47 @@
+name: Update solar trends (daily)
+
+# EMI adds each month to its trends report a few weeks after the month
+# ends, on no fixed day. The weekly full run would pick it up within a
+# week; this light daily check republishes docs/trends.json (solar charts
+# and leaderboards) the day it appears. It takes about a minute.
+on:
+  schedule:
+    - cron: "0 19 * * *"    # daily, ~7-8am NZ time
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Same group as the weekly run, so the two never push over each other.
+concurrency:
+  group: update-solar-data
+  cancel-in-progress: false
+
+jobs:
+  trends:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Refresh trends
+        run: python process.py --trends-only
+      - name: Commit if changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add docs/trends.json
+          if git diff --staged --quiet; then
+            echo "No new month"
+            exit 0
+          fi
+          git commit -m "Update solar trends $(date -u +%Y-%m-%d)"
+          for attempt in 1 2 3 4 5; do
+            if git push; then exit 0; fi
+            git fetch origin main && git rebase origin/main && sleep 10
+          done
+          echo "::error::Failed to push after 5 attempts"
+          exit 1

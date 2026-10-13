@@ -283,6 +283,14 @@ listed. A toggle switches between:
 | EVs | New EVs in the latest complete month; regions by share of newly registered vehicles that were electric (trailers excluded; regions with < 50 new vehicles listed, not ranked) | EVs on the road; regions by share of the fleet that's electric |
 | Solar | New installs in the latest complete month; regions by growth that month (same measure as the Leaderboard tab) | Homes and businesses with solar; regions by EMI's % of connections |
 
+Solar's "last month" is the latest month in EMI's trends report, which
+EMI publishes a few weeks after the month ends (installs are registered
+in the ICP registry weeks after they're fitted, and EMI back-fills — the
+daily installs file is not a substitute: on 27 September it still showed
+fewer installs than the report now gives for 31 August). A light daily
+workflow (`update-trends.yml`, `process.py --trends-only`) republishes
+`trends.json` the day a new month appears.
+
 Data: `ev.json` → `recent` (`fetch_ev_recent`: electric and all vehicles
 by month of first NZ registration, per region), `trends.json` (EMI
 monthly installs), and the region figures in `ev.json`/`meta.json`, so it

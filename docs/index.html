@@ -3832,11 +3832,13 @@ async function awardsData(dataset, mode) {
   }).filter(r => r.n > 0).sort((a, b) => b.pct - a.pct || b.n - a.n);
   const before = td.national.installs[last - 1];
   return {
-    title: "Solar Leaderboard", kicker: monthName, total: natNew, countLabel: `new solar installs in ${monthOnly}`,
+    title: "Solar Leaderboard", kicker: `${monthName} · latest month published`, total: natNew,
+    countLabel: `new solar installs in ${monthOnly}`,
     sub: `${before ? `Up ${(natNew / before * 100).toFixed(1)}% in a month — ` : ""}${fmt(td.national.installs[last])} in all.`,
     section: `Fastest-growing regions for solar in ${monthName}`, ranked, unranked: [],
     note: "Growth in each region's solar installs over the month, from the Electricity Authority's monthly install counts (EMI). " +
-      "The % is new installs as a share of what the region already had.",
+      "The % is new installs as a share of what the region already had. Installs are registered a few weeks after they're " +
+      "fitted, so EMI publishes each month a few weeks after it ends; this updates the day it does.",
   };
 }
 
@@ -4017,21 +4019,50 @@ awardsOverlayEl.addEventListener("click", e => {
   if (e.target === awardsOverlayEl || e.target.closest(".awards-close")) awardsClose();
 });
 document.getElementById("awardsReplay").addEventListener("click", () => awardsPlay());
-// Where shared links should point. Embedded on rewiring.nz, that's the
-// public page (it forwards its query string into this iframe, so
-// ?leaderboard=... opens the same view there); anywhere else, this page.
-// The parent's full URL isn't readable from inside the iframe -- browsers
-// send only its origin as the referrer -- hence the known address.
+// Where a shared leaderboard link should point: the page the map is
+// embedded in, so people land on rewiring.nz rather than on GitHub. An
+// iframe can't read its parent's address, but it can read the parent's
+// origin (location.ancestorOrigins, or the referrer where a browser
+// lacks that) -- rewiring.nz maps to its public map page, which forwards
+// its query string into this iframe, so ?leaderboard=... opens the same
+// view there. An embedder can also name its page with ?parent=<url>.
 const PUBLIC_PAGE = "https://www.rewiring.nz/electricstreets";
 function sharePageUrl() {
-  let parentHost = "";
-  try { parentHost = IN_IFRAME && document.referrer ? new URL(document.referrer).hostname : ""; } catch (_) {}
-  return /(^|\.)rewiring\.nz$/.test(parentHost) ? PUBLIC_PAGE : `${location.origin}${location.pathname}`;
+  const named = urlParams.get("parent");
+  if (named && /^https:\/\//.test(named)) return named.split(/[?#]/)[0];
+  if (IN_IFRAME) {
+    let origin = "";
+    try { origin = (location.ancestorOrigins && location.ancestorOrigins[0]) || new URL(document.referrer).origin; } catch (_) {}
+    if (/^https:\/\/(www\.)?rewiring\.nz$/.test(origin)) return PUBLIC_PAGE;
+    if (origin) return origin + "/";
+  }
+  return `${location.origin}${location.pathname}`;
 }
+
+// One click, one copy. document.execCommand("copy") works inside a
+// cross-origin iframe on a click, where the async clipboard API is
+// blocked unless the host page grants it -- so it goes first, with the
+// async API as the fallback. No prompt either way.
+function copyText(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text; ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:-1000px;opacity:0";
+  document.body.appendChild(ta);
+  ta.select(); ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (_) {}
+  ta.remove();
+  if (ok) return Promise.resolve();
+  return navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject(new Error("no clipboard"));
+}
+
 document.getElementById("awardsShare").addEventListener("click", e => {
+  const btn = e.currentTarget;
   const url = `${sharePageUrl()}?leaderboard=${awardsDataset}${awardsMode === "total" ? "-total" : ""}`;
-  const done = () => { e.target.textContent = "Link copied"; setTimeout(() => { e.target.textContent = "Copy link"; }, 1600); };
-  (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(done, () => prompt("Copy this link:", url));
+  copyText(url).then(
+    () => { btn.textContent = "Link copied ✓"; },
+    () => { btn.textContent = "Couldn't copy"; btn.title = url; },
+  ).finally(() => setTimeout(() => { btn.textContent = "Copy link"; }, 1800));
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !awardsOverlayEl.classList.contains("hidden")) awardsClose(); });
 window.addEventListener("resize", () => { if (!awardsOverlayEl.classList.contains("hidden")) awardsSizeCanvas(); });

@@ -3450,5 +3450,34 @@ def main():
         print("\nAll datasets refreshed successfully")
 
 
+def refresh_trends_only():
+    """The daily light run (see .github/workflows/update-trends.yml):
+    re-fetch only EMI's monthly trends report and republish
+    docs/trends.json when it has changed -- in practice, when EMI adds a
+    new month, which it does a few weeks after each month ends. Keeps the
+    solar charts and leaderboards on the latest published month without
+    waiting for the weekly full run. Everything trends.json carries that
+    the full run derives from other sources (the network drill-down and
+    network snapshot) is kept from the existing file."""
+    old = load(OUT_TRENDS, {}) or {}
+    trends, _ = fetch_trends()
+    for key in ("networksByCouncil", "networkSnapshot"):
+        if key in old:
+            trends[key] = old[key]
+    if trends.get("dates") and trends == old:
+        print(f"Trends unchanged (latest month {trends['dates'][-1]})")
+        return
+    if old.get("dates") and trends.get("dates") and trends["dates"][-1] < old["dates"][-1]:
+        # Never step backwards if EMI's report briefly returns less.
+        print(f"EMI returned an older month ({trends['dates'][-1]}) than published ({old['dates'][-1]}); keeping it")
+        return
+    save(OUT_TRENDS, trends)
+    print(f"Trends updated: latest month {trends['dates'][-1]}"
+          + (f" (was {old['dates'][-1]})" if old.get("dates") else ""))
+
+
 if __name__ == "__main__":
-    main()
+    if "--trends-only" in sys.argv:
+        refresh_trends_only()
+    else:
+        main()
