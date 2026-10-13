@@ -1872,6 +1872,9 @@ def fetch_trends():
                 "installs": [all_map[name].get(d, BLANK)["icps"] for d in dates],
                 "newInstalls": [new_count(all_map[name].get(d, BLANK)) for d in dates],
                 "battery": [batt_map.get(name, {}).get(d, BLANK)["icps"] for d in dates],
+                # New solar-with-battery connections that month (EMI's own
+                # count, from the battery pull's new-installations column).
+                "newBattery": [new_count(batt_map.get(name, {}).get(d, BLANK)) for d in dates],
                 "mw": [all_map[name].get(d, BLANK)["mw"] for d in dates],
                 "resAvgNewKW": [res_map.get(name, {}).get(d, BLANK)["avgNew"] for d in dates],
             }
@@ -1900,6 +1903,7 @@ def fetch_trends():
         "installs": nat("installs", nz_tot, "icps"),
         "newInstalls": [new_count(nz_tot[d]) if d in nz_tot else None for d in dates],
         "battery": nat("battery", nz_bat, "icps"),
+        "newBattery": [new_count(nz_bat[d]) if d in nz_bat else None for d in dates],
         "mw": nat("mw", nz_tot, "mw", 3),
         "resAvgNewKW": [nz_row.get(d, BLANK)["avgNew"] for d in dates],
     }
@@ -2377,8 +2381,12 @@ def fetch_ev_recent(tla_names, tla_region, vintage):
     # leaderboard can rank regions by the share of new vehicles that were
     # electric -- the standard adoption measure.
     all_nat, all_reg = monthly(FLEET_WHERE)
+    # The same, per vehicle type, nationally -- "how many of each kind
+    # were added" under the leaderboard's headline. Same clauses as the
+    # snapshot's categories, so the types add up the same way.
+    categories = {name: monthly(f"{EV_WHERE} AND {clause}")[0] for name, clause in EV_CATEGORIES}
     return {"months": [f"{yy}-{mm:02d}" for yy, mm in months], "national": ev_nat, "regions": ev_reg,
-            "allNational": all_nat, "allRegions": all_reg}
+            "allNational": all_nat, "allRegions": all_reg, "categories": categories}
 
 
 def build_ev_data(tlas, tla_region, tla_centroids, council_bounds, overall_ev, overall_total, categories, years, trend_series):

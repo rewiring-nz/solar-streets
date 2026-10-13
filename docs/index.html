@@ -694,6 +694,13 @@
   .awards-count-label { font-size: 13.5px; font-weight: 600; margin-top: 4px; }
   .awards-sub { font-size: 12px; color: var(--dim); margin-top: 6px; min-height: 18px; opacity: 0; transition: opacity .5s; }
   .awards-sub.show { opacity: 1; }
+  .awards-types { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px 12px; margin-top: 8px;
+    font-size: 12px; color: var(--text); opacity: 0; transition: opacity .5s; }
+  .awards-types:empty { display: none; }
+  .awards-types.show { opacity: 1; }
+  .awards-types span { white-space: nowrap; }
+  .awards-types i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+  .awards-batt { font-size: 10.5px; color: var(--cyan-text); margin-top: 1px; }
 
   /* Regions */
   .awards-regions { margin-top: 20px; }
@@ -746,7 +753,7 @@
   .awards-note { font-size: 9px; color: var(--dim); opacity: .85; margin-top: 10px; line-height: 1.4; text-align: center; }
   @media (prefers-reduced-motion: reduce) {
     #awardsBtn { animation: none; }
-    .awards-card, .awards-rest li, .awards-sub, .awards-section { transition: none; }
+    .awards-card, .awards-rest li, .awards-sub, .awards-types, .awards-section { transition: none; }
   }
 </style>
 </head>
@@ -847,6 +854,7 @@
         <div class="awards-kicker" id="awardsMonth"></div>
         <div class="awards-count"><span id="awardsCount">0</span></div>
         <div class="awards-count-label" id="awardsCountLabel"></div>
+        <div class="awards-types" id="awardsTypes"></div>
         <div class="awards-sub" id="awardsSub"></div>
       </section>
       <section class="awards-regions">
@@ -3374,6 +3382,15 @@ function solarAdded(s, last, k) {
   return { added, base: s.installs[last - k] };
 }
 
+// New solar installs that came with a battery in month `last`, as EMI
+// counts them (never more than the month's new installs). Not derived
+// from the change in the battery total: that also counts batteries added
+// to existing systems, so it can exceed the new installs it sits under.
+function solarBatteryAdded(s, last) {
+  const n = s.newBattery && s.newBattery[last];
+  return n != null ? n : null;
+}
+
 // {rows: [{name, change, changePct}], months: [...], unit} for the current
 // dataset and period, or null while the data is loading/unavailable.
 async function leaderboardData() {
@@ -3919,6 +3936,11 @@ const asAtText = d => d ? `${MONTHS_FULL[d.getUTCMonth()]} ${d.getUTCFullYear()}
 
 // What one dataset/mode shows: headline figure and wording, regions ranked
 // (each with its % and a detail line), and the source note.
+// [{cat, n}] for the EV types with any vehicles, in the chart's order.
+function awardsTypes(countOf) {
+  return EV_CHART_ORDER.map(cat => ({ cat, n: countOf(cat) || 0 })).filter(t => t.n > 0);
+}
+
 async function awardsData(dataset, mode) {
   if (dataset === "ev" && mode === "total") {
     if (!evNational || !evRegions.length) return null;
@@ -3931,6 +3953,7 @@ async function awardsData(dataset, mode) {
       title: "EV Leaderboard", kicker: evRecent && evRecent.months
         ? `As at end of ${periodLabel([evRecent.months[evRecent.months.length - 1]])}` : `As at ${asAtText(evUpdated)}`,
       total: evNational.ev, countLabel: "electric vehicles on NZ roads",
+      types: awardsTypes(cat => evNational.categories && evNational.categories[cat] && evNational.categories[cat].ev),
       sub: `That's ${(evNational.ev / evNational.total * 100).toFixed(1)}% of all ${fmt(evNational.total)} registered vehicles.`,
       section: "Highest share of vehicles that are electric", ranked, unranked: [],
       note: "Share of all registered vehicles in each region (excluding trailers, caravans and forklifts) that are electric. Source: NZTA Motor Vehicle Register.",
@@ -3948,8 +3971,9 @@ async function awardsData(dataset, mode) {
     }).filter(r => r.base > 0);
     const ranked = rows.filter(r => r.base >= AWARDS_MIN_NEW).sort((a, b) => b.pct - a.pct || b.n - a.n);
     const unranked = rows.filter(r => r.base < AWARDS_MIN_NEW);
+    const types = rec.categories ? awardsTypes(cat => rec.categories[cat] && rec.categories[cat][i]) : [];
     return {
-      title: "EV Leaderboard", kicker: monthName, total, countLabel: `new electric vehicles on NZ roads in ${monthOnly}`,
+      title: "EV Leaderboard", kicker: monthName, total, types, countLabel: `new electric vehicles on NZ roads in ${monthOnly}`,
       sub: `That's ${(all ? total / all * 100 : 0).toFixed(1)}% of all ${fmt(all)} vehicles first registered in NZ in ${monthName}, including used imports.`,
       section: `Top regions for EV adoption in ${monthName}`, ranked, unranked,
       note: "Share of each region's newly registered vehicles (excluding trailers and forklifts) that were electric, by month of first NZ " +
@@ -3977,7 +4001,8 @@ async function awardsData(dataset, mode) {
   const nat = solarAdded(td.national, last, 1);
   const ranked = Object.entries(td.councils).map(([name, sr]) => {
     const { added, base } = solarAdded(sr, last, 1);
-    return { name, pct: base > 0 ? added / base * 100 : null, detail: `+${fmt(added)} install${added === 1 ? "" : "s"}`, n: added };
+    return { name, pct: base > 0 ? added / base * 100 : null, detail: `+${fmt(added)} install${added === 1 ? "" : "s"}`, n: added,
+             batt: solarBatteryAdded(sr, last) };
   }).filter(r => r.n > 0 && r.pct != null).sort((a, b) => b.pct - a.pct || b.n - a.n);
   return {
     // "Latest month published" is true in the popup, which is always
@@ -4094,7 +4119,7 @@ async function awardsPlay() {
     const on = b.dataset.awardsDataset === awardsDataset;
     b.classList.toggle("active", on); b.setAttribute("aria-selected", on);
   });
-  ["awardsSub", "awardsSection", "awardsPodium", "awardsRest"].forEach(id => $(id).classList.remove("show"));
+  ["awardsSub", "awardsTypes", "awardsSection", "awardsPodium", "awardsRest"].forEach(id => $(id).classList.remove("show"));
   $("awardsPodium").innerHTML = ""; $("awardsRest").innerHTML = "";
   const d = await awardsData(awardsDataset, awardsMode);
   if (run !== awardsRun) return;   // replayed or closed while loading
@@ -4107,6 +4132,8 @@ async function awardsPlay() {
   countEl.style.minWidth = `${fmt(d.total).length * 0.62}em`;   // reserve the final width
   countEl.parentElement.classList.remove("done");
   $("awardsSub").textContent = d.sub;
+  $("awardsTypes").innerHTML = (d.types || []).map(t =>
+    `<span><i style="background:${EV_CATEGORY_COLORS[t.cat]}"></i><strong>${fmt(t.n)}</strong> ${catWord(t.cat, t.n)}</span>`).join("");
   $("awardsSection").textContent = d.section;
   $("awardsNote").textContent = d.note;
 
@@ -4120,6 +4147,7 @@ async function awardsPlay() {
       <div class="awards-region">${esc(top[i].name)}</div>
       <div class="awards-pct" data-pct="${top[i].pct}">0%</div>
       <div class="awards-detail">${top[i].detail}</div>
+      ${top[i].batt != null ? `<div class="awards-batt">(${fmt(top[i].batt)} with battery)</div>` : ""}
     </div>` : "<div></div>").join("");
   const rest = $("awardsRest");
   const restRow = (r, rank) => `
@@ -4133,6 +4161,7 @@ async function awardsPlay() {
     countEl.parentElement.classList.add("done");
     awardsCelebrate(true);
     if (d.sub) $("awardsSub").classList.add("show");
+    $("awardsTypes").classList.add("show");
   });
   // 2. Podium, 3rd -> 2nd -> 1st, each counting up its %.
   const reveal = (place, at) => awardsLater(at, () => {
@@ -4308,6 +4337,25 @@ function shareScene(ctx, W, d, dataset) {
   const roundRect = (x, y, w, h, r, fill, stroke) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
     if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = X(2); ctx.stroke(); } };
 
+  // EV type chips, laid out once: greedy lines no wider than 920 units.
+  const typeLines = [];
+  if (d.types && d.types.length) {
+    ctx.font = FONT(600, 30);
+    let line = { chips: [], w: 0 };
+    for (const ty of d.types) {
+      const label = `${fmt(ty.n)} ${catWord(ty.cat, ty.n)}`;
+      const w = X(24) + ctx.measureText(label).width;
+      const add = line.chips.length ? X(30) + w : w;
+      if (line.chips.length && line.w + add > X(920)) { typeLines.push(line); line = { chips: [], w: 0 }; }
+      line.w += line.chips.length ? X(30) + w : w;
+      line.chips.push({ cat: ty.cat, label, w });
+    }
+    if (line.chips.length) typeLines.push(line);
+    typeLines.splice(2);
+  }
+  // Room for a battery line on the podium cards (solar, last month).
+  const battH = top.some(r => r && r.batt != null) ? X(26) : 0;
+
   // Count-up drawn on a fixed digit grid, so it stays centred without
   // digits jiggling as they change.
   ctx.font = FONT(800, 230);
@@ -4339,23 +4387,43 @@ function shareScene(ctx, W, d, dataset) {
     ctx.restore();
     const labelLines = wrap(d.countLabel, X(900), FONT(600, 46));
     labelLines.forEach((l, i) => text(l, W / 2, X(708) + i * X(56), FONT(600, 46), TEXT));
-    const subY = X(708) + labelLines.length * X(56) + X(10);
-    wrap(d.sub, X(880), FONT(400, 32)).slice(0, 3).forEach((l, i) => text(l, W / 2, subY + i * X(42), FONT(400, 32), DIM, "center", fade(t, T.sub, 500)));
+    // EV types added (or on the road), as coloured-dot chips, centred
+    // over up to two lines.
+    let y = X(708) + labelLines.length * X(56) + X(6);
+    if (typeLines.length) {
+      const a = fade(t, T.sub, 500);
+      typeLines.forEach(line => {
+        let x = W / 2 - line.w / 2;
+        line.chips.forEach(c => {
+          ctx.globalAlpha = a; ctx.fillStyle = EV_CATEGORY_COLORS[c.cat] || DIM;
+          ctx.beginPath(); ctx.arc(x + X(8), y - X(10), X(8), 0, 6.283); ctx.fill();
+          text(c.label, x + X(24), y, FONT(600, 30), TEXT, "left", a);
+          x += c.w + X(30);
+        });
+        y += X(44);
+      });
+      y += X(2);
+    } else {
+      y += X(4);
+    }
+    const subLines = wrap(d.sub, X(880), FONT(400, 32)).slice(0, typeLines.length ? 2 : 3);
+    subLines.forEach((l, i) => text(l, W / 2, y + i * X(42), FONT(400, 32), DIM, "center", fade(t, T.sub, 500)));
+    const headY = Math.max(X(985), y + (subLines.length - 1) * X(42) + X(52));
 
     // Section heading, with a hairline either side
     const hA = fade(t, T.head, 400);
     if (hA) {
-      text(d.section.toUpperCase(), W / 2, X(985), FONT(700, 28), DIM, "center", hA);
+      text(d.section.toUpperCase(), W / 2, headY, FONT(700, 28), DIM, "center", hA);
       ctx.font = FONT(700, 28); const hw = ctx.measureText(d.section.toUpperCase()).width / 2 + X(24);
       ctx.globalAlpha = hA * .4; ctx.fillStyle = DIM;
-      ctx.fillRect(X(60), X(975), W / 2 - hw - X(60), X(2)); ctx.fillRect(W / 2 + hw, X(975), W / 2 - hw - X(60), X(2));
+      ctx.fillRect(X(60), headY - X(10), W / 2 - hw - X(60), X(2)); ctx.fillRect(W / 2 + hw, headY - X(10), W / 2 - hw - X(60), X(2));
       ctx.globalAlpha = 1;
     }
 
     // Podium: 2nd | 1st | 3rd, revealed 3rd -> 2nd -> 1st
     const MED = ["🥇", "🥈", "🥉"], RIM = ["#e3a600", "#a8b4c0", "#c98a4b"];
     const colW = X(300), gap = X(20), baseY = X(1400), x0 = (W - (colW * 3 + gap * 2)) / 2;
-    [[1, 0, X(320)], [0, 1, X(370)], [2, 2, X(300)]].forEach(([place, col, h]) => {
+    [[1, 0, X(320) + battH], [0, 1, X(370) + battH], [2, 2, X(300) + battH]].forEach(([place, col, h]) => {
       const r = top[place]; if (!r) return;
       const at = [T.p1, T.p2, T.p3][place], p = (t - at) / 550;
       if (p <= 0) return;
@@ -4369,8 +4437,9 @@ function shareScene(ctx, W, d, dataset) {
       const namePx = Math.min(...nameLines.map(l => fitPx(l, colW - X(28), 700, 32)));
       nameLines.forEach((l, i) => text(l, x + colW / 2, y + X(place === 0 ? 140 : 124) + i * X(38), FONT(700, namePx), TEXT, "center", alpha));
       const pv = r.pct * ease4((t - at) / 900);
-      text(`${pv.toFixed(d.dp || 1)}%`, x + colW / 2, y + h - X(58), FONT(800, place === 0 ? 70 : 60), accent, "center", alpha);
-      text(r.detail, x + colW / 2, y + h - X(20), FONT(400, 22), DIM, "center", alpha);
+      text(`${pv.toFixed(d.dp || 1)}%`, x + colW / 2, y + h - X(58) - battH, FONT(800, place === 0 ? 70 : 60), accent, "center", alpha);
+      text(r.detail, x + colW / 2, y + h - X(20) - battH, FONT(400, 22), DIM, "center", alpha);
+      if (r.batt != null) text(`(${fmt(r.batt)} with battery)`, x + colW / 2, y + h - X(18), FONT(600, 22), "#38bdf8", "center", alpha);
     });
 
     // The rest, two columns

@@ -316,6 +316,12 @@ matching dataset: `?leaderboard=solar`, `solar-total`, `ev`, `ev-total`.
 Animation runs on one fixed-size canvas over the popup (no backdrop blur,
 no per-frame layout reads) and respects reduced-motion settings.
 
+Under the headline, the EV popup lists how many of each vehicle type were
+added that month (`ev.json` → `recent.categories`, same clauses as the
+snapshot) or are on the road (total mode). The solar podium shows how many
+of each leader's new installs came with a battery (`trends.json` →
+`newBattery`, EMI's own count of new solar-with-battery connections).
+
 **Share downloads** (Video / GIF, top right of the popup): the popup is
 DOM and can't be recorded, so `shareScene()` redraws the same sequence
 frame by frame on a canvas — portrait 9:16 for Reels, Stories and TikTok,
