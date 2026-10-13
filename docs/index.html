@@ -598,6 +598,96 @@
     display: inline-flex; align-items: center; justify-content: center; }
   .chart-legend .ev { background: var(--cyan); }
   .data-sources { font-size: 9.5px; color: var(--dim); opacity: .75; margin-top: 10px; line-height: 1.5; }
+
+  /* ============ Monthly EV leaderboard (animated) ============ */
+  #awardsBtn {
+    position: absolute; z-index: 20; top: 92px; right: 10px;
+    display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 9px;
+    background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--cyan); border-radius: 999px; color: var(--text);
+    font: 700 11.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; cursor: pointer;
+    box-shadow: 0 4px 14px var(--shadow); animation: awardsPulse 2.6s ease-in-out infinite;
+  }
+  #awardsBtn.hidden { display: none; }
+  #awardsBtn .trophy { font-size: 15px; line-height: 1; }
+  @keyframes awardsPulse { 0%, 100% { box-shadow: 0 4px 14px var(--shadow), 0 0 0 0 rgba(34,211,238,.45); }
+                           50% { box-shadow: 0 4px 14px var(--shadow), 0 0 0 6px rgba(34,211,238,0); } }
+  @media (max-width: 767px) { #awardsBtn .awards-btn-label { display: none; } #awardsBtn { padding: 6px 8px; } }
+
+  /* Anchored near the top so the modal grows downward as the list is
+     revealed, rather than re-centring and jumping. */
+  #awardsOverlay {
+    position: absolute; inset: 0; z-index: 120; background: var(--scrim);
+    display: flex; align-items: flex-start; justify-content: center; padding: max(16px, 5vh) 16px 16px;
+  }
+  #awardsOverlay.hidden { display: none; }
+  #awardsModal {
+    position: relative; width: 100%; max-width: 460px; max-height: calc(100% - 8px); overflow-y: auto;
+    background: var(--glass-hi); backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 20px 60px var(--shadow);
+    color: var(--text); padding: 22px 20px 16px; text-align: center;
+  }
+  #awardsFx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
+  .awards-close {
+    position: absolute; top: 10px; right: 12px; z-index: 3; border: none; background: none;
+    color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 4px;
+  }
+  .awards-kicker { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--cyan-text); }
+  #awardsTitle { margin: 2px 0 10px; font-size: 17px; }
+  .awards-count {
+    font-size: clamp(44px, 13vw, 64px); font-weight: 800; line-height: 1.05; letter-spacing: -1px;
+    font-variant-numeric: tabular-nums; color: var(--cyan-text);
+  }
+  .awards-count.done { animation: awardsPop .45s ease-out; }
+  @keyframes awardsPop { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  .awards-count-label { font-size: 13px; font-weight: 600; margin-top: 2px; }
+  .awards-sub { font-size: 12.5px; color: var(--dim); margin-top: 6px; min-height: 19px; opacity: 0; transition: opacity .5s; }
+  .awards-sub.show { opacity: 1; }
+  .awards-section { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+    color: var(--dim); margin: 18px 0 8px; opacity: 0; transition: opacity .4s; }
+  .awards-section.show { opacity: 1; }
+  .awards-podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 8px; align-items: end; }
+  .awards-podium:not(.show) { display: none; }
+  .awards-card {
+    border-radius: 12px; padding: 10px 6px 9px; background: var(--hover); border: 1px solid var(--border);
+    opacity: 0; transform: translateY(26px) scale(.96); transition: opacity .45s ease, transform .55s cubic-bezier(.2,1.4,.4,1);
+  }
+  .awards-card.show { opacity: 1; transform: none; }
+  .awards-card.p1 { padding-top: 16px; padding-bottom: 14px; border-color: #f5b301;
+    background: color-mix(in srgb, #f5b301 14%, var(--hover)); }
+  .awards-card.p2 { border-color: #a8b4c0; }
+  .awards-card.p3 { border-color: #c98a4b; }
+  .awards-medal { font-size: 24px; line-height: 1; }
+  .awards-card.p1 .awards-medal { font-size: 32px; }
+  .awards-region { font-size: 12.5px; font-weight: 700; margin-top: 4px; line-height: 1.2; }
+  .awards-pct { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--cyan-text); margin-top: 2px; }
+  .awards-card.p1 .awards-pct { font-size: 28px; }
+  .awards-detail { font-size: 10.5px; color: var(--dim); margin-top: 1px; }
+  .awards-rest { list-style: none; margin: 10px 0 0; padding: 0; text-align: left; }
+  .awards-rest:not(.show) { display: none; }
+  .awards-rest li {
+    display: flex; align-items: baseline; gap: 8px; padding: 5px 4px; border-bottom: 1px solid var(--border);
+    font-size: 12.5px; opacity: 0; transform: translateX(-10px); transition: opacity .3s, transform .3s;
+  }
+  .awards-rest li.show { opacity: 1; transform: none; }
+  .awards-rest li:last-child { border-bottom: none; }
+  .awards-rest .rank { width: 18px; text-align: right; color: var(--dim); font-size: 11px; }
+  .awards-rest .name { flex: 1; font-weight: 600; }
+  .awards-rest .pct { font-weight: 700; color: var(--cyan-text); font-variant-numeric: tabular-nums; }
+  .awards-rest .of { color: var(--dim); font-size: 11px; min-width: 92px; text-align: right; }
+  .awards-actions { margin-top: 14px; display: flex; justify-content: center; gap: 8px; }
+  .awards-actions button {
+    border: none; border-radius: 8px; padding: 6px 14px; font: 700 12px system-ui, -apple-system, sans-serif;
+    cursor: pointer; background: var(--cyan); color: #062229;
+  }
+  .awards-actions button.secondary { background: var(--hover-hi); color: var(--text); }
+  .awards-note { font-size: 10.5px; color: var(--dim); margin-top: 10px; line-height: 1.45; }
+  @media (prefers-reduced-motion: reduce) {
+    #awardsBtn { animation: none; }
+    .awards-card, .awards-rest li, .awards-sub, .awards-section { transition: none; }
+  }
 </style>
 </head>
 <body>
@@ -670,6 +760,29 @@
   </div>
 
   <div id="infoPop" class="hidden" role="dialog" aria-live="polite"></div>
+
+  <button id="awardsBtn" class="hidden" type="button" aria-label="This month's EV leaderboard">
+    <span class="trophy" aria-hidden="true">🏆</span><span class="awards-btn-label">Leaderboard</span>
+  </button>
+  <div id="awardsOverlay" class="hidden">
+    <div id="awardsModal" role="dialog" aria-modal="true" aria-labelledby="awardsTitle">
+      <canvas id="awardsFx" aria-hidden="true"></canvas>
+      <button type="button" class="awards-close" aria-label="Close">&times;</button>
+      <div class="awards-kicker" id="awardsMonth"></div>
+      <h2 id="awardsTitle">EV Leaderboard</h2>
+      <div class="awards-count" id="awardsCount">0</div>
+      <div class="awards-count-label">new electric vehicles on NZ roads</div>
+      <div class="awards-sub" id="awardsSub"></div>
+      <div class="awards-section" id="awardsSection">Top regions for EV adoption</div>
+      <div class="awards-podium" id="awardsPodium"></div>
+      <ol class="awards-rest" id="awardsRest"></ol>
+      <div class="awards-actions">
+        <button type="button" id="awardsReplay">Replay</button>
+        <button type="button" class="secondary" id="awardsShare">Copy link</button>
+      </div>
+      <div class="awards-note" id="awardsNote"></div>
+    </div>
+  </div>
 
   <button id="methodologyBtn" type="button" title="How this map is built, and what is measured versus estimated" aria-label="Methodology">i</button>
   <div id="methodologyOverlay" class="hidden">
@@ -3582,6 +3695,208 @@ chartSelectEl.addEventListener("change", async () => {
     map.flyTo({ center: NZ_VIEW.center, zoom: NZ_VIEW.zoom, duration: 800 });
   }
 });
+
+/* ================= MONTHLY EV LEADERBOARD (animated) ================= */
+/* A once-a-month moment: how many electric vehicles hit NZ roads last
+   month, counted up from zero, with fireworks when it lands, then the
+   regions ranked by EV adoption -- the share of all newly registered
+   vehicles that were electric -- revealed 3rd, 2nd, 1st, then the rest.
+   Data: ev.json "recent" (vehicles by month of first NZ registration,
+   electric and all, per region; see fetch_ev_recent). Only complete
+   months are used, so it always shows the latest finished month. */
+
+const AWARDS_MIN_NEW = 50;   // regions with fewer new vehicles that month are listed but not ranked
+const awardsBtnEl = document.getElementById("awardsBtn");
+const awardsOverlayEl = document.getElementById("awardsOverlay");
+const awardsCanvas = document.getElementById("awardsFx");
+const awardsReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+let awardsTimers = [], awardsRaf = null, awardsParticles = [], awardsRun = 0;
+
+function awardsData() {
+  const rec = evRecent;
+  if (!rec || !rec.months || !rec.allNational) return null;
+  const i = rec.months.length - 1;
+  const ym = rec.months[i];
+  const total = rec.national[i], all = rec.allNational[i];
+  const rows = Object.entries(rec.regions).map(([name, series]) => {
+    const ev = series[i], n = (rec.allRegions[name] || [])[i] || 0;
+    return { name, ev, all: n, pct: n ? ev / n * 100 : 0 };
+  }).filter(r => r.all > 0);
+  const ranked = rows.filter(r => r.all >= AWARDS_MIN_NEW).sort((a, b) => b.pct - a.pct || b.ev - a.ev);
+  const unranked = rows.filter(r => r.all < AWARDS_MIN_NEW);
+  return { ym, monthName: periodLabel([ym]), total, all, sharePct: all ? total / all * 100 : 0, ranked, unranked };
+}
+
+function awardsLater(ms, fn) { awardsTimers.push(setTimeout(fn, awardsReducedMotion ? 0 : ms)); }
+
+function awardsStop() {
+  awardsRun++;   // invalidates any count-up still in flight
+  awardsTimers.forEach(clearTimeout); awardsTimers = [];
+  if (awardsRaf) cancelAnimationFrame(awardsRaf);
+  awardsRaf = null; awardsParticles = [];
+  const ctx = awardsCanvas.getContext("2d");
+  ctx.clearRect(0, 0, awardsCanvas.width, awardsCanvas.height);
+}
+
+// Counts an element's text up from 0 to `to` with a fast-then-settling ease.
+function awardsCount(el, to, ms, format, done) {
+  if (awardsReducedMotion) { el.textContent = format(to); if (done) done(); return; }
+  const run = awardsRun, start = performance.now();
+  const step = now => {
+    if (run !== awardsRun) return;   // stopped or replayed
+    const t = Math.min(1, (now - start) / ms);
+    el.textContent = format(to * (1 - Math.pow(1 - t, 4)));
+    if (t < 1) requestAnimationFrame(step);
+    else if (done) done();
+  };
+  requestAnimationFrame(step);
+}
+
+/* ---- Fireworks and streamers: one canvas over the modal ---- */
+const AWARDS_COLOURS = ["#22d3ee", "#facc15", "#f472b6", "#4ade80", "#a78bfa", "#fb923c", "#ffffff"];
+function awardsSizeCanvas() {
+  const r = awardsCanvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  awardsCanvas.width = r.width * dpr; awardsCanvas.height = r.height * dpr;
+  awardsCanvas.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+  return r;
+}
+function awardsFirework(x, y) {
+  const n = 60 + Math.floor(Math.random() * 30);
+  const colour = AWARDS_COLOURS[Math.floor(Math.random() * AWARDS_COLOURS.length)];
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2, v = 1.6 + Math.random() * 3.4;
+    awardsParticles.push({ kind: "spark", x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v,
+      life: 55 + Math.random() * 35, age: 0, colour: Math.random() < .25 ? "#ffffff" : colour, size: 2 + Math.random() * 1.4 });
+  }
+}
+function awardsStreamers(w, count) {
+  for (let i = 0; i < count; i++) {
+    awardsParticles.push({ kind: "confetti", x: Math.random() * w, y: -10 - Math.random() * 120,
+      vx: (Math.random() - .5) * 2.2, vy: 1.8 + Math.random() * 2.6, rot: Math.random() * Math.PI,
+      vr: (Math.random() - .5) * .3, w: 5 + Math.random() * 5, h: 8 + Math.random() * 8,
+      colour: AWARDS_COLOURS[Math.floor(Math.random() * AWARDS_COLOURS.length)], age: 0, life: 400, sway: Math.random() * 6.28 });
+  }
+}
+function awardsCelebrate(big) {
+  if (awardsReducedMotion) return;
+  const r = awardsSizeCanvas();
+  const bursts = big ? 6 : 3;
+  for (let b = 0; b < bursts; b++) {
+    awardsLater(b * 260, () => awardsFirework(r.width * (.15 + Math.random() * .7), r.height * (.12 + Math.random() * .3)));
+  }
+  awardsStreamers(r.width, big ? 160 : 70);
+  if (!awardsRaf) awardsRaf = requestAnimationFrame(awardsFrame);
+}
+function awardsFrame() {
+  const ctx = awardsCanvas.getContext("2d");
+  const r = awardsCanvas.getBoundingClientRect();
+  ctx.clearRect(0, 0, r.width, r.height);
+  awardsParticles = awardsParticles.filter(p => p.age < p.life && p.y < r.height + 20);
+  for (const p of awardsParticles) {
+    p.age++;
+    if (p.kind === "spark") {
+      p.vx *= .985; p.vy = p.vy * .985 + .05; p.x += p.vx; p.y += p.vy;
+      ctx.globalAlpha = Math.max(0, 1 - p.age / p.life);
+      ctx.fillStyle = p.colour;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
+    } else {
+      p.sway += .08; p.x += p.vx + Math.sin(p.sway) * .8; p.y += p.vy; p.rot += p.vr;
+      ctx.globalAlpha = 1;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.colour; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.sway)));
+      ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1;
+  awardsRaf = awardsParticles.length ? requestAnimationFrame(awardsFrame) : null;
+}
+
+/* ---- The sequence ---- */
+function awardsPlay() {
+  awardsStop();
+  const d = awardsData();
+  const $ = id => document.getElementById(id);
+  if (!d) { $("awardsMonth").textContent = "No data yet"; return; }
+  $("awardsMonth").textContent = d.monthName;
+  $("awardsTitle").textContent = "EV Leaderboard";
+  const countEl = $("awardsCount");
+  countEl.textContent = "0"; countEl.classList.remove("done");
+  $("awardsSub").classList.remove("show");
+  $("awardsSub").textContent = `That's ${d.sharePct.toFixed(1)}% of all ${fmt(d.all)} vehicles newly registered in ${d.monthName}.`;
+  $("awardsSection").classList.remove("show");
+  $("awardsPodium").classList.remove("show");
+  $("awardsRest").classList.remove("show");
+  $("awardsNote").textContent = `Adoption = share of each region's newly registered vehicles (excluding trailers) that were electric, ` +
+    `by month of first NZ registration, including used imports. Source: NZTA Motor Vehicle Register.` +
+    (d.unranked.length ? ` Regions with fewer than ${AWARDS_MIN_NEW} new vehicles that month aren't ranked.` : "");
+
+  // Podium: laid out 2nd-1st-3rd, revealed 3rd, 2nd, 1st.
+  const top = d.ranked.slice(0, 3);
+  const MEDALS = ["🥇", "🥈", "🥉"];
+  const podium = $("awardsPodium");
+  podium.innerHTML = [1, 0, 2].map(i => top[i] ? `
+    <div class="awards-card p${i + 1}" data-place="${i}">
+      <div class="awards-medal">${MEDALS[i]}</div>
+      <div class="awards-region">${esc(top[i].name)}</div>
+      <div class="awards-pct" data-pct="${top[i].pct}">0%</div>
+      <div class="awards-detail">${fmt(top[i].ev)} of ${fmt(top[i].all)} new</div>
+    </div>` : "<div></div>").join("");
+  const rest = $("awardsRest");
+  rest.innerHTML = d.ranked.slice(3).map((r, k) => `
+    <li><span class="rank">${k + 4}</span><span class="name">${esc(r.name)}</span>
+      <span class="pct">${r.pct.toFixed(1)}%</span><span class="of">${fmt(r.ev)} of ${fmt(r.all)}</span></li>`).join("") +
+    d.unranked.map(r => `
+    <li><span class="rank">–</span><span class="name">${esc(r.name)}</span>
+      <span class="pct">${r.pct.toFixed(1)}%</span><span class="of">${fmt(r.ev)} of ${fmt(r.all)}</span></li>`).join("");
+
+  // 1. The big count-up, then fireworks.
+  const COUNT_MS = 2600;
+  awardsCount(countEl, d.total, COUNT_MS, v => fmt(Math.round(v)), () => {
+    countEl.classList.add("done");
+    awardsCelebrate(true);
+    $("awardsSub").classList.add("show");
+  });
+  // 2. Podium, 3rd -> 2nd -> 1st, each counting up its %.
+  const reveal = (place, at) => awardsLater(at, () => {
+    const card = podium.querySelector(`[data-place="${place}"]`);
+    if (!card) return;
+    card.classList.add("show");
+    const pctEl = card.querySelector(".awards-pct");
+    awardsCount(pctEl, +pctEl.dataset.pct, 900, v => `${v.toFixed(1)}%`, () => { if (place === 0) awardsCelebrate(false); });
+  });
+  const t0 = COUNT_MS + 1400;
+  awardsLater(t0 - 400, () => { $("awardsSection").classList.add("show"); podium.classList.add("show"); });
+  reveal(2, t0); reveal(1, t0 + 1700); reveal(0, t0 + 3400);
+  // 3. The rest, quickly.
+  awardsLater(t0 + 4900, () => rest.classList.add("show"));
+  [...rest.children].forEach((li, k) => awardsLater(t0 + 5000 + k * 90, () => li.classList.add("show")));
+}
+
+function awardsOpen() {
+  awardsOverlayEl.classList.remove("hidden");
+  loadEvData().then(() => awardsPlay()).catch(() => {
+    document.getElementById("awardsMonth").textContent = "Couldn't load the vehicle data";
+  });
+}
+function awardsClose() { awardsStop(); awardsOverlayEl.classList.add("hidden"); }
+
+awardsBtnEl.addEventListener("click", awardsOpen);
+awardsOverlayEl.addEventListener("click", e => {
+  if (e.target === awardsOverlayEl || e.target.closest(".awards-close")) awardsClose();
+});
+document.getElementById("awardsReplay").addEventListener("click", awardsPlay);
+document.getElementById("awardsShare").addEventListener("click", e => {
+  const url = `${location.origin}${location.pathname}?leaderboard`;
+  const done = () => { e.target.textContent = "Link copied"; setTimeout(() => { e.target.textContent = "Copy link"; }, 1600); };
+  (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(done, () => prompt("Copy this link:", url));
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !awardsOverlayEl.classList.contains("hidden")) awardsClose(); });
+
+// Draft: the button only shows with ?draft (or opens directly with
+// ?leaderboard), so it can be tried on the live site before going public.
+const AWARDS_VISIBLE = urlParams.has("draft") || urlParams.has("leaderboard");
+awardsBtnEl.classList.toggle("hidden", !AWARDS_VISIBLE);
+if (urlParams.has("leaderboard")) mapReady.then(() => setTimeout(awardsOpen, 600));
 
 /* ================= LOAD ================= */
 

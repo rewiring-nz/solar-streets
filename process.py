@@ -2214,9 +2214,9 @@ EV_RECENT_MONTHS = 12   # complete months of first registrations kept for the le
 
 
 def fetch_ev_recent(tla_names, tla_region, vintage):
-    """Electric vehicles first registered in NZ in each of the last
-    EV_RECENT_MONTHS complete months, nationally and per region -- the
-    leaderboard's EV data, read straight from the register's own
+    """Electric vehicles -- and all vehicles -- first registered in NZ in
+    each of the last EV_RECENT_MONTHS complete months, nationally and per
+    region: the leaderboards' EV data, read straight from the register's own
     FIRST_NZ_REGISTRATION_YEAR/MONTH rather than from snapshots of past
     runs. "Complete" means before the register's own data month (its
     dataLastEditDate), so a half-reported month never looks like a slump.
@@ -2232,22 +2232,33 @@ def fetch_ev_recent(tla_names, tla_region, vintage):
             y, m = y - 1, 12
         months.append((y, m))
     months.reverse()
-    rows = _mvr_query(f"MOTIVE_POWER = 'ELECTRIC' AND FIRST_NZ_REGISTRATION_YEAR >= {months[0][0]}",
-                      "TLA,FIRST_NZ_REGISTRATION_YEAR,FIRST_NZ_REGISTRATION_MONTH")
     index = {ym: i for i, ym in enumerate(months)}
-    national = [0] * len(months)
-    regions = {}
-    for r in rows:
-        a = r["attributes"]
-        i = index.get((a["FIRST_NZ_REGISTRATION_YEAR"], a["FIRST_NZ_REGISTRATION_MONTH"]))
-        name = tla_names.get(a["TLA"])
-        if i is None or not name:
-            continue
-        national[i] += a["cnt"]
-        region = tla_region.get(name)
-        if region:
-            regions.setdefault(region, [0] * len(months))[i] += a["cnt"]
-    return {"months": [f"{yy}-{mm:02d}" for yy, mm in months], "national": national, "regions": regions}
+
+    def monthly(where):
+        rows = _mvr_query(f"{where} AND FIRST_NZ_REGISTRATION_YEAR >= {months[0][0]}",
+                          "TLA,FIRST_NZ_REGISTRATION_YEAR,FIRST_NZ_REGISTRATION_MONTH")
+        national = [0] * len(months)
+        regions = {}
+        for r in rows:
+            a = r["attributes"]
+            i = index.get((a["FIRST_NZ_REGISTRATION_YEAR"], a["FIRST_NZ_REGISTRATION_MONTH"]))
+            name = tla_names.get(a["TLA"])
+            if i is None or not name:
+                continue
+            national[i] += a["cnt"]
+            region = tla_region.get(name)
+            if region:
+                regions.setdefault(region, [0] * len(months))[i] += a["cnt"]
+        return national, regions
+
+    ev_nat, ev_reg = monthly("MOTIVE_POWER = 'ELECTRIC'")
+    # Every vehicle first registered that month (same fleet definition as
+    # "% of the fleet": trailers and caravans excluded), so the monthly
+    # leaderboard can rank regions by the share of new vehicles that were
+    # electric -- the standard adoption measure.
+    all_nat, all_reg = monthly(FLEET_WHERE)
+    return {"months": [f"{yy}-{mm:02d}" for yy, mm in months], "national": ev_nat, "regions": ev_reg,
+            "allNational": all_nat, "allRegions": all_reg}
 
 
 def build_ev_data(tlas, tla_region, tla_centroids, council_bounds, overall_ev, overall_total, categories, years, trend_series):

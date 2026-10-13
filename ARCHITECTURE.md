@@ -271,6 +271,18 @@ The "+N since …" line in street popups still uses a saved per-street
 snapshot (`rolling_baseline`, keyed on a fingerprint of the figures),
 since EMI publishes no street-level history.
 
+## The monthly EV leaderboard (draft)
+
+A trophy button (shown with `?draft`, or opened directly with
+`?leaderboard`) plays an animated summary of the latest complete month:
+new electric vehicles counted up from zero, then regions ranked by **EV
+adoption** — the share of each region's newly registered vehicles
+(trailers excluded) that were electric — revealed 3rd, 2nd, 1st, then the
+rest. Regions with fewer than 50 new vehicles that month are listed but
+not ranked. Data comes from `ev.json` → `recent` (`fetch_ev_recent`:
+electric and all vehicles by month of first NZ registration, per region),
+so it updates itself each month. Respects reduced-motion settings.
+
 ## The EV dashboard
 
 Built from NZTA's Motor Vehicle Register, queried as server-side grouped
