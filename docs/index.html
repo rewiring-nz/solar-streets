@@ -599,91 +599,126 @@
   .chart-legend .ev { background: var(--cyan); }
   .data-sources { font-size: 9.5px; color: var(--dim); opacity: .75; margin-top: 10px; line-height: 1.5; }
 
-  /* ============ Monthly EV leaderboard (animated) ============ */
+  /* ============ Monthly leaderboard (animated) ============ */
+  /* Accent tokens: cyan for EVs, amber for solar (.awards-solar). */
+  #awardsOverlay { --aw-accent: var(--cyan); --aw-accent-text: var(--cyan-text); --aw-on-accent: #062229; }
+  #awardsOverlay.awards-solar { --aw-accent: var(--amber); --aw-accent-text: var(--amber-text); --aw-on-accent: #241a00; }
+  :root { --awards-panel: rgba(255,255,255,.98); }
+  :root[data-theme="dark"] { --awards-panel: rgba(18,24,33,.98); }
+
+  /* Trophy-only round button under the (i), same footprint as it. */
   #awardsBtn {
-    position: absolute; z-index: 20; top: 92px; right: 10px;
-    display: flex; align-items: center; gap: 6px; padding: 6px 12px 6px 9px;
+    position: absolute; z-index: 20; top: 90px; right: 9px;
+    width: 32px; height: 32px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
     background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
     -webkit-backdrop-filter: blur(16px) saturate(140%);
-    border: 1px solid var(--cyan); border-radius: 999px; color: var(--text);
+    border: 1px solid var(--cyan); border-radius: 50%; color: var(--text);
     font: 700 11.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; cursor: pointer;
     box-shadow: 0 4px 14px var(--shadow); animation: awardsPulse 2.6s ease-in-out infinite;
   }
+  body:not(.dataset-ev) #awardsBtn { border-color: var(--amber); }
   #awardsBtn.hidden { display: none; }
   #awardsBtn .trophy { font-size: 15px; line-height: 1; }
-  @keyframes awardsPulse { 0%, 100% { box-shadow: 0 4px 14px var(--shadow), 0 0 0 0 rgba(34,211,238,.45); }
-                           50% { box-shadow: 0 4px 14px var(--shadow), 0 0 0 6px rgba(34,211,238,0); } }
-  @media (max-width: 767px) { #awardsBtn .awards-btn-label { display: none; } #awardsBtn { padding: 6px 8px; } }
+  @keyframes awardsPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 
-  /* Anchored near the top so the modal grows downward as the list is
-     revealed, rather than re-centring and jumping. */
   #awardsOverlay {
     position: absolute; inset: 0; z-index: 120; background: var(--scrim);
     display: flex; align-items: flex-start; justify-content: center; padding: max(16px, 5vh) 16px 16px;
   }
   #awardsOverlay.hidden { display: none; }
-  #awardsModal {
-    position: relative; width: 100%; max-width: 460px; max-height: calc(100% - 8px); overflow-y: auto;
-    background: var(--glass-hi); backdrop-filter: blur(20px) saturate(140%);
-    -webkit-backdrop-filter: blur(20px) saturate(140%);
-    border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 20px 60px var(--shadow);
-    color: var(--text); padding: 22px 20px 16px; text-align: center;
-  }
+  /* The effects canvas covers the whole overlay at a fixed size, so the
+     modal growing as results appear never stretches or clears it. */
   #awardsFx { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }
-  .awards-close {
-    position: absolute; top: 10px; right: 12px; z-index: 3; border: none; background: none;
-    color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 4px;
+  /* No backdrop blur: recompositing a blurred backdrop under hundreds of
+     moving particles made the celebration stutter. */
+  #awardsModal {
+    position: relative; z-index: 1; width: 100%; max-width: 440px; max-height: calc(100% - 8px); overflow-y: auto;
+    background: var(--awards-panel); border: 1px solid var(--border); border-radius: 20px;
+    box-shadow: 0 24px 64px var(--shadow); color: var(--text); padding: 18px 20px 14px;
   }
-  .awards-kicker { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--cyan-text); }
-  #awardsTitle { margin: 2px 0 10px; font-size: 17px; }
+
+  /* Header */
+  .awards-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  #awardsTitle { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -.2px; }
+  .awards-close { border: none; background: none; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 4px; margin-right: -4px; }
+  .awards-close:hover { color: var(--text); }
+  .awards-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 10px; background: var(--hover); }
+  .awards-mode {
+    border: none; background: transparent; color: var(--dim); border-radius: 8px; padding: 6px 10px;
+    font: 700 12px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .awards-mode:not(.active):hover { color: var(--text); }
+  .awards-mode.active { background: var(--aw-accent); color: var(--aw-on-accent); }
+
+  /* Hero: the month's big number, set apart on its own tinted panel */
+  .awards-hero {
+    margin-top: 14px; padding: 18px 14px 16px; border-radius: 14px; text-align: center;
+    background: color-mix(in srgb, var(--aw-accent) 9%, transparent);
+    border: 1px solid color-mix(in srgb, var(--aw-accent) 22%, transparent);
+  }
+  .awards-kicker { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--aw-accent-text); }
   .awards-count {
-    font-size: clamp(44px, 13vw, 64px); font-weight: 800; line-height: 1.05; letter-spacing: -1px;
-    font-variant-numeric: tabular-nums; color: var(--cyan-text);
+    margin-top: 2px; font-size: clamp(46px, 13vw, 64px); font-weight: 800; line-height: 1.05; letter-spacing: -1.5px;
+    font-variant-numeric: tabular-nums; color: var(--aw-accent-text);
   }
-  .awards-count.done { animation: awardsPop .45s ease-out; }
-  @keyframes awardsPop { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
-  .awards-count-label { font-size: 13px; font-weight: 600; margin-top: 2px; }
-  .awards-sub { font-size: 12.5px; color: var(--dim); margin-top: 6px; min-height: 19px; opacity: 0; transition: opacity .5s; }
+  /* Width reserved for the final figure (set in awardsPlay), so it doesn't
+     re-centre on every frame as digits and commas appear. */
+  .awards-count span { display: inline-block; text-align: center; }
+  .awards-count.done span { animation: awardsPop .45s ease-out; }
+  @keyframes awardsPop { 0% { transform: scale(1); } 40% { transform: scale(1.1); } 100% { transform: scale(1); } }
+  .awards-count-label { font-size: 13.5px; font-weight: 600; margin-top: 4px; }
+  .awards-sub { font-size: 12px; color: var(--dim); margin-top: 6px; min-height: 18px; opacity: 0; transition: opacity .5s; }
   .awards-sub.show { opacity: 1; }
-  .awards-section { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
-    color: var(--dim); margin: 18px 0 8px; opacity: 0; transition: opacity .4s; }
+
+  /* Regions */
+  .awards-regions { margin-top: 20px; }
+  .awards-section {
+    margin: 0 0 10px; font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase;
+    color: var(--dim); opacity: 0; transition: opacity .4s;
+  }
   .awards-section.show { opacity: 1; }
-  .awards-podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 8px; align-items: end; }
+  .awards-podium { display: grid; grid-template-columns: 1fr 1.12fr 1fr; gap: 8px; align-items: end; }
   .awards-podium:not(.show) { display: none; }
   .awards-card {
-    border-radius: 12px; padding: 10px 6px 9px; background: var(--hover); border: 1px solid var(--border);
-    opacity: 0; transform: translateY(26px) scale(.96); transition: opacity .45s ease, transform .55s cubic-bezier(.2,1.4,.4,1);
+    border-radius: 12px; padding: 12px 6px 10px; text-align: center; background: var(--hover); border: 1px solid var(--border);
+    opacity: 0; transform: translateY(24px) scale(.96); transition: opacity .45s ease, transform .55s cubic-bezier(.2,1.4,.4,1);
+    will-change: transform, opacity;
   }
   .awards-card.show { opacity: 1; transform: none; }
-  .awards-card.p1 { padding-top: 16px; padding-bottom: 14px; border-color: #f5b301;
-    background: color-mix(in srgb, #f5b301 14%, var(--hover)); }
+  .awards-card.p1 { padding: 16px 6px 14px; border-color: #e3a600; background: color-mix(in srgb, #f5b301 12%, var(--hover)); }
   .awards-card.p2 { border-color: #a8b4c0; }
   .awards-card.p3 { border-color: #c98a4b; }
-  .awards-medal { font-size: 24px; line-height: 1; }
-  .awards-card.p1 .awards-medal { font-size: 32px; }
-  .awards-region { font-size: 12.5px; font-weight: 700; margin-top: 4px; line-height: 1.2; }
-  .awards-pct { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--cyan-text); margin-top: 2px; }
-  .awards-card.p1 .awards-pct { font-size: 28px; }
-  .awards-detail { font-size: 10.5px; color: var(--dim); margin-top: 1px; }
-  .awards-rest { list-style: none; margin: 10px 0 0; padding: 0; text-align: left; }
+  .awards-medal { font-size: 22px; line-height: 1; }
+  .awards-card.p1 .awards-medal { font-size: 30px; }
+  .awards-region { font-size: 12px; font-weight: 700; margin-top: 6px; line-height: 1.25; min-height: 2.5em;
+    display: flex; align-items: center; justify-content: center; }
+  .awards-pct { font-size: 21px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--aw-accent-text);
+    min-width: 4.2ch; display: inline-block; }
+  .awards-card.p1 .awards-pct { font-size: 26px; }
+  .awards-detail { font-size: 10.5px; color: var(--dim); margin-top: 2px; }
+  .awards-rest { list-style: none; margin: 12px 0 0; padding: 0; }
   .awards-rest:not(.show) { display: none; }
   .awards-rest li {
-    display: flex; align-items: baseline; gap: 8px; padding: 5px 4px; border-bottom: 1px solid var(--border);
-    font-size: 12.5px; opacity: 0; transform: translateX(-10px); transition: opacity .3s, transform .3s;
+    display: grid; grid-template-columns: 22px 1fr auto auto; align-items: baseline; column-gap: 10px;
+    padding: 6px 2px; border-top: 1px solid var(--border); font-size: 12.5px;
+    opacity: 0; transform: translateY(4px); transition: opacity .3s, transform .3s; will-change: transform, opacity;
   }
   .awards-rest li.show { opacity: 1; transform: none; }
-  .awards-rest li:last-child { border-bottom: none; }
-  .awards-rest .rank { width: 18px; text-align: right; color: var(--dim); font-size: 11px; }
-  .awards-rest .name { flex: 1; font-weight: 600; }
-  .awards-rest .pct { font-weight: 700; color: var(--cyan-text); font-variant-numeric: tabular-nums; }
-  .awards-rest .of { color: var(--dim); font-size: 11px; min-width: 92px; text-align: right; }
-  .awards-actions { margin-top: 14px; display: flex; justify-content: center; gap: 8px; }
+  .awards-rest .rank { text-align: right; color: var(--dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .awards-rest .name { font-weight: 600; min-width: 0; }
+  .awards-rest .pct { font-weight: 700; color: var(--aw-accent-text); font-variant-numeric: tabular-nums; text-align: right; }
+  .awards-rest .of { color: var(--dim); font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; min-width: 92px; }
+
+  /* Footer */
+  .awards-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .awards-actions { display: flex; justify-content: center; gap: 8px; }
   .awards-actions button {
-    border: none; border-radius: 8px; padding: 6px 14px; font: 700 12px system-ui, -apple-system, sans-serif;
-    cursor: pointer; background: var(--cyan); color: #062229;
+    border: none; border-radius: 8px; padding: 7px 16px; font: 700 12px system-ui, -apple-system, sans-serif;
+    cursor: pointer; background: var(--aw-accent); color: var(--aw-on-accent);
   }
   .awards-actions button.secondary { background: var(--hover-hi); color: var(--text); }
-  .awards-note { font-size: 10.5px; color: var(--dim); margin-top: 10px; line-height: 1.45; }
+  .awards-note { font-size: 9px; color: var(--dim); opacity: .85; margin-top: 10px; line-height: 1.4; text-align: center; }
   @media (prefers-reduced-motion: reduce) {
     #awardsBtn { animation: none; }
     .awards-card, .awards-rest li, .awards-sub, .awards-section { transition: none; }
@@ -761,26 +796,38 @@
 
   <div id="infoPop" class="hidden" role="dialog" aria-live="polite"></div>
 
-  <button id="awardsBtn" class="hidden" type="button" aria-label="This month's EV leaderboard">
-    <span class="trophy" aria-hidden="true">🏆</span><span class="awards-btn-label">Leaderboard</span>
+  <button id="awardsBtn" type="button" aria-label="This month's leaderboard" title="This month's leaderboard">
+    <span class="trophy" aria-hidden="true">🏆</span>
   </button>
   <div id="awardsOverlay" class="hidden">
+    <canvas id="awardsFx" aria-hidden="true"></canvas>
     <div id="awardsModal" role="dialog" aria-modal="true" aria-labelledby="awardsTitle">
-      <canvas id="awardsFx" aria-hidden="true"></canvas>
-      <button type="button" class="awards-close" aria-label="Close">&times;</button>
-      <div class="awards-kicker" id="awardsMonth"></div>
-      <h2 id="awardsTitle">EV Leaderboard</h2>
-      <div class="awards-count" id="awardsCount">0</div>
-      <div class="awards-count-label">new electric vehicles on NZ roads</div>
-      <div class="awards-sub" id="awardsSub"></div>
-      <div class="awards-section" id="awardsSection">Top regions for EV adoption</div>
-      <div class="awards-podium" id="awardsPodium"></div>
-      <ol class="awards-rest" id="awardsRest"></ol>
-      <div class="awards-actions">
-        <button type="button" id="awardsReplay">Replay</button>
-        <button type="button" class="secondary" id="awardsShare">Copy link</button>
+      <header class="awards-head">
+        <h2 id="awardsTitle">Leaderboard</h2>
+        <button type="button" class="awards-close" aria-label="Close">&times;</button>
+      </header>
+      <div class="awards-modes" role="tablist">
+        <button type="button" class="awards-mode active" data-awards-mode="month" role="tab">Last month</button>
+        <button type="button" class="awards-mode" data-awards-mode="total" role="tab">Total adoption</button>
       </div>
-      <div class="awards-note" id="awardsNote"></div>
+      <section class="awards-hero">
+        <div class="awards-kicker" id="awardsMonth"></div>
+        <div class="awards-count"><span id="awardsCount">0</span></div>
+        <div class="awards-count-label" id="awardsCountLabel"></div>
+        <div class="awards-sub" id="awardsSub"></div>
+      </section>
+      <section class="awards-regions">
+        <h3 class="awards-section" id="awardsSection"></h3>
+        <div class="awards-podium" id="awardsPodium"></div>
+        <ol class="awards-rest" id="awardsRest"></ol>
+      </section>
+      <footer class="awards-foot">
+        <div class="awards-actions">
+          <button type="button" id="awardsReplay">Replay</button>
+          <button type="button" class="secondary" id="awardsShare">Copy link</button>
+        </div>
+        <div class="awards-note" id="awardsNote"></div>
+      </footer>
     </div>
   </div>
 
@@ -3696,35 +3743,101 @@ chartSelectEl.addEventListener("change", async () => {
   }
 });
 
-/* ================= MONTHLY EV LEADERBOARD (animated) ================= */
-/* A once-a-month moment: how many electric vehicles hit NZ roads last
-   month, counted up from zero, with fireworks when it lands, then the
-   regions ranked by EV adoption -- the share of all newly registered
-   vehicles that were electric -- revealed 3rd, 2nd, 1st, then the rest.
-   Data: ev.json "recent" (vehicles by month of first NZ registration,
-   electric and all, per region; see fetch_ev_recent). Only complete
-   months are used, so it always shows the latest finished month. */
+/* ================= MONTHLY LEADERBOARD (animated) ================= */
+/* A once-a-month moment for each dataset: the headline figure counted up
+   from zero, fireworks when it lands, then regions revealed 3rd, 2nd, 1st
+   and the rest. Two modes, toggled at the top:
 
-const AWARDS_MIN_NEW = 50;   // regions with fewer new vehicles that month are listed but not ranked
+     Last month      EVs:   new EVs, ranked by share of newly registered
+                            vehicles that were electric (ev.json "recent")
+                     Solar: new installs, ranked by growth that month
+                            (EMI monthly counts, trends.json) -- the same
+                            measure as the Leaderboard tab
+     Total adoption  EVs:   EVs on the road, ranked by share of the fleet
+                     Solar: installs, ranked by EMI's % of connections
+
+   Only complete months are used, so it always shows the latest finished
+   month and refreshes itself when the sources publish. */
+
+const AWARDS_MIN_NEW = 50;   // EV regions with fewer new vehicles that month are listed but not ranked
 const awardsBtnEl = document.getElementById("awardsBtn");
 const awardsOverlayEl = document.getElementById("awardsOverlay");
 const awardsCanvas = document.getElementById("awardsFx");
 const awardsReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let awardsTimers = [], awardsRaf = null, awardsParticles = [], awardsRun = 0;
+let awardsDataset = "solar";        // "solar" | "ev"
+let awardsMode = "month";           // "month" | "total"
+let awardsSize = { w: 0, h: 0 };    // canvas CSS size, measured once per open/resize
 
-function awardsData() {
-  const rec = evRecent;
-  if (!rec || !rec.months || !rec.allNational) return null;
-  const i = rec.months.length - 1;
-  const ym = rec.months[i];
-  const total = rec.national[i], all = rec.allNational[i];
-  const rows = Object.entries(rec.regions).map(([name, series]) => {
-    const ev = series[i], n = (rec.allRegions[name] || [])[i] || 0;
-    return { name, ev, all: n, pct: n ? ev / n * 100 : 0 };
-  }).filter(r => r.all > 0);
-  const ranked = rows.filter(r => r.all >= AWARDS_MIN_NEW).sort((a, b) => b.pct - a.pct || b.ev - a.ev);
-  const unranked = rows.filter(r => r.all < AWARDS_MIN_NEW);
-  return { ym, monthName: periodLabel([ym]), total, all, sharePct: all ? total / all * 100 : 0, ranked, unranked };
+const asAtText = d => d ? `${MONTHS_FULL[d.getUTCMonth()]} ${d.getUTCFullYear()}` : "";
+
+// What one dataset/mode shows: headline figure and wording, regions ranked
+// (each with its % and a detail line), and the source note.
+async function awardsData(dataset, mode) {
+  if (dataset === "ev" && mode === "total") {
+    if (!evNational || !evRegions.length) return null;
+    const ranked = evRegions.filter(r => r.total > 0)
+      .map(r => ({ name: r.name, pct: r.ev / r.total * 100, detail: `${fmt(r.ev)} of ${fmt(r.total)}`, n: r.ev }))
+      .sort((a, b) => b.pct - a.pct || b.n - a.n);
+    return {
+      title: "EV Leaderboard", kicker: `As at ${asAtText(evUpdated)}`,
+      total: evNational.ev, countLabel: "electric vehicles on NZ roads",
+      sub: `That's ${(evNational.ev / evNational.total * 100).toFixed(1)}% of all ${fmt(evNational.total)} registered vehicles.`,
+      section: "Highest share of vehicles that are electric", ranked, unranked: [],
+      note: "Share of all registered vehicles in each region (excluding trailers and caravans) that are electric. Source: NZTA Motor Vehicle Register.",
+    };
+  }
+  if (dataset === "ev") {
+    const rec = evRecent;
+    if (!rec || !rec.months || !rec.allNational) return null;
+    const i = rec.months.length - 1, monthName = periodLabel([rec.months[i]]);
+    const monthOnly = MONTHS_FULL[+rec.months[i].slice(5) - 1];
+    const total = rec.national[i], all = rec.allNational[i];
+    const rows = Object.entries(rec.regions).map(([name, series]) => {
+      const ev = series[i], n = (rec.allRegions[name] || [])[i] || 0;
+      return { name, pct: n ? ev / n * 100 : 0, detail: `${fmt(ev)} of ${fmt(n)} new`, n: ev, base: n };
+    }).filter(r => r.base > 0);
+    const ranked = rows.filter(r => r.base >= AWARDS_MIN_NEW).sort((a, b) => b.pct - a.pct || b.n - a.n);
+    const unranked = rows.filter(r => r.base < AWARDS_MIN_NEW);
+    return {
+      title: "EV Leaderboard", kicker: monthName, total, countLabel: `new electric vehicles on NZ roads in ${monthOnly}`,
+      sub: `That's ${(all ? total / all * 100 : 0).toFixed(1)}% of all ${fmt(all)} vehicles newly registered in ${monthName}.`,
+      section: `Top regions for EV adoption in ${monthName}`, ranked, unranked,
+      note: "Share of each region's newly registered vehicles (excluding trailers) that were electric, by month of first NZ " +
+        "registration, including used imports. Source: NZTA Motor Vehicle Register." +
+        (unranked.length ? ` Regions with fewer than ${AWARDS_MIN_NEW} new vehicles that month aren't ranked.` : ""),
+    };
+  }
+  if (mode === "total") {
+    if (!metaNational || !regionData.length) return null;
+    const ranked = regionData.filter(r => r.pct != null && r.totalIcps)
+      .map(r => ({ name: r.name, pct: r.pct, detail: `${fmt(r.icps)} of ${fmt(r.totalIcps)}`, n: r.icps }))
+      .sort((a, b) => b.pct - a.pct || b.n - a.n);
+    return {
+      title: "Solar Leaderboard", kicker: `As at ${asAtText(metaUpdated)}`,
+      total: metaNational.icps, countLabel: "homes and businesses with solar",
+      sub: metaNational.pct ? `That's ${metaNational.pct.toFixed(1)}% of all electricity connections in New Zealand.` : "",
+      section: "Highest share of connections with solar", ranked, unranked: [],
+      note: "Share of all electricity connections (ICPs) in each region that have solar — the Electricity Authority's own published uptake rate (EMI).",
+    };
+  }
+  const td = await loadTrends();
+  if (!td || !td.dates || td.dates.length < 2) return null;
+  const last = td.dates.length - 1, monthName = periodLabel([td.dates[last].slice(0, 7)]);
+  const monthOnly = MONTHS_FULL[+td.dates[last].slice(5, 7) - 1];
+  const natNew = td.national.installs[last] - td.national.installs[last - 1];
+  const ranked = Object.entries(td.councils).map(([name, sr]) => {
+    const now = sr.installs[last], then = sr.installs[last - 1], added = now - then;
+    return { name, pct: then > 0 ? added / then * 100 : 0, detail: `+${fmt(added)} installs`, n: added };
+  }).filter(r => r.n > 0).sort((a, b) => b.pct - a.pct || b.n - a.n);
+  const before = td.national.installs[last - 1];
+  return {
+    title: "Solar Leaderboard", kicker: monthName, total: natNew, countLabel: `new solar installs in ${monthOnly}`,
+    sub: `${before ? `Up ${(natNew / before * 100).toFixed(1)}% in a month — ` : ""}${fmt(td.national.installs[last])} in all.`,
+    section: `Fastest-growing regions for solar in ${monthName}`, ranked, unranked: [],
+    note: "Growth in each region's solar installs over the month, from the Electricity Authority's monthly install counts (EMI). " +
+      "The % is new installs as a share of what the region already had.",
+  };
 }
 
 function awardsLater(ms, fn) { awardsTimers.push(setTimeout(fn, awardsReducedMotion ? 0 : ms)); }
@@ -3734,11 +3847,10 @@ function awardsStop() {
   awardsTimers.forEach(clearTimeout); awardsTimers = [];
   if (awardsRaf) cancelAnimationFrame(awardsRaf);
   awardsRaf = null; awardsParticles = [];
-  const ctx = awardsCanvas.getContext("2d");
-  ctx.clearRect(0, 0, awardsCanvas.width, awardsCanvas.height);
+  awardsCanvas.getContext("2d").clearRect(0, 0, awardsCanvas.width, awardsCanvas.height);
 }
 
-// Counts an element's text up from 0 to `to` with a fast-then-settling ease.
+// Counts an element's text up from 0 to `to`: fast, then settling.
 function awardsCount(el, to, ms, format, done) {
   if (awardsReducedMotion) { el.textContent = format(to); if (done) done(); return; }
   const run = awardsRun, start = performance.now();
@@ -3752,13 +3864,15 @@ function awardsCount(el, to, ms, format, done) {
   requestAnimationFrame(step);
 }
 
-/* ---- Fireworks and streamers: one canvas over the modal ---- */
+/* ---- Fireworks and streamers on one overlay-wide canvas ---- */
 const AWARDS_COLOURS = ["#22d3ee", "#facc15", "#f472b6", "#4ade80", "#a78bfa", "#fb923c", "#ffffff"];
+// Sized once per open (and on resize): resizing a canvas wipes it, so
+// doing it per burst flickered.
 function awardsSizeCanvas() {
-  const r = awardsCanvas.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
-  awardsCanvas.width = r.width * dpr; awardsCanvas.height = r.height * dpr;
+  const r = awardsCanvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+  awardsCanvas.width = Math.round(r.width * dpr); awardsCanvas.height = Math.round(r.height * dpr);
   awardsCanvas.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
-  return r;
+  awardsSize = { w: r.width, h: r.height };
 }
 function awardsFirework(x, y) {
   const n = 60 + Math.floor(Math.random() * 30);
@@ -3769,9 +3883,9 @@ function awardsFirework(x, y) {
       life: 55 + Math.random() * 35, age: 0, colour: Math.random() < .25 ? "#ffffff" : colour, size: 2 + Math.random() * 1.4 });
   }
 }
-function awardsStreamers(w, count) {
+function awardsStreamers(left, w, count) {
   for (let i = 0; i < count; i++) {
-    awardsParticles.push({ kind: "confetti", x: Math.random() * w, y: -10 - Math.random() * 120,
+    awardsParticles.push({ kind: "confetti", x: left + Math.random() * w, y: -10 - Math.random() * 120,
       vx: (Math.random() - .5) * 2.2, vy: 1.8 + Math.random() * 2.6, rot: Math.random() * Math.PI,
       vr: (Math.random() - .5) * .3, w: 5 + Math.random() * 5, h: 8 + Math.random() * 8,
       colour: AWARDS_COLOURS[Math.floor(Math.random() * AWARDS_COLOURS.length)], age: 0, life: 400, sway: Math.random() * 6.28 });
@@ -3779,19 +3893,20 @@ function awardsStreamers(w, count) {
 }
 function awardsCelebrate(big) {
   if (awardsReducedMotion) return;
-  const r = awardsSizeCanvas();
-  const bursts = big ? 6 : 3;
-  for (let b = 0; b < bursts; b++) {
-    awardsLater(b * 260, () => awardsFirework(r.width * (.15 + Math.random() * .7), r.height * (.12 + Math.random() * .3)));
+  const m = document.getElementById("awardsModal").getBoundingClientRect();
+  const o = awardsCanvas.getBoundingClientRect();
+  const left = m.left - o.left, top = m.top - o.top;
+  for (let b = 0; b < (big ? 6 : 3); b++) {
+    awardsLater(b * 260, () => awardsFirework(left + m.width * (.12 + Math.random() * .76), top + 40 + Math.random() * 150));
   }
-  awardsStreamers(r.width, big ? 160 : 70);
+  awardsStreamers(left, m.width, big ? 150 : 70);
   if (!awardsRaf) awardsRaf = requestAnimationFrame(awardsFrame);
 }
 function awardsFrame() {
   const ctx = awardsCanvas.getContext("2d");
-  const r = awardsCanvas.getBoundingClientRect();
-  ctx.clearRect(0, 0, r.width, r.height);
-  awardsParticles = awardsParticles.filter(p => p.age < p.life && p.y < r.height + 20);
+  const { w, h } = awardsSize;
+  ctx.clearRect(0, 0, w, h);
+  awardsParticles = awardsParticles.filter(p => p.age < p.life && p.y < h + 20);
   for (const p of awardsParticles) {
     p.age++;
     if (p.kind === "spark") {
@@ -3812,23 +3927,27 @@ function awardsFrame() {
 }
 
 /* ---- The sequence ---- */
-function awardsPlay() {
+async function awardsPlay() {
   awardsStop();
-  const d = awardsData();
+  const run = awardsRun;
   const $ = id => document.getElementById(id);
-  if (!d) { $("awardsMonth").textContent = "No data yet"; return; }
-  $("awardsMonth").textContent = d.monthName;
-  $("awardsTitle").textContent = "EV Leaderboard";
+  awardsOverlayEl.classList.toggle("awards-solar", awardsDataset === "solar");
+  document.querySelectorAll(".awards-mode").forEach(b => b.classList.toggle("active", b.dataset.awardsMode === awardsMode));
+  ["awardsSub", "awardsSection", "awardsPodium", "awardsRest"].forEach(id => $(id).classList.remove("show"));
+  $("awardsPodium").innerHTML = ""; $("awardsRest").innerHTML = "";
+  const d = await awardsData(awardsDataset, awardsMode);
+  if (run !== awardsRun) return;   // replayed or closed while loading
+  $("awardsTitle").textContent = awardsDataset === "ev" ? "EV Leaderboard" : "Solar Leaderboard";
+  if (!d) { $("awardsMonth").textContent = "No data yet"; $("awardsCount").textContent = "–"; return; }
+  $("awardsMonth").textContent = d.kicker;
+  $("awardsCountLabel").textContent = d.countLabel;
   const countEl = $("awardsCount");
-  countEl.textContent = "0"; countEl.classList.remove("done");
-  $("awardsSub").classList.remove("show");
-  $("awardsSub").textContent = `That's ${d.sharePct.toFixed(1)}% of all ${fmt(d.all)} vehicles newly registered in ${d.monthName}.`;
-  $("awardsSection").classList.remove("show");
-  $("awardsPodium").classList.remove("show");
-  $("awardsRest").classList.remove("show");
-  $("awardsNote").textContent = `Adoption = share of each region's newly registered vehicles (excluding trailers) that were electric, ` +
-    `by month of first NZ registration, including used imports. Source: NZTA Motor Vehicle Register.` +
-    (d.unranked.length ? ` Regions with fewer than ${AWARDS_MIN_NEW} new vehicles that month aren't ranked.` : "");
+  countEl.textContent = "0";
+  countEl.style.minWidth = `${fmt(d.total).length * 0.62}em`;   // reserve the final width
+  countEl.parentElement.classList.remove("done");
+  $("awardsSub").textContent = d.sub;
+  $("awardsSection").textContent = d.section;
+  $("awardsNote").textContent = d.note;
 
   // Podium: laid out 2nd-1st-3rd, revealed 3rd, 2nd, 1st.
   const top = d.ranked.slice(0, 3);
@@ -3839,22 +3958,20 @@ function awardsPlay() {
       <div class="awards-medal">${MEDALS[i]}</div>
       <div class="awards-region">${esc(top[i].name)}</div>
       <div class="awards-pct" data-pct="${top[i].pct}">0%</div>
-      <div class="awards-detail">${fmt(top[i].ev)} of ${fmt(top[i].all)} new</div>
+      <div class="awards-detail">${top[i].detail}</div>
     </div>` : "<div></div>").join("");
   const rest = $("awardsRest");
-  rest.innerHTML = d.ranked.slice(3).map((r, k) => `
-    <li><span class="rank">${k + 4}</span><span class="name">${esc(r.name)}</span>
-      <span class="pct">${r.pct.toFixed(1)}%</span><span class="of">${fmt(r.ev)} of ${fmt(r.all)}</span></li>`).join("") +
-    d.unranked.map(r => `
-    <li><span class="rank">–</span><span class="name">${esc(r.name)}</span>
-      <span class="pct">${r.pct.toFixed(1)}%</span><span class="of">${fmt(r.ev)} of ${fmt(r.all)}</span></li>`).join("");
+  const restRow = (r, rank) => `
+    <li><span class="rank">${rank}</span><span class="name">${esc(r.name)}</span>
+      <span class="pct">${r.pct.toFixed(1)}%</span><span class="of">${r.detail}</span></li>`;
+  rest.innerHTML = d.ranked.slice(3).map((r, k) => restRow(r, k + 4)).join("") + d.unranked.map(r => restRow(r, "–")).join("");
 
   // 1. The big count-up, then fireworks.
   const COUNT_MS = 2600;
   awardsCount(countEl, d.total, COUNT_MS, v => fmt(Math.round(v)), () => {
-    countEl.classList.add("done");
+    countEl.parentElement.classList.add("done");
     awardsCelebrate(true);
-    $("awardsSub").classList.add("show");
+    if (d.sub) $("awardsSub").classList.add("show");
   });
   // 2. Podium, 3rd -> 2nd -> 1st, each counting up its %.
   const reveal = (place, at) => awardsLater(at, () => {
@@ -3872,31 +3989,51 @@ function awardsPlay() {
   [...rest.children].forEach((li, k) => awardsLater(t0 + 5000 + k * 90, () => li.classList.add("show")));
 }
 
-function awardsOpen() {
+// Opens the leaderboard for a dataset, switching the map behind it to
+// that dataset first so the two always match.
+async function awardsOpen(dataset, mode) {
+  awardsDataset = dataset === "ev" ? "ev" : "solar";
+  awardsMode = mode === "total" ? "total" : "month";
+  if (DATASET !== awardsDataset) await setDataset(awardsDataset);
   awardsOverlayEl.classList.remove("hidden");
-  loadEvData().then(() => awardsPlay()).catch(() => {
-    document.getElementById("awardsMonth").textContent = "Couldn't load the vehicle data";
-  });
+  awardsSizeCanvas();
+  try {
+    if (awardsDataset === "ev") await loadEvData();
+    await awardsPlay();
+  } catch (_) {
+    document.getElementById("awardsMonth").textContent = "Couldn't load the data";
+  }
 }
 function awardsClose() { awardsStop(); awardsOverlayEl.classList.add("hidden"); }
 
-awardsBtnEl.addEventListener("click", awardsOpen);
+awardsBtnEl.addEventListener("click", () => awardsOpen(DATASET, "month"));
+document.querySelector(".awards-modes").addEventListener("click", e => {
+  const b = e.target.closest(".awards-mode");
+  if (!b || b.dataset.awardsMode === awardsMode) return;
+  awardsMode = b.dataset.awardsMode;
+  awardsPlay();
+});
 awardsOverlayEl.addEventListener("click", e => {
   if (e.target === awardsOverlayEl || e.target.closest(".awards-close")) awardsClose();
 });
-document.getElementById("awardsReplay").addEventListener("click", awardsPlay);
+document.getElementById("awardsReplay").addEventListener("click", () => awardsPlay());
 document.getElementById("awardsShare").addEventListener("click", e => {
-  const url = `${location.origin}${location.pathname}?leaderboard`;
+  const url = `${location.origin}${location.pathname}?leaderboard=${awardsDataset}${awardsMode === "total" ? "-total" : ""}`;
   const done = () => { e.target.textContent = "Link copied"; setTimeout(() => { e.target.textContent = "Copy link"; }, 1600); };
   (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject()).then(done, () => prompt("Copy this link:", url));
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !awardsOverlayEl.classList.contains("hidden")) awardsClose(); });
+window.addEventListener("resize", () => { if (!awardsOverlayEl.classList.contains("hidden")) awardsSizeCanvas(); });
+awardsBtnEl.classList.remove("hidden");
 
-// Draft: the button only shows with ?draft (or opens directly with
-// ?leaderboard), so it can be tried on the live site before going public.
-const AWARDS_VISIBLE = urlParams.has("draft") || urlParams.has("leaderboard");
-awardsBtnEl.classList.toggle("hidden", !AWARDS_VISIBLE);
-if (urlParams.has("leaderboard")) mapReady.then(() => setTimeout(awardsOpen, 600));
+// ?leaderboard=solar | solar-total | ev | ev-total opens it on arrival, with
+// the map on the matching dataset. A bare ?leaderboard follows ?dataset.
+function awardsFromUrl() {
+  if (!urlParams.has("leaderboard")) return null;
+  const v = (urlParams.get("leaderboard") || "").toLowerCase();
+  const dataset = v.includes("ev") ? "ev" : v.includes("solar") ? "solar" : (DATASET_PARAM === "ev" ? "ev" : "solar");
+  return { dataset, mode: v.includes("total") ? "total" : "month" };
+}
 
 /* ================= LOAD ================= */
 
@@ -3961,6 +4098,9 @@ if (urlParams.has("leaderboard")) mapReady.then(() => setTimeout(awardsOpen, 600
       focusOnPlace(REGION_PARAM);
       renderBoard();   // re-sync immediately rather than wait on moveend
     }
+
+    const fromUrl = awardsFromUrl();
+    if (fromUrl) awardsOpen(fromUrl.dataset, fromUrl.mode);
 
     // ?chart=open -- forced closed on mobile regardless, where the
     // chart would eat most of a typically-short embed's screen space.

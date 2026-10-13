@@ -271,17 +271,25 @@ The "+N since …" line in street popups still uses a saved per-street
 snapshot (`rolling_baseline`, keyed on a fingerprint of the figures),
 since EMI publishes no street-level history.
 
-## The monthly EV leaderboard (draft)
+## The animated monthly leaderboard
 
-A trophy button (shown with `?draft`, or opened directly with
-`?leaderboard`) plays an animated summary of the latest complete month:
-new electric vehicles counted up from zero, then regions ranked by **EV
-adoption** — the share of each region's newly registered vehicles
-(trailers excluded) that were electric — revealed 3rd, 2nd, 1st, then the
-rest. Regions with fewer than 50 new vehicles that month are listed but
-not ranked. Data comes from `ev.json` → `recent` (`fetch_ev_recent`:
-electric and all vehicles by month of first NZ registration, per region),
-so it updates itself each month. Respects reduced-motion settings.
+The 🏆 button (top right) plays an animated summary for whichever
+dataset the map is on: the headline figure counted up from zero with
+fireworks, then the top 3 regions revealed 3rd, 2nd, 1st and the rest
+listed. A toggle switches between:
+
+| | Last month (default) | Total adoption |
+|---|---|---|
+| EVs | New EVs in the latest complete month; regions by share of newly registered vehicles that were electric (trailers excluded; regions with < 50 new vehicles listed, not ranked) | EVs on the road; regions by share of the fleet that's electric |
+| Solar | New installs in the latest complete month; regions by growth that month (same measure as the Leaderboard tab) | Homes and businesses with solar; regions by EMI's % of connections |
+
+Data: `ev.json` → `recent` (`fetch_ev_recent`: electric and all vehicles
+by month of first NZ registration, per region), `trends.json` (EMI
+monthly installs), and the region figures in `ev.json`/`meta.json`, so it
+refreshes itself each month. Direct links open it with the map on the
+matching dataset: `?leaderboard=solar`, `solar-total`, `ev`, `ev-total`.
+Animation runs on one fixed-size canvas over the popup (no backdrop blur,
+no per-frame layout reads) and respects reduced-motion settings.
 
 ## The EV dashboard
 

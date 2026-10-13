@@ -84,6 +84,7 @@ Query params customise what loads, for a specific-region embed or link:
 | `?chart=` | `open` | Opens the trend chart by default (always closed on mobile-width screens) |
 | `?dash=` | `open` | Starts with the regions/districts list open (it's closed by default) |
 | `?gestures=` | `free` | Turns off the iframe scroll-gesture lock, for a fullscreen embed with no page to scroll past |
+| `?leaderboard=` | `solar`, `solar-total`, `ev`, `ev-total` | Opens the animated monthly leaderboard on arrival, with the map on the matching dataset |
 
 e.g. `https://YOUR-USERNAME.github.io/YOUR-REPO/?dataset=ev&region=Canterbury&chart=open`
 
