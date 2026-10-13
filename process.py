@@ -1419,10 +1419,12 @@ def build_region_tree(emi_councils, council_uptake, total_icps, council_bounds):
         up = council_uptake.get(council)
         if up:
             total, pct, pct_source = up["totalIcps"], up["pct"], "EMI uptake rate"
+            seg_pcts = {k: up[k] for k in ("resPct", "busPct") if k in up}
         else:
             total = rolled.get(council) or None
             pct = round(row["icps"] / total * 100, 2) if total and total >= row["icps"] else None
             pct_source = "network rollup" if pct is not None else None
+            seg_pcts = {}
         entry = {
             "name": council,
             "icps": row["icps"],
@@ -1437,6 +1439,7 @@ def build_region_tree(emi_councils, council_uptake, total_icps, council_bounds):
         for k in ("resIcps", "resKW", "busIcps", "busKW"):
             if k in row:
                 entry[k] = row[k]
+        entry.update(seg_pcts)
         tree.append(entry)
     tree.sort(key=lambda r: r["pct"] if r["pct"] is not None else -1, reverse=True)
     return tree
@@ -1821,6 +1824,22 @@ def fetch_trends():
     return trends, snapshot
 
 
+def _segment_pcts(entry, all_row, res_row):
+    """Adds resTotalIcps, resPct and busPct to a snapshot entry, all from
+    the same GUEHMT month. EMI's market segments split every ICP into
+    residential and non-residential (SME + commercial + industrial), so
+    non-residential is simply all minus residential, on both sides."""
+    if not (res_row and res_row["uptake"] and res_row["icps"]):
+        return
+    res_total = round(res_row["icps"] / res_row["uptake"] * 100)
+    entry["resTotalIcps"] = res_total
+    entry["resPct"] = round(res_row["uptake"], 2)
+    bus_total = entry["totalIcps"] - res_total
+    bus_solar = all_row["icps"] - res_row["icps"]
+    if bus_total > 0 and bus_solar >= 0:
+        entry["busPct"] = round(bus_solar / bus_total * 100, 2)
+
+
 def council_snapshot(council_all, council_res, council_batt, nz_all, nz_res):
     """The latest month's council and national figures from GUEHMT, each
     measured under EMI's own regional-council attribution:
@@ -1828,6 +1847,8 @@ def council_snapshot(council_all, council_res, council_batt, nz_all, nz_res):
       pct            EMI's published uptake rate (solar ICPs / all ICPs)
       totalIcps      the all-ICP count that rate implies
       resTotalIcps   residential ICPs, from the residential uptake rate
+      resPct         EMI's residential uptake rate (residential solar / residential ICPs)
+      busPct         non-residential solar / non-residential ICPs, from the two above
       battery        solar ICPs that also have a battery
 
     This is what "% of connections" is published from. The alternative
@@ -1857,9 +1878,7 @@ def council_snapshot(council_all, council_res, council_batt, nz_all, nz_res):
             "pct": round(row["uptake"], 2),
             "totalIcps": round(row["icps"] / row["uptake"] * 100),
         }
-        res = (council_res.get(name) or {}).get(d)
-        if res and res["uptake"] and res["icps"]:
-            entry["resTotalIcps"] = round(res["icps"] / res["uptake"] * 100)
+        _segment_pcts(entry, row, (council_res.get(name) or {}).get(d))
         batt = (council_batt.get(name) or {}).get(d)
         if batt is not None:
             entry["battery"] = batt["icps"]
@@ -1870,9 +1889,7 @@ def council_snapshot(council_all, council_res, council_batt, nz_all, nz_res):
     if row and row["uptake"] and row["icps"]:
         national = {"month": d, "icps": row["icps"], "pct": round(row["uptake"], 2),
                     "totalIcps": round(row["icps"] / row["uptake"] * 100)}
-        res = nz_res.get(d)
-        if res and res["uptake"] and res["icps"]:
-            national["resTotalIcps"] = round(res["icps"] / res["uptake"] * 100)
+        _segment_pcts(national, row, nz_res.get(d))
     return {"month": month, "councils": out, "national": national}
 
 
@@ -3192,6 +3209,9 @@ def main():
     nat_up = snapshot.get("national")
     if totals and nat_up:
         totals["totalIcps"], totals["pct"] = nat_up["totalIcps"], nat_up["pct"]
+        for k in ("resPct", "busPct"):
+            if k in nat_up:
+                totals[k] = nat_up[k]
     elif totals and total_icps:
         national_total = sum(total_icps.values())
         totals["totalIcps"] = national_total

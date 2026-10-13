@@ -28,7 +28,7 @@ visibly apart:
 | Figure | Kind | Source |
 |---|---|---|
 | Region installs, MW, homes/business | Measured | EMI installs-by-region file (`SolarInstallationsByRegion.csv`) |
-| Region % of connections | Measured | EMI's published uptake rate (GUEHMT report) |
+| Region % of connections, and of homes / of businesses | Measured | EMI's published uptake rates (GUEHMT report) |
 | Region battery count and % | Measured | EMI GUEHMT report |
 | Street installs | Measured, but "3 or less" rows are suppressed | EMI street file (`SolarInstallationsByStreet.csv`) |
 | Town/district installs and MW ("~") | Estimated from streets | Street file, calibrated to EMI's region totals |
@@ -130,6 +130,14 @@ the region's own measured figures, labelled as such.
 Homes and business are EMI's own published split (they add up exactly
 to the total). Each connection is classed by its use, so a farmhouse is
 normally a home and a milking shed or pump a business.
+
+The % beside each is that segment's adoption rate, from GUEHMT's latest
+month (`_segment_pcts`): homes is EMI's published residential uptake
+rate; business is non-residential solar over non-residential ICPs, both
+derived as "all minus residential" from the same report (EMI's segments
+split every ICP into residential and SME/commercial/industrial). The
+residential ICP count this implies agrees with EMI's ANZSIC file to
+within 0.1%.
 
 **Farms** are an estimate (`estimate_farms`): EMI publishes no farm split,
 and no other public dataset links solar to farms. Every road outside

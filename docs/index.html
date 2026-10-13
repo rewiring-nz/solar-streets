@@ -229,6 +229,7 @@
   .vehicle-fuel-toggle { display: flex; gap: 4px; margin-bottom: 8px; }
   .vehicle-fuel-toggle.hidden { display: none; }
   .lb-fuel { color: var(--dim); font-weight: 400; }
+  .seg-pct { color: var(--dim); font-weight: 400; }
   /* Fuel words carry their own colour so a mixed list scans by fuel:
      reds for what burns petrol/diesel, orange for plug-ins, cyan for
      electric (the EV accent), grey for gas. */
@@ -1343,8 +1344,8 @@ const INFO = {
   }),
   "homes-business": () => ({
     title: "Homes and business",
-    body: "The Electricity Authority's own split, so the two add up exactly to the total.",
-    more: "Each connection is classed by what it's used for. A farmhouse is normally classed as a home and a milking shed or pump as a business, so farms can appear on both sides.",
+    body: "Solar installs on homes and on businesses — the Electricity Authority's own split, so the two add up exactly to the total. The % in brackets is how many of each have solar.",
+    more: "Each connection is classed by what it's used for. The homes % is the share of all residential connections with solar, as the Electricity Authority publishes it. The business % is the share of all other connections — businesses, farm sheds and pumps, halls, schools and the like. A farmhouse is normally classed as a home and a milking shed as a business, so farms can appear on both sides.",
   }),
   farms: el => {
     const r = regionRow(el.dataset.scope) || {};
@@ -1539,7 +1540,7 @@ function solarPopupHTML({ name, subtitle, pct, icps, kW, regionSection, csv }) {
     if (regionSection.pct != null) lines.push(`${regionSection.pct.toFixed(1)}% of ${infoTerm("region-pct", "connections")} have solar`);
     const seg = regionSection.segments;
     if (seg && seg.resIcps != null && seg.busIcps != null) {
-      lines.push(`${fmt(seg.resIcps)} homes &middot; ${fmt(seg.busIcps)} business` +
+      lines.push(`${fmt(seg.resIcps)} homes${segPct(seg.resPct)} &middot; ${fmt(seg.busIcps)} business${segPct(seg.busPct)}` +
         (seg.farmEst != null ? ` (${farmHTML(seg, seg.name)})` : ""));
     }
     if (regionSection.battPct != null) {
@@ -1786,8 +1787,8 @@ function renderTopbarStats() {
       ? `<span class="stat-seg">${farmHTML(stats, currentFocus.level === "national" ? "New Zealand" : currentFocus.name)}</span>`
       : "";
     html += `<div class="stat-line stat-line-seg">` +
-      `<span class="stat-seg"><strong>${fmt(stats.resIcps)}</strong> homes</span>` +
-      `<span class="stat-seg"><strong>${fmt(stats.busIcps)}</strong> business${infoBtn("homes-business")}</span>` +
+      `<span class="stat-seg"><strong>${fmt(stats.resIcps)}</strong> homes${segPct(stats.resPct)}</span>` +
+      `<span class="stat-seg"><strong>${fmt(stats.busIcps)}</strong> business${segPct(stats.busPct)}${infoBtn("homes-business")}</span>` +
       farms + `</div>`;
   }
   // Battery figures on their own line rather than appended to the solar
@@ -2218,6 +2219,13 @@ function visibleRegions() {
   return view ? regionData.filter(r => bboxIntersects(r.bbox, view)) : regionData;
 }
 
+// "(2.5%)" after a homes/business count: that segment's own adoption
+// rate (EMI) -- the share of homes, or of non-residential connections,
+// that have solar.
+function segPct(v) {
+  return v != null ? ` <span class="seg-pct">(${v.toFixed(1)}%)</span>` : "";
+}
+
 // The farm figure: one central number, its range and method a click away
 // (see INFO.farms and estimate_farms in process.py).
 function farmHTML(row, scope) {
@@ -2228,8 +2236,8 @@ function farmHTML(row, scope) {
 function segmentLineHTML(row) {
   if (row.resIcps == null || row.busIcps == null) return "";
   const rural = row.farmEst != null ? ` (${farmHTML(row, row.name)})` : "";
-  return `<span class="detail seg-line">${fmt(row.resIcps)} homes &middot; ` +
-    `${fmt(row.busIcps)} business${rural}</span>`;
+  return `<span class="detail seg-line">${fmt(row.resIcps)} homes${segPct(row.resPct)} &middot; ` +
+    `${fmt(row.busIcps)} business${segPct(row.busPct)}${rural}</span>`;
 }
 
 function solarRegionRowHTML(r, rank) {
@@ -3588,6 +3596,8 @@ chartSelectEl.addEventListener("change", async () => {
           icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0,
           resIcps: nat.resIcps != null ? nat.resIcps : null,
           busIcps: nat.busIcps != null ? nat.busIcps : null,
+          resPct: nat.resPct != null ? nat.resPct : null,
+          busPct: nat.busPct != null ? nat.busPct : null,
           farmEst: nat.farmEst != null ? nat.farmEst : null,
           farmLow: nat.farmLow != null ? nat.farmLow : null,
           farmHigh: nat.farmHigh != null ? nat.farmHigh : null,
