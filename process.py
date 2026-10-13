@@ -2063,6 +2063,13 @@ def _mvr_query(where, group_fields=None):
     return r.json().get("count", 0)
 
 
+# Register districts the boundary layer has no polygon for, so they can't
+# be mapped or attributed to a region: the Chatham Islands (a few hundred
+# vehicles) sit outside every regional council. Known and expected, unlike
+# a district that stops matching because one source changed its spelling.
+TLAS_WITHOUT_BOUNDARY = {"CHATHAM ISLANDS TERRITORY"}
+
+
 def fetch_ev_snapshot(tla_names):
     """Current EV counts, and each category's real % of the *local*
     vehicle fleet, by TLA -- one groupBy-TLA query per category for EVs
@@ -2088,7 +2095,7 @@ def fetch_ev_snapshot(tla_names):
             name = tla_names.get(raw)
             if name:
                 out[name] = out.get(name, 0) + r["attributes"]["cnt"]
-            elif raw:
+            elif raw and raw not in TLAS_WITHOUT_BOUNDARY:
                 unmatched[raw] = unmatched.get(raw, 0) + r["attributes"]["cnt"]
         return out
 
