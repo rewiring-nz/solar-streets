@@ -300,6 +300,17 @@ matching dataset: `?leaderboard=solar`, `solar-total`, `ev`, `ev-total`.
 Animation runs on one fixed-size canvas over the popup (no backdrop blur,
 no per-frame layout reads) and respects reduced-motion settings.
 
+**Share downloads** (Video / GIF, top right of the popup): the popup is
+DOM and can't be recorded, so `shareScene()` redraws the same sequence
+frame by frame on a canvas — portrait 9:16 for Reels, Stories and TikTok,
+keeping text clear of the top and bottom zones those apps cover. The
+video is a 13 s, 1080×1920 H.264 MP4 encoded in the browser (WebCodecs
+plus `mp4-muxer`, ~10 MB; browsers without WebCodecs record the canvas in
+real time with MediaRecorder instead). The GIF is 480×854 at 12 fps via
+`gifenc` (~5 MB). Both libraries load from jsDelivr on first click only.
+Confetti uses a seeded random generator, so a month's download always
+looks the same.
+
 ## The EV dashboard
 
 Built from NZTA's Motor Vehicle Register, queried as server-side grouped

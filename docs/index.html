@@ -652,6 +652,15 @@
   .awards-dataset.active[data-awards-dataset="ev"] { background: var(--cyan); color: #062229; }
   .awards-close { border: none; background: none; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 4px; margin-right: -4px; }
   .awards-close:hover { color: var(--text); }
+  .awards-tools { display: flex; align-items: center; gap: 4px; }
+  .awards-dl {
+    border: 1px solid var(--border); background: transparent; color: var(--dim); border-radius: 999px; padding: 3px 8px; white-space: nowrap;
+    font: 700 10.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; cursor: pointer; transition: color .15s, border-color .15s;
+  }
+  .awards-dl:hover { color: var(--text); border-color: var(--dim); }
+  .awards-dl:disabled { cursor: progress; color: var(--text); }
+  .aw-short { display: none; }
+  @media (max-width: 440px) { .aw-long { display: none; } .aw-short { display: inline; } .awards-dataset { padding: 6px 11px; } }
   .awards-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 10px; background: var(--hover); }
   .awards-mode {
     border: none; background: transparent; color: var(--dim); border-radius: 8px; padding: 6px 10px;
@@ -721,7 +730,8 @@
 
   /* Footer */
   .awards-foot { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
-  .awards-actions { display: flex; justify-content: center; gap: 8px; }
+  .awards-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; }
+  .awards-actions button:disabled { opacity: .7; cursor: progress; }
   .awards-actions button {
     border: none; border-radius: 8px; padding: 7px 16px; font: 700 12px system-ui, -apple-system, sans-serif;
     cursor: pointer; background: var(--aw-accent); color: var(--aw-on-accent);
@@ -814,10 +824,14 @@
       <header class="awards-head">
         <h2 id="awardsTitle" class="sr-only">Leaderboard</h2>
         <div class="awards-datasets" role="tablist" aria-label="Which leaderboard">
-          <button type="button" class="awards-dataset" data-awards-dataset="solar" role="tab">Solar Installs</button>
-          <button type="button" class="awards-dataset" data-awards-dataset="ev" role="tab">Electric Vehicles</button>
+          <button type="button" class="awards-dataset" data-awards-dataset="solar" role="tab">Solar<span class="aw-long"> Installs</span></button>
+          <button type="button" class="awards-dataset" data-awards-dataset="ev" role="tab"><span class="aw-long">Electric Vehicles</span><span class="aw-short">EVs</span></button>
         </div>
-        <button type="button" class="awards-close" aria-label="Close">&times;</button>
+        <div class="awards-tools">
+          <button type="button" class="awards-dl" id="awardsVideo" title="Download a short portrait video for Reels, Stories or TikTok (MP4)">&#8681; Video</button>
+          <button type="button" class="awards-dl" id="awardsGif" title="Download an animated GIF to share">&#8681; GIF</button>
+          <button type="button" class="awards-close" aria-label="Close">&times;</button>
+        </div>
       </header>
       <div class="awards-modes" role="tablist">
         <button type="button" class="awards-mode active" data-awards-mode="month" role="tab">Last month</button>
@@ -4058,6 +4072,261 @@ document.getElementById("awardsShare").addEventListener("click", e => {
 document.addEventListener("keydown", e => { if (e.key === "Escape" && !awardsOverlayEl.classList.contains("hidden")) awardsClose(); });
 window.addEventListener("resize", () => { if (!awardsOverlayEl.classList.contains("hidden")) awardsSizeCanvas(); });
 awardsBtnEl.classList.remove("hidden");
+
+
+/* ---- Shareable video / GIF ----
+   The popup is DOM, which can't be recorded directly, so the same
+   sequence is redrawn frame by frame onto a canvas at a fixed size and
+   encoded: MP4 (H.264 via the browser's WebCodecs encoder, muxed with
+   mp4-muxer), portrait 9:16 for Reels, Stories and TikTok, and a smaller GIF (gifenc)
+   for messaging and Slack. Confetti uses a seeded random generator, so
+   every download of a month looks the same and ends cleanly. Libraries
+   load on first use only. */
+
+const SHARE_FPS = 30, SHARE_SECONDS = 13;
+const SHARE_URL_TEXT = "rewiring.nz/electricstreets";
+
+function seededRandom(seed) {   // mulberry32
+  return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+
+// Builds a frame-drawer for one leaderboard: draw(t) paints the scene at
+// t milliseconds onto ctx, W x H in 9:16. Layout is in 1080 x 1920 units,
+// scaled; the top ~230 and bottom ~300 units stay free of anything
+// important because Reels and Stories overlay their own UI there.
+function shareScene(ctx, W, d, dataset) {
+  const H = Math.round(W * 16 / 9), k = W / 1080, X = v => v * k;
+  const accent = dataset === "ev" ? "#22d3ee" : "#fbbf24";
+  const BG1 = "#0b1220", BG2 = "#122036", TEXT = "#f1f5f9", DIM = "#94a3b8", CARD = "rgba(255,255,255,.06)";
+  const FONT = (w, px) => `${w} ${X(px)}px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
+  const ease4 = t => 1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 4);
+  const fade = (t, t0, dur) => Math.min(1, Math.max(0, (t - t0) / dur));
+  const back = t => { t = Math.min(1, Math.max(0, t)); const c = 1.7; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+  const top = d.ranked.slice(0, 3), rest = d.ranked.slice(3, 9);
+
+  // Timeline (ms), the same rhythm as the popup.
+  const T = { count0: 300, count1: 2900, sub: 2900, head: 4000, p3: 4300, p2: 5800, p1: 7300, rest: 8900 };
+
+  // Deterministic confetti + fireworks, stepped at 60 Hz.
+  const rnd = seededRandom(20261013);
+  const COLS = ["#22d3ee", "#facc15", "#f472b6", "#4ade80", "#a78bfa", "#fb923c", "#ffffff"];
+  let parts = [], simT = 0;
+  const firework = (x, y) => { const n = 70, c = COLS[Math.floor(rnd() * COLS.length)];
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2, v = (1.6 + rnd() * 3.4) * k * 1.5;
+      parts.push({ s: 1, x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: 55 + rnd() * 35, c: rnd() < .25 ? "#fff" : c, r: (2 + rnd() * 1.6) * k * 1.6 }); } };
+  const streamers = n => { for (let i = 0; i < n; i++) parts.push({ s: 0, x: rnd() * W, y: -X(20) - rnd() * X(400),
+      vx: (rnd() - .5) * 2.2 * k * 1.4, vy: (2.2 + rnd() * 3) * k * 1.8, rot: rnd() * 3.14, vr: (rnd() - .5) * .3,
+      w: (6 + rnd() * 6) * k * 1.6, h: (9 + rnd() * 9) * k * 1.6, c: COLS[Math.floor(rnd() * COLS.length)], sway: rnd() * 6.28 }); };
+  const events = [
+    { at: T.count1, fn: () => { for (let b = 0; b < 6; b++) firework(X(160 + rnd() * 760), X(330 + rnd() * 420)); streamers(220); } },
+    { at: T.p1 + 900, fn: () => { for (let b = 0; b < 3; b++) firework(X(240 + rnd() * 600), X(900 + rnd() * 200)); streamers(110); } },
+  ];
+  const step = () => {
+    for (const e of events) if (!e.done && simT >= e.at) { e.done = true; e.fn(); }
+    parts = parts.filter(p => p.s ? p.age < p.life : p.y < H + X(40));
+    for (const p of parts) {
+      if (p.s) { p.age++; p.vx *= .985; p.vy = p.vy * .985 + .05 * k * 1.5; p.x += p.vx; p.y += p.vy; }
+      else { p.sway += .08; p.x += p.vx + Math.sin(p.sway) * .8 * k; p.y += p.vy; p.rot += p.vr; }
+    }
+  };
+  const advanceTo = t => { while (simT + 1000 / 60 <= t) { simT += 1000 / 60; step(); } };
+
+  const text = (str, x, y, font, colour, align = "center", alpha = 1) => {
+    ctx.globalAlpha = alpha; ctx.font = font; ctx.fillStyle = colour; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
+    ctx.fillText(str, x, y); ctx.globalAlpha = 1;
+  };
+  const wrap = (str, maxW, font) => { ctx.font = font; const words = str.split(" "), lines = []; let line = "";
+    for (const w of words) { const tryL = line ? line + " " + w : w; if (ctx.measureText(tryL).width > maxW && line) { lines.push(line); line = w; } else line = tryL; }
+    if (line) lines.push(line); return lines; };
+  const clip = (str, maxW, font) => { ctx.font = font; if (ctx.measureText(str).width <= maxW) return str;
+    while (str.length > 1 && ctx.measureText(str + "…").width > maxW) str = str.slice(0, -1); return str + "…"; };
+  const fitPx = (str, maxW, weight, px) => { ctx.font = FONT(weight, px); const w = ctx.measureText(str).width / k; return w * k > maxW ? Math.floor(px * maxW / (w * k)) : px; };
+  const roundRect = (x, y, w, h, r, fill, stroke) => { ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); } if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = X(2); ctx.stroke(); } };
+
+  // Count-up drawn on a fixed digit grid, so it stays centred without
+  // digits jiggling as they change.
+  ctx.font = FONT(800, 230);
+  const digitW = Math.max(...[..."0123456789"].map(c => ctx.measureText(c).width));
+  const drawCount = (str, cx, y) => {
+    ctx.font = FONT(800, 230); ctx.fillStyle = TEXT; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic";
+    const cellW = c => /\d/.test(c) ? digitW : ctx.measureText(c).width;
+    let x = cx - [...str].reduce((a, c) => a + cellW(c), 0) / 2;
+    for (const c of str) { const w = cellW(c); ctx.fillText(c, x + w / 2, y); x += w; }
+  };
+
+  return function draw(t) {
+    advanceTo(t);
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, BG1); g.addColorStop(1, BG2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const glow = ctx.createRadialGradient(W / 2, X(560), 0, W / 2, X(560), X(620));
+    glow.addColorStop(0, dataset === "ev" ? "rgba(34,211,238,.20)" : "rgba(251,191,36,.20)"); glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+    // Header
+    text(`🏆  ${dataset === "ev" ? "ELECTRIC VEHICLE" : "SOLAR"} LEADERBOARD`, W / 2, X(300), FONT(800, 40), TEXT);
+    text(d.kicker.toUpperCase(), W / 2, X(362), FONT(700, 32), accent);
+
+    // Big count
+    const v = d.total * ease4((t - T.count0) / (T.count1 - T.count0));
+    const pop = t > T.count1 ? 1 + .08 * Math.sin(Math.min(1, (t - T.count1) / 450) * Math.PI) : 1;
+    ctx.save(); ctx.translate(W / 2, X(620)); ctx.scale(pop, pop);
+    drawCount(fmt(Math.round(v)), 0, 0);
+    ctx.restore();
+    const labelLines = wrap(d.countLabel, X(900), FONT(600, 46));
+    labelLines.forEach((l, i) => text(l, W / 2, X(708) + i * X(56), FONT(600, 46), TEXT));
+    const subY = X(708) + labelLines.length * X(56) + X(10);
+    wrap(d.sub, X(880), FONT(400, 32)).slice(0, 3).forEach((l, i) => text(l, W / 2, subY + i * X(42), FONT(400, 32), DIM, "center", fade(t, T.sub, 500)));
+
+    // Section heading, with a hairline either side
+    const hA = fade(t, T.head, 400);
+    if (hA) {
+      text(d.section.toUpperCase(), W / 2, X(985), FONT(700, 28), DIM, "center", hA);
+      ctx.font = FONT(700, 28); const hw = ctx.measureText(d.section.toUpperCase()).width / 2 + X(24);
+      ctx.globalAlpha = hA * .4; ctx.fillStyle = DIM;
+      ctx.fillRect(X(60), X(975), W / 2 - hw - X(60), X(2)); ctx.fillRect(W / 2 + hw, X(975), W / 2 - hw - X(60), X(2));
+      ctx.globalAlpha = 1;
+    }
+
+    // Podium: 2nd | 1st | 3rd, revealed 3rd -> 2nd -> 1st
+    const MED = ["🥇", "🥈", "🥉"], RIM = ["#e3a600", "#a8b4c0", "#c98a4b"];
+    const colW = X(300), gap = X(20), baseY = X(1400), x0 = (W - (colW * 3 + gap * 2)) / 2;
+    [[1, 0, X(320)], [0, 1, X(370)], [2, 2, X(300)]].forEach(([place, col, h]) => {
+      const r = top[place]; if (!r) return;
+      const at = [T.p1, T.p2, T.p3][place], p = (t - at) / 550;
+      if (p <= 0) return;
+      const yOff = (1 - back(p)) * X(50), alpha = Math.min(1, p * 1.6);
+      const x = x0 + col * (colW + gap), y = baseY - h + yOff;
+      ctx.globalAlpha = alpha;
+      roundRect(x, y, colW, h, X(24), place === 0 ? "rgba(245,179,1,.14)" : CARD, RIM[place]);
+      ctx.globalAlpha = 1;
+      text(MED[place], x + colW / 2, y + X(place === 0 ? 84 : 72), FONT(400, place === 0 ? 66 : 54), TEXT, "center", alpha);
+      const nameLines = wrap(r.name, colW - X(28), FONT(700, 32)).slice(0, 2);
+      const namePx = Math.min(...nameLines.map(l => fitPx(l, colW - X(28), 700, 32)));
+      nameLines.forEach((l, i) => text(l, x + colW / 2, y + X(place === 0 ? 140 : 124) + i * X(38), FONT(700, namePx), TEXT, "center", alpha));
+      const pv = r.pct * ease4((t - at) / 900);
+      text(`${pv.toFixed(1)}%`, x + colW / 2, y + h - X(58), FONT(800, place === 0 ? 70 : 60), accent, "center", alpha);
+      text(r.detail, x + colW / 2, y + h - X(20), FONT(400, 22), DIM, "center", alpha);
+    });
+
+    // The rest, two columns
+    rest.forEach((r, i) => {
+      const a = fade(t, T.rest + i * 120, 300); if (!a) return;
+      const col = i < 3 ? 0 : 1, row = i % 3;
+      const cw = (W - 2 * x0) / 2, x = x0 + col * cw, y = X(1468) + row * X(46);
+      text(String(i + 4), x + X(30), y, FONT(600, 28), DIM, "right", a);
+      text(clip(r.name, cw - X(46) - X(130), FONT(600, 28)), x + X(46), y, FONT(600, 28), TEXT, "left", a);
+      text(`${r.pct.toFixed(1)}%`, x + cw - X(24), y, FONT(700, 28), accent, "right", a);
+    });
+
+    // Footer, above the Reels caption zone
+    text(SHARE_URL_TEXT, W / 2, X(1636), FONT(700, 34), TEXT);
+
+    // Particles on top
+    for (const p of parts) {
+      if (p.s) { ctx.globalAlpha = Math.max(0, 1 - p.age / p.life); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.283); ctx.fill(); }
+      else { ctx.globalAlpha = 1; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.fillStyle = p.c;
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h * Math.abs(Math.cos(p.sway))); ctx.restore(); }
+    }
+    ctx.globalAlpha = 1;
+  };
+}
+
+function shareFileName(ext) {
+  const what = awardsDataset === "ev" ? "ev" : "solar";
+  const when = (document.getElementById("awardsMonth").textContent || "").split("·")[0].trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return `nz-${what}-leaderboard${awardsMode === "total" ? "-total" : ""}${when ? "-" + when : ""}.${ext}`;
+}
+function downloadBlob(blob, name) {
+  const url = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+const pause = () => new Promise(r => setTimeout(r, 0));
+
+async function makeShareVideo(onProgress) {
+  const d = await awardsData(awardsDataset, awardsMode);
+  if (!d) throw new Error("no data");
+  const W = 1080, H = 1920, canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d"), draw = shareScene(ctx, W, d, awardsDataset);
+  const frames = SHARE_FPS * SHARE_SECONDS;
+
+  if (window.VideoEncoder && window.VideoFrame) {
+    const { Muxer, ArrayBufferTarget } = await import("https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.mjs");
+    let codec = null;
+    for (const c of ["avc1.640028", "avc1.4d0028", "avc1.42E028"]) {
+      try { if ((await VideoEncoder.isConfigSupported({ codec: c, width: W, height: H, bitrate: 6e6, framerate: SHARE_FPS })).supported) { codec = c; break; } } catch (_) {}
+    }
+    if (codec) {
+      const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width: W, height: H }, fastStart: "in-memory" });
+      let failure = null;
+      const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { failure = e; } });
+      enc.configure({ codec, width: W, height: H, bitrate: 6e6, framerate: SHARE_FPS });
+      for (let i = 0; i < frames; i++) {
+        draw(i * 1000 / SHARE_FPS);
+        const vf = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / SHARE_FPS), duration: Math.round(1e6 / SHARE_FPS) });
+        enc.encode(vf, { keyFrame: i % (SHARE_FPS * 2) === 0 }); vf.close();
+        if (failure) throw failure;
+        if (i % 8 === 0) { onProgress(i / frames); await pause(); while (enc.encodeQueueSize > 12) await pause(); }
+      }
+      await enc.flush(); muxer.finalize();
+      return { blob: new Blob([muxer.target.buffer], { type: "video/mp4" }), ext: "mp4" };
+    }
+  }
+  // Fallback: record the canvas in real time (MP4 where the browser can,
+  // WebM otherwise).
+  const mime = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
+  if (!mime) throw new Error("This browser can't make videos");
+  const rec = new MediaRecorder(canvas.captureStream(SHARE_FPS), { mimeType: mime, videoBitsPerSecond: 6e6 });
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const stopped = new Promise(r => { rec.onstop = r; });
+  rec.start();
+  const start = performance.now();
+  await new Promise(res => { const tick = () => { const t = performance.now() - start; draw(t); onProgress(t / (SHARE_SECONDS * 1000));
+    if (t < SHARE_SECONDS * 1000) requestAnimationFrame(tick); else res(); }; requestAnimationFrame(tick); });
+  rec.stop(); await stopped;
+  return { blob: new Blob(chunks, { type: mime.split(";")[0] }), ext: mime.includes("mp4") ? "mp4" : "webm" };
+}
+
+async function makeShareGif(onProgress) {
+  const d = await awardsData(awardsDataset, awardsMode);
+  if (!d) throw new Error("no data");
+  const { GIFEncoder, quantize, applyPalette } = await import("https://cdn.jsdelivr.net/npm/gifenc@1.0.3/dist/gifenc.esm.js");
+  const W = 480, H = 854, FPS = 12, canvas = document.createElement("canvas"); canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true }), draw = shareScene(ctx, W, d, awardsDataset);
+  const frames = FPS * (SHARE_SECONDS - 2), gif = GIFEncoder();
+  for (let i = 0; i < frames; i++) {
+    draw(i * 1000 / FPS);
+    const { data } = ctx.getImageData(0, 0, W, H);
+    const palette = quantize(data, 256), index = applyPalette(data, palette);
+    // Hold the final frame so the result can be read before it loops.
+    gif.writeFrame(index, W, H, { palette, delay: i === frames - 1 ? 4000 : Math.round(1000 / FPS) });
+    if (i % 4 === 0) { onProgress(i / frames); await pause(); }
+  }
+  gif.finish();
+  return { blob: new Blob([gif.bytes()], { type: "image/gif" }), ext: "gif" };
+}
+
+function wireShareButton(id, make, label) {
+  const btn = document.getElementById(id);
+  btn.addEventListener("click", async () => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    try {
+      const { blob, ext } = await make(p => { btn.textContent = `${Math.round(p * 100)}%`; });
+      downloadBlob(blob, shareFileName(ext));
+      btn.textContent = "Saved ✓";
+    } catch (e) {
+      console.warn("Share export failed:", e);
+      btn.textContent = "Failed";
+    } finally {
+      setTimeout(() => { btn.innerHTML = label; btn.disabled = false; }, 2000);
+    }
+  });
+}
+wireShareButton("awardsVideo", makeShareVideo, "&#8681; Video");
+wireShareButton("awardsGif", makeShareGif, "&#8681; GIF");
 
 // ?leaderboard=solar | solar-total | ev | ev-total opens it on arrival, with
 // the map on the matching dataset. A bare ?leaderboard follows ?dataset.
