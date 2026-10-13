@@ -191,6 +191,10 @@ OVERPASS_TIMEOUT = 90   # live testing showed 3-44s depending on server load
                         # still capping a dead mirror far below the old 180s
 
 ROAD_CACHE = "road_cache.json"      # {sa2: {street: [lng, lat]}} -- committed
+# Simplified road lines (the parts inside each street's SA2), kept only for
+# streets with business solar -- the farm estimate looks along the whole
+# road, not just at its centre point. {sa2: {street: [[[lng, lat], ...], ...]}}
+ROAD_LINES_CACHE = "road_lines.json"
 SA2_CACHE = "sa2_areas.json"        # {sa2: [name, s, w, n, e]}   -- committed
 OUT_GEOJSON = "docs/streets.geojson"
 OUT_META = "docs/meta.json"
@@ -309,6 +313,15 @@ def emi_council(name):
     return EMI_COUNCIL_ALIASES.get(name, name)
 
 SUPPRESSED = 2       # EMI's "3 or less" counted as this many
+# When a street's solar is a grid-scale solar farm rather than rooftop:
+# averaging 1 MW+ per connection, and either outside towns (farm and rural
+# business rooftops run to a few hundred kW), or 3 MW+ per connection, or
+# a published street total of 5 MW+ -- inside towns the largest warehouse
+# and airport rooftops reach ~2 MW per connection but never 5 MW a street,
+# while solar farms beside a settlement do.
+GRID_SCALE_KW = 1000
+GRID_SCALE_URBAN_KW = 3000
+GRID_SCALE_STREET_KW = 5000
 
 session = requests.Session()
 session.headers["User-Agent"] = "nz-solar-map/1.0 (github actions; weekly build)"
@@ -893,20 +906,15 @@ def fetch_anzsic_ratios():
     import io
 
     text = fetch_csv(url)
-    totals, residential = {}, {}
-    agri, nonres = {}, {}
+    totals, residential, agri = {}, {}, 0
     for row in csv.DictReader(io.StringIO(text)):
         region = row.get("Network reporting region")
         n, _ = icp_value(row.get("ICP count (total)"))
         totals[region] = totals.get(region, 0) + n
         if row.get("ANZSIC L1") == "0":
             residential[region] = residential.get(region, 0) + n
-        else:
-            nonres[region] = nonres.get(region, 0) + n
-            # "A" is Agriculture, Forestry and Fishing -- the only
-            # authoritative farm marker in any of these datasets.
-            if row.get("ANZSIC L1") == "A":
-                agri[region] = agri.get(region, 0) + n
+        elif row.get("ANZSIC L1") == "A":   # Agriculture, Forestry and Fishing
+            agri += n
 
     council_totals, council_res = {}, {}
     for region, n in totals.items():
@@ -929,21 +937,7 @@ def fetch_anzsic_ratios():
     if total_res:
         ratios["__national__"] = sum(totals.values()) / total_res
 
-    # Agriculture's share of each council's non-residential connections.
-    # Used to narrow the rural-business figure towards actual farms: the
-    # geographic test only asks "outside a town", which also catches
-    # rural schools, marae, packhouses and tourism. The two agree closely
-    # in strongly agricultural regions (Canterbury, Hawke's Bay) and
-    # diverge where rural non-farm business is common (Auckland).
-    c_agri, c_nonres = {}, {}
-    for region, n in nonres.items():
-        council = NETWORK_TO_COUNCIL.get(region)
-        if not council:
-            continue
-        c_nonres[council] = c_nonres.get(council, 0) + n
-        c_agri[council] = c_agri.get(council, 0) + agri.get(region, 0)
-    agri_share = {c: c_agri[c] / c_nonres[c] for c in c_nonres if c_nonres[c]}
-    return ratios, agri_share
+    return ratios, agri
 
 
 def fetch_urban_areas():
@@ -2396,6 +2390,298 @@ def suppressed_weights(records, areas, council_bounds, emi_councils):
     return {code: per_council[c] for code, c in council_of.items() if c in per_council}
 
 
+# ----------------------------------------------------------------------
+# Farm estimate
+# ----------------------------------------------------------------------
+#
+# EMI publishes no farm split. What it does publish is each street's
+# business installs, and Stats NZ's urban/rural areas say which streets
+# are out in the country. But "rural business" isn't "farm": rural roads
+# also carry schools, marae, churches, shops, tourism, wineries' cellar
+# doors and industry. So each rural business street is judged on the
+# evidence along the road itself:
+#
+#   likely farm      the land along the road is mostly farmland and no
+#                    other kind of business sits on it
+#   likely not       a non-farm business sits right on a short road, or
+#                    the land along it is mostly forest, scrub, water or
+#                    built-up
+#   uncertain        anything in between -- typically a long road with
+#                    farmland and the odd school or hall somewhere on it
+#
+# An uncertain street counts as a farm in proportion to how many farms
+# line it compared with other businesses: F / (F + k). F is the farm
+# business connections a road that long would carry -- national
+# agricultural connections (EMI) per km of rural road (NZTA), times the
+# road's length and its farmland share. k is the non-farm businesses
+# mapped along it, plus, on the non-farmland part of the road, the
+# typical density of other businesses on these roads (OpenStreetMap
+# doesn't know every one). The range is the same calculation with half
+# and twice the farm density. Grid-scale solar farms are excluded.
+#
+# Evidence is cached per street (FARM_EVIDENCE_CACHE): land cover barely
+# changes and businesses slowly, so each street is checked once and
+# rechecked after FARM_EVIDENCE_MAX_AGE_DAYS.
+
+LAND_COVER_SERVICE = (
+    "https://services.arcgis.com/XTtANUDT8Va4DLwI/arcgis/rest/services/"
+    "New_Zealand_Land_Cover/FeatureServer/0/query"
+)
+LAND_COVER_FIELD = "Name_2023"          # Manaaki Whenua LCDB, latest time step
+FARMLAND_CLASSES = {
+    "High Producing Exotic Grassland", "Low Producing Grassland", "Depleted Grassland",
+    "Short-rotation Cropland", "Orchard, Vineyard or Other Perennial Crop", "Tall Tussock Grassland",
+}
+FARM_EVIDENCE_CACHE = "farm_evidence.json"
+FARM_EVIDENCE_MAX_AGE_DAYS = 365
+FARM_EVIDENCE_PER_RUN = 600             # cap on new lookups per run, so a cold cache can't stall a run
+FARM_EVIDENCE_REFRESH_PER_RUN = 100     # stale roads rechecked per run, oldest first -- spreads the yearly refresh
+FARM_ROAD_BUFFER_M = 250                # how far either side of the road counts as "on" it
+FARM_SHORT_ROAD_KM = 1.5                # a business this close on a road this short is very likely the install
+FARMLAND_LIKELY, FARMLAND_UNLIKELY = 0.6, 0.3
+RURAL_ROAD_KM = 76_700                  # NZTA road length statistics, rural roads, June 2024
+FARM_CONNECTIONS_PER_KM_FALLBACK = 1.1  # 85,357 agricultural ICPs (EMI, Aug 2026) / RURAL_ROAD_KM
+# Things that are not farms but commonly have a business electricity
+# connection on a rural road. Overpass regexes by key.
+NONFARM_TAGS = {
+    "amenity": "school|kindergarten|childcare|college|marae|place_of_worship|community_centre|"
+               "social_facility|cafe|restaurant|pub|bar|fuel|fast_food|clinic|doctors|hospital|"
+               "fire_station|police",
+    "tourism": "motel|hotel|camp_site|caravan_site|guest_house|chalet|hostel|attraction|"
+               "wine_cellar|apartment",
+    "craft": "winery|brewery|distillery",
+    "shop": ".",
+    "landuse": "industrial|commercial|retail|quarry|landfill",
+    "man_made": "works|wastewater_plant|water_works",
+    "leisure": "golf_course|sports_centre|marina",
+}
+
+
+def _metric(lat):
+    """(x scale, y scale) turning degrees into metres near latitude lat."""
+    return 111_320 * math.cos(math.radians(lat)), 110_574
+
+
+def _road_geometry(segs):
+    """The road's line(s) in local metres, plus the projection back."""
+    from shapely.geometry import LineString, MultiLineString, Point
+    lat0 = sum(y for seg in segs for _, y in seg) / sum(len(seg) for seg in segs)
+    kx, ky = _metric(lat0)
+    parts = [LineString([(x * kx, y * ky) for x, y in seg]) if len(seg) > 1
+             else Point(seg[0][0] * kx, seg[0][1] * ky) for seg in segs]
+    lines = [g for g in parts if g.geom_type == "LineString"]
+    geom = MultiLineString(lines) if lines else parts[0]
+    return geom, kx, ky
+
+
+def _land_cover_share(segs):
+    """(farmland share, {class: share}) of the land within
+    FARM_ROAD_BUFFER_M of the road, from Manaaki Whenua's land cover
+    database. Polygons are fetched simplified to ~100 m -- plenty for a
+    share over a 500 m-wide strip."""
+    from shapely.geometry import shape
+    from shapely.affinity import scale as affine_scale
+    geom, kx, ky = _road_geometry(segs)
+    strip = geom.buffer(FARM_ROAD_BUFFER_M).simplify(25)
+    ring = [[round(x / kx, 6), round(y / ky, 6)] for x, y in strip.exterior.coords] \
+        if strip.geom_type == "Polygon" else None
+    if ring is None:   # a multi-part strip: query its hull, clip locally
+        ring = [[round(x / kx, 6), round(y / ky, 6)] for x, y in strip.convex_hull.exterior.coords]
+    r = session.post(LAND_COVER_SERVICE, timeout=120, data={
+        "geometry": json.dumps({"rings": [ring], "spatialReference": {"wkid": 4326}}),
+        "geometryType": "esriGeometryPolygon", "inSR": 4326, "spatialRel": "esriSpatialRelIntersects",
+        "outFields": LAND_COVER_FIELD, "returnGeometry": "true", "outSR": 4326,
+        "maxAllowableOffset": 0.001, "geometryPrecision": 5, "f": "geojson",
+    })
+    r.raise_for_status()
+    shares, area = {}, strip.area
+    for f in r.json().get("features", []):
+        cls = (f.get("properties") or {}).get(LAND_COVER_FIELD)
+        if not cls or not f.get("geometry"):
+            continue
+        poly = affine_scale(shape(f["geometry"]).buffer(0), xfact=kx, yfact=ky, origin=(0, 0))
+        shares[cls] = shares.get(cls, 0) + poly.intersection(strip).area / area
+    farm = sum(v for k, v in shares.items() if k in FARMLAND_CLASSES)
+    return round(min(1.0, farm), 3), {k: round(v, 3) for k, v in sorted(shares.items(), key=lambda kv: -kv[1])[:4]}
+
+
+def _nonfarm_businesses(segs):
+    """Non-farm businesses (OpenStreetMap) within FARM_ROAD_BUFFER_M of
+    the road: (count, [up to 3 names with their type])."""
+    pts = [p for seg in segs for p in seg][:120]
+    around = ",".join(f"{y},{x}" for x, y in pts)
+    # Any shop except a farm-gate shop (shop=farm), which is the farm.
+    clauses = "".join(f'nwr(around:{FARM_ROAD_BUFFER_M},{around})["{k}"~"^({v})$"];'
+                      if v != "." else f'nwr(around:{FARM_ROAD_BUFFER_M},{around})["{k}"]["{k}"!="farm"];'
+                      for k, v in NONFARM_TAGS.items())
+    data = overpass(f"[out:json][timeout:90];({clauses});out tags center;")
+    names, n = [], 0
+    for el in data.get("elements", []):
+        t = el.get("tags", {})
+        n += 1
+        kind = next((t[k] for k in NONFARM_TAGS if k in t), "business").replace("_", " ")
+        if len(names) < 3:
+            names.append(f"{t['name']} ({kind})" if t.get("name") else f"a {kind} site")
+    return n, names
+
+
+def farm_evidence(features, lines):
+    """{"sa2|NORM": evidence} for every rural business street that isn't a
+    solar farm: road length, farmland share and the non-farm businesses
+    along it. Cached. Streets with no evidence are looked up first (up to
+    FARM_EVIDENCE_PER_RUN a run); stale ones keep their old evidence and
+    are rechecked oldest-first, FARM_EVIDENCE_REFRESH_PER_RUN at a time,
+    so a year's worth never expires in the same run."""
+    cache = load(FARM_EVIDENCE_CACHE, {}) or {}
+    today = datetime.now(timezone.utc).date()
+    missing, stale = [], []
+    for f in features:
+        p = f["properties"]
+        if not (p.get("rural") and p.get("bus", 0) > 0) or p.get("grid"):
+            continue
+        key = f"{p['sa2']}|{normalise(p['street'])}"
+        if not lines.get(p["sa2"], {}).get(normalise(p["street"])):
+            continue
+        old = cache.get(key)
+        if not old:
+            missing.append(key)
+        elif (today - datetime.fromisoformat(old["checked"]).date()).days > FARM_EVIDENCE_MAX_AGE_DAYS:
+            stale.append((old["checked"], key))
+    todo = missing[:FARM_EVIDENCE_PER_RUN] + [k for _, k in sorted(stale)[:FARM_EVIDENCE_REFRESH_PER_RUN]]
+    done = failed = 0
+    for key in todo:
+        sa2, norm = key.split("|", 1)
+        segs = lines[sa2][norm]
+        try:
+            geom, _, _ = _road_geometry(segs)
+            farm, classes = _land_cover_share(segs)
+            n, names = _nonfarm_businesses(segs)
+        except Exception as exc:                       # noqa: BLE001
+            failed += 1
+            if failed <= 3:
+                print(f"  ! farm evidence for {key} failed: {exc}")
+            continue
+        cache[key] = {"roadKm": round(geom.length / 1000, 2), "farmland": farm, "landCover": classes,
+                      "nonfarm": n, "nonfarmNames": names, "checked": today.isoformat()}
+        done += 1
+        if done % 50 == 0:
+            save(FARM_EVIDENCE_CACHE, cache)
+            print(f"  farm evidence: {done}/{len(todo)}")
+    save(FARM_EVIDENCE_CACHE, cache)
+    if todo:
+        left = max(0, len(missing) - FARM_EVIDENCE_PER_RUN) + max(0, len(stale) - FARM_EVIDENCE_REFRESH_PER_RUN)
+        print(f"Farm evidence: {done} streets checked, {failed} failed, {left} left for later runs")
+    if failed > max(10, len(todo) // 4):
+        note_failure("Farm evidence", f"{failed} of {len(todo)} lookups failed",
+                     "affected streets count as uncertain until rechecked")
+    return cache
+
+
+def farm_class(ev):
+    """("likely" | "unlikely" | "uncertain", reason) for one street's
+    evidence -- see the section comment above."""
+    if not ev:
+        return "uncertain", "not yet checked"
+    if ev["nonfarm"] and ev["roadKm"] <= FARM_SHORT_ROAD_KM:
+        return "unlikely", "other businesses on a short road: " + ", ".join(ev["nonfarmNames"][:2] or ["mapped but unnamed"])
+    if ev["farmland"] < FARMLAND_UNLIKELY:
+        top = next(iter(ev.get("landCover") or {}), "non-farm land")
+        return "unlikely", f"mostly {top.lower()} along the road"
+    if ev["farmland"] >= FARMLAND_LIKELY and not ev["nonfarm"]:
+        return "likely", f"{round(ev['farmland'] * 100)}% farmland along the road, no other businesses"
+    if ev["nonfarm"]:
+        return "uncertain", "farmland, but also " + ", ".join(ev["nonfarmNames"][:2] or ["other businesses"]) + " on this road"
+    return "uncertain", f"{round(ev['farmland'] * 100)}% farmland along the road"
+
+
+def farm_probability(ev, density, other_per_km):
+    """Chance an uncertain street's business solar is a farm: the farm
+    connections expected along the road, over those plus the other
+    businesses on it (see the section comment). Other businesses are the
+    ones mapped, plus -- on the part of the road that isn't farmland --
+    the typical density of other businesses on rural business roads,
+    since OpenStreetMap doesn't know every one."""
+    if not ev:
+        return 0.5
+    farms = density * ev["roadKm"] * ev["farmland"]
+    others = ev["nonfarm"] + other_per_km * ev["roadKm"] * (1 - ev["farmland"])
+    return farms / (farms + others) if farms + others else 0.5
+
+
+def estimate_farms(features, evidence, region_tree, records, areas, council_bounds, agri_icps=None):
+    """Per-region farm estimates (and national) -- see the section comment
+    above. Each street's business installs count at their published value,
+    or the national measured average per "3 or less" business row. A
+    region's share of business installs in each class is applied to EMI's
+    own business count for that region, so the estimates scale to EMI's
+    totals rather than to the street file's.
+
+    Also tags every rural business street with its class ("farm",
+    "farmWhy") for the map, and returns the national figures."""
+    density = agri_icps / RURAL_ROAD_KM if agri_icps else FARM_CONNECTIONS_PER_KM_FALLBACK
+    checked = [e for e in evidence.values() if e.get("roadKm")]
+    other_per_km = (sum(e["nonfarm"] for e in checked) / sum(e["roadKm"] for e in checked)) if checked else 0.4
+    exact = sum(r["bus"] for r in records.values() if r["bus"] >= 4)
+    suppressed = sum(1 for r in records.values() if 0 < r["bus"] < 4)
+    nat_bus = sum(r.get("busIcps") or 0 for r in region_tree)
+    per_row = min(3.0, max(1.0, (nat_bus - exact) / suppressed)) if suppressed and nat_bus else 1.0
+
+    council_of = {}
+    acc = {}   # council -> {"all", "likely", "unlikely", "uncertain", "solarFarms", "solarFarmKW"}
+    for f in features:
+        p = f["properties"]
+        if not p.get("bus"):
+            continue
+        code = p["sa2"]
+        if code not in areas:
+            continue
+        if code not in council_of:
+            _, s, w, n, e = areas[code]
+            council_of[code] = council_of_point((s + n) / 2, (w + e) / 2, council_bounds)
+        a = acc.setdefault(council_of[code], {"all": 0.0, "likely": 0.0, "unlikely": 0.0, "uncertain": 0.0,
+                                              "unc_mid": 0.0, "unc_low": 0.0, "unc_high": 0.0,
+                                              "solarFarms": 0, "solarFarmKW": 0.0})
+        wt = p["bus"] if p["bus"] >= 4 else per_row
+        a["all"] += wt
+        if p.get("grid"):
+            a["solarFarms"] += 1
+            a["solarFarmKW"] += p["kW"]
+            continue
+        if not p.get("rural"):
+            continue
+        ev = evidence.get(f"{code}|{normalise(p['street'])}")
+        cls, why = farm_class(ev)
+        p["farm"], p["farmWhy"] = cls, why
+        a[cls] += wt
+        if cls == "uncertain":
+            prob = farm_probability(ev, density, other_per_km)
+            p["farmP"] = round(prob, 2)
+            a["unc_mid"] += wt * prob
+            a["unc_low"] += wt * farm_probability(ev, density / 2, other_per_km)
+            a["unc_high"] += wt * farm_probability(ev, density * 2, other_per_km)
+
+    out = {"low": 0, "est": 0, "high": 0, "solarFarms": 0, "solarFarmKW": 0.0, "perRow": round(per_row, 2),
+           "density": round(density, 2)}
+    for r in region_tree:
+        a = acc.get(r["name"])
+        if not a or not a["all"] or r.get("busIcps") is None:
+            continue
+        scale = r["busIcps"] / a["all"]
+        r["farmLow"] = round((a["likely"] + a["unc_low"]) * scale)
+        r["farmEst"] = round((a["likely"] + a["unc_mid"]) * scale)
+        r["farmHigh"] = round((a["likely"] + a["unc_high"]) * scale)
+        r["ruralBus"] = round((a["likely"] + a["unlikely"] + a["uncertain"]) * scale)
+        r["solarFarms"], r["solarFarmMW"] = a["solarFarms"], round(a["solarFarmKW"] / 1000, 1)
+        for key, src in (("low", "farmLow"), ("est", "farmEst"), ("high", "farmHigh")):
+            out[key] += r[src]
+        out["solarFarms"] += a["solarFarms"]
+        out["solarFarmKW"] += a["solarFarmKW"]
+    print(f"Farm estimate: ~{out['est']:,} (range {out['low']:,}-{out['high']:,}, "
+          f"{density:.2f} farm connections per km of rural road); "
+          f"{out['solarFarms']} grid-scale solar farms, {out['solarFarmKW'] / 1000:.0f} MW")
+    return out
+
+
 def build_towns(features, town_anchors, council_bounds, rural_known=False, polygons=None,
                 weights=None):
     """Group placed streets into real towns -- e.g. "Wānaka" and
@@ -2424,6 +2710,11 @@ def build_towns(features, town_anchors, council_bounds, rural_known=False, polyg
         name = nearest_town(lat, lng)
         t = towns.setdefault(name, {"icps": 0.0, "kW": 0.0, "res": 0, "bus": 0,
                                     "ruralBus": 0, "ruralBusKW": 0.0})
+        if p.get("grid"):
+            # Town and district figures describe rooftop uptake; a solar
+            # farm is a power station that happens to sit inside the
+            # footprint, and would swamp a small town's capacity.
+            continue
         icps, kW = p["icps"], p["kW"]
         w = weights.get(p["sa2"]) if p.get("est") else None
         if w and icps:
@@ -2519,7 +2810,21 @@ def roads_in_bbox(bbox):
     return by_name
 
 
-def geocode(records, areas, council_bounds):
+def _simplify_segments(segs):
+    """Road segments (lists of (lng, lat)) simplified to ~30 m, as plain
+    lists for JSON. Single-node segments are kept as one point."""
+    from shapely.geometry import LineString
+    out = []
+    for seg in segs:
+        if len(seg) >= 2:
+            coords = LineString(seg).simplify(0.0003).coords
+            out.append([[round(x, 5), round(y, 5)] for x, y in coords])
+        elif seg:
+            out.append([[round(seg[0][0], 5), round(seg[0][1], 5)]])
+    return out
+
+
+def geocode(records, areas, council_bounds, line_keys=frozenset()):
     """One Overpass query per regional council (~16), not per SA2
     (~2,100). Batching by a much larger area cuts network round-trips by
     two orders of magnitude; even a large council (Wellington, ~18,800
@@ -2561,6 +2866,7 @@ def geocode(records, areas, council_bounds):
     # outages, so without this one bad run could erase whole regions'
     # worth of previously placed streets.
     cache = load(ROAD_CACHE, {})
+    lines_cache = load(ROAD_LINES_CACHE, {})
     n_councils = len(codes_by_council)
     for i, (council, codes) in enumerate(codes_by_council.items(), 1):
         bbox = council_bounds[council]["bbox"]
@@ -2583,7 +2889,12 @@ def geocode(records, areas, council_bounds):
 
         for code in codes:
             _, s, w, n, e = areas[code]
-            local = {}
+            local, local_lines = {}, {}
+
+            def inside(name):
+                return [[(lng, lat) for lng, lat in way if w <= lng <= e and s <= lat <= n]
+                        for way in by_name.get(name, ())]
+
             for name in names_by_code.get(code, ()):
                 # Only the nodes of each candidate way that actually fall
                 # inside this SA2's own bbox -- not the way's overall
@@ -2592,9 +2903,8 @@ def geocode(records, areas, council_bounds):
                 # this SA2 is placed at the average of just its own
                 # portion of the way, not dragged toward wherever the
                 # rest of a long way happens to run.
-                pts = [(lng, lat) for way in by_name.get(name, ())
-                       for lng, lat in way if w <= lng <= e and s <= lat <= n]
-                if not pts:
+                segs = [seg for seg in inside(name) if seg]
+                if not segs:
                     # Exact name has no node in this SA2 at all -- try
                     # again without a trailing street-type word (see
                     # _strip_street_type) before giving up. Only reached
@@ -2603,15 +2913,19 @@ def geocode(records, areas, council_bounds):
                     # pulled toward an unrelated "Queen".
                     stripped = _strip_street_type(name)
                     if stripped:
-                        pts = [(lng, lat) for way in by_name.get(stripped, ())
-                               for lng, lat in way if w <= lng <= e and s <= lat <= n]
+                        segs = [seg for seg in inside(stripped) if seg]
+                pts = [p for seg in segs for p in seg]
                 if pts:
                     local[name] = [round(sum(p[0] for p in pts) / len(pts), 5),
                                     round(sum(p[1] for p in pts) / len(pts), 5)]
+                    if (code, name) in line_keys:
+                        local_lines[name] = _simplify_segments(segs)
             cache[code] = local
+            lines_cache[code] = local_lines
 
     save(ROAD_CACHE, cache)
-    return cache
+    save(ROAD_LINES_CACHE, lines_cache)
+    return cache, lines_cache
 
 
 # ----------------------------------------------------------------------
@@ -2660,6 +2974,19 @@ def build(records, cache, areas, previous, is_rural=None):
             props["change"] = rec["icps"] - was
         if rec["kW"] and rec["icps"]:
             props["kWper"] = round(rec["kW"] / rec["icps"], 1)
+            if props["kWper"] >= GRID_SCALE_KW and (
+                    props.get("rural") or props["kWper"] >= GRID_SCALE_URBAN_KW
+                    or (not rec["est"] and rec["kW"] >= GRID_SCALE_STREET_KW)):
+                # A grid-scale solar farm, not rooftop solar. Kept out of
+                # the farm and rural-business figures, and shown as its
+                # own category. When EMI suppresses the row ("3 or less"),
+                # its capacity is the published per-connection average
+                # times the placeholder count -- for a plant that's almost
+                # always one connection, so the placeholder would double
+                # a 24 MW plant to 48 MW. Count it once.
+                props["grid"] = 1
+                if rec["est"]:
+                    props["kW"] = props["kWper"]
 
         features.append({
             "type": "Feature",
@@ -2874,7 +3201,8 @@ def main():
         totals["battPct"] = national_battery["pct"]
         totals["battBase"] = national_battery["installs"]
 
-    cache = geocode(records, areas, council_bounds)
+    business_streets = {key for key, r in records.items() if r["bus"] > 0}
+    cache, lines = geocode(records, areas, council_bounds, business_streets)
 
     # Optional, like every other enrichment here -- if Stats NZ is
     # unreachable the streets still build, just without the rural flag,
@@ -2901,40 +3229,6 @@ def main():
     weights = suppressed_weights(records, areas, council_bounds, emi_councils) if emi_councils else {}
     towns = build_towns(features, town_anchors, council_bounds, is_rural is not None, town_polygons,
                         weights)
-
-    # Rural business installs. Deliberately NOT a sum of the street
-    # rows: 98% of the street file's business rows are privacy-
-    # suppressed ("3 or less"), so summing them nationally gives 12,443
-    # against EMI's published 8,150 -- 53% high. What the street points
-    # can support is the *share* of business installs that sit outside
-    # any town, and that share is then applied to EMI's own published
-    # business count for the council. Every published figure therefore
-    # still reconciles to EMI's totals; only the rural/urban split is
-    # ours, and it is labelled an estimate wherever it appears.
-    if is_rural is not None:
-        weights = {}   # council -> [rural business weight, total business weight]
-        for t in towns:
-            c = t.get("council")
-            if not c or t.get("ruralBus") is None:
-                continue
-            w = weights.setdefault(c, [0, 0])
-            w[0] += t["ruralBus"]
-            w[1] += t.get("bus", 0)
-        national_rural = 0
-        for r in region_tree:
-            rural_w, total_w = weights.get(r["name"], [0, 0])
-            if not total_w:
-                r["ruralBus"], r["ruralBusShare"] = 0, 0.0
-                continue
-            share = rural_w / total_w
-            r["ruralBusShare"] = round(share * 100, 1)
-            r["ruralBus"] = round(r["busIcps"] * share)
-            national_rural += r["ruralBus"]
-        if totals:
-            totals["ruralBus"] = national_rural
-            totals["ruralBusShare"] = (
-                round(national_rural / totals["busIcps"] * 100, 1) if totals.get("busIcps") else 0.0
-            )
 
     # Each town's parent council's real % of ICPs, attached as labelled
     # regional context -- not a town-specific figure (see build_towns).
@@ -2992,10 +3286,10 @@ def main():
         note_failure("Census dwellings", exc, "district/town % estimates will be omitted")
         sa1_dwellings = []
     try:
-        anzsic_ratios, agri_share = fetch_anzsic_ratios()
+        anzsic_ratios, agri_icps = fetch_anzsic_ratios()
     except Exception as exc:                       # noqa: BLE001
-        note_failure("ANZSIC ICP breakdown", exc, "farm estimates will be omitted")
-        anzsic_ratios, agri_share = {}, {}
+        note_failure("ANZSIC ICP breakdown", exc, "town estimates fall back to GUEHMT ratios only")
+        anzsic_ratios, agri_icps = {}, None
     # All-connections / residential-connections per council, for scaling
     # Census dwellings up to a connection estimate. Taken from GUEHMT's
     # uptake rates where available -- total and residential ICPs under
@@ -3010,25 +3304,18 @@ def main():
     if nat_up.get("resTotalIcps"):
         anzsic_ratios["__national__"] = nat_up["totalIcps"] / nat_up["resTotalIcps"]
 
-    # A second, narrower estimate of farm solar, from EMI's own industry
-    # classification rather than from geography. The two bracket the
-    # answer rather than either being definitive: the geographic figure
-    # counts every business outside a town, so it runs high by including
-    # rural non-farm sites; this one assumes farms take up solar at the
-    # same rate as other businesses in their region, which likely runs
-    # low, since rural business systems average 50.1 kW against 24.3 kW
-    # urban. Published as a pair so the range is visible instead of a
-    # single number implying precision neither method has.
-    if agri_share:
-        national_farm = 0
-        for r in region_tree:
-            share = agri_share.get(r["name"])
-            if share is None or r.get("busIcps") is None:
-                continue
-            r["farmAnzsic"] = round(r["busIcps"] * share)
-            national_farm += r["farmAnzsic"]
-        if totals and national_farm:
-            totals["farmAnzsic"] = national_farm
+    # Farms with solar (see the "Farm estimate" section). Needs the rural
+    # flag; without it the UI simply omits the farm figure.
+    if is_rural is not None and region_tree and emi_councils:
+        try:
+            evidence = farm_evidence(features, lines)
+            farms = estimate_farms(features, evidence, region_tree, records, areas, council_bounds, agri_icps)
+            if totals:
+                totals["farmLow"], totals["farmEst"], totals["farmHigh"] = farms["low"], farms["est"], farms["high"]
+                totals["solarFarms"] = farms["solarFarms"]
+                totals["solarFarmMW"] = round(farms["solarFarmKW"] / 1000, 1)
+        except Exception as exc:                       # noqa: BLE001
+            note_failure("Farm estimate", exc, "the farm figure will be omitted")
 
     if region_tree and tla_region:
         try:

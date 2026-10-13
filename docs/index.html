@@ -210,7 +210,6 @@
   .stat-line-cats .swatch { display: inline-block; width: 7px; height: 7px; margin-right: 5px; border-radius: 50%; vertical-align: middle; }
   .stat-line-batt { color: var(--cyan-text); margin-top: 2px; }
   .stat-line-batt strong { color: var(--cyan-text); }
-  .stat-line-batt .batt-base { cursor: help; border-bottom: 1px dotted color-mix(in srgb, currentColor 50%, transparent); }
   .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
   .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; white-space: nowrap; flex: none; }
 
@@ -407,9 +406,37 @@
   .row-ctx-solar { color: var(--amber-text); opacity: .85; }
   .row-ctx-batt { color: var(--cyan-text); }
   .seg-line { color: var(--dim); }
-  .seg-rural { cursor: help; border-bottom: 1px dotted var(--dim); }
-  .town-approx { cursor: help; border-bottom: 1px dotted currentColor; }
-  .row-batt .batt-base { cursor: help; border-bottom: 1px dotted color-mix(in srgb, currentColor 50%, transparent); }
+  /* Info bubbles: a small "i" button, or a dotted-underlined term, opens
+     a short explanation on click (works on touch, unlike a hover title).
+     See INFO / openInfo in the script. */
+  .info-term { cursor: pointer; border-bottom: 1px dotted color-mix(in srgb, currentColor 60%, transparent); }
+  .info-term:hover { border-bottom-style: solid; }
+  .info-btn {
+    display: inline-flex; align-items: center; justify-content: center; flex: none;
+    width: 14px; height: 14px; margin-left: 4px; padding: 0; vertical-align: 1px;
+    border: 1px solid currentColor; border-radius: 50%; background: transparent; color: inherit;
+    font: italic 700 9px/1 Georgia, "Times New Roman", serif; opacity: .65; cursor: pointer;
+  }
+  .info-btn:hover, .info-btn[aria-expanded="true"] { opacity: 1; }
+  #infoPop {
+    position: fixed; z-index: 300; max-width: min(300px, calc(100vw - 16px));
+    background: var(--glass-hi); color: var(--text); border: 1px solid var(--border);
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border-radius: 10px; box-shadow: 0 8px 28px var(--shadow);
+    padding: 10px 28px 10px 12px; font-size: 12px; line-height: 1.5;
+    max-height: calc(100vh - 16px); overflow-y: auto; overscroll-behavior: contain;
+  }
+  #infoPop.hidden { display: none; }
+  #infoPop .info-title { font-weight: 700; margin-bottom: 3px; }
+  #infoPop p { margin: 0 0 6px; }
+  #infoPop p:last-child { margin-bottom: 0; }
+  #infoPop details { margin-top: 4px; color: var(--dim); }
+  #infoPop summary { cursor: pointer; color: var(--text); font-weight: 600; font-size: 11.5px; }
+  #infoPop details p { margin-top: 6px; }
+  #infoPop .info-close {
+    position: absolute; top: 6px; right: 8px; border: none; background: none; color: var(--dim);
+    font-size: 16px; line-height: 1; cursor: pointer; padding: 2px;
+  }
   /* Whole-row click target for district/town rows that fly the map. */
   .row-main.row-clickable { cursor: pointer; }
   .row-main.row-clickable:hover { background: var(--hover); }
@@ -608,16 +635,18 @@
           </div>
           <div id="leaderboardView" class="hidden"></div>
           <div id="vehicleDetailsView" class="hidden">
-            <div class="vehicle-fuel-toggle" id="vehicleFuelToggle" title="Electric is battery-electric only, matching every EV count on this page. Fossil fuel is anything with a combustion engine: petrol, diesel, hybrid, plug-in hybrid (PHEV), LPG/CNG and range-extended EVs. Vehicles with no motive power recorded (mostly trailers and caravans) are in neither list.">
+            <div class="vehicle-fuel-toggle" id="vehicleFuelToggle">
               <button type="button" class="fuel-btn active" data-fuel="ev">Electric</button>
               <button type="button" class="fuel-btn" data-fuel="ice">Fossil fuel</button>
+              <button type="button" class="info-btn" data-info="fuels" aria-label="What does this mean?" aria-expanded="false" style="align-self:center;color:var(--dim)">i</button>
             </div>
             <select id="vehicleCategorySelect" class="chart-select"></select>
             <div id="vehicleDetailsList"></div>
           </div>
           <div class="data-sources">
             Solar: EMI (Electricity Authority) · EVs: NZTA Motor Vehicle Register ·
-            Streets: OpenStreetMap contributors · Areas: Stats NZ · Towns: LINZ
+            Streets &amp; rural businesses: OpenStreetMap contributors · Areas &amp; Census: Stats NZ ·
+            Towns: LINZ · Land cover: Manaaki Whenua
           </div>
         </div>
       </div>
@@ -637,6 +666,8 @@
     <div class="board" id="board"><div class="loading-note">Loading towns…</div></div>
   </div>
 
+  <div id="infoPop" class="hidden" role="dialog" aria-live="polite"></div>
+
   <button id="methodologyBtn" type="button" title="How this map is built, and what is measured versus estimated" aria-label="Methodology">i</button>
   <div id="methodologyOverlay" class="hidden">
     <div id="methodologyModal">
@@ -646,9 +677,9 @@
         <button type="button" class="theme-btn" data-theme="dark">Dark</button>
       </div>
       <h2>Where this data comes from</h2>
-      <p>A quick summary, not the full technical detail — see
-        <a href="https://github.com/rewiring-nz/solar-streets/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md</a>
-        on GitHub for that.</p>
+      <p>A quick summary. Tap any <span class="info-btn" style="cursor:default;opacity:.8">i</span> or dotted figure on the map
+        for how it's worked out; the full technical detail is in
+        <a href="https://github.com/rewiring-nz/solar-streets/blob/main/ARCHITECTURE.md" target="_blank" rel="noopener">ARCHITECTURE.md</a>.</p>
 
       <h3>Solar installs</h3>
       <ul>
@@ -657,7 +688,8 @@
         <li><strong>Town and district counts</strong> (marked “~”) are added up from those streets, counting each “3 or less” street at its region's measured average, so each region's streets add up to EMI's exact total.</li>
         <li><strong>Town and district %</strong> (marked “est”) is modelled: 2023 Census dwellings projected forward, scaled up to all connections using the region's mix. EMI publishes no connection total that fine.</li>
         <li><strong>Batteries</strong> are EMI figures, published by region only — towns show their region's rate.</li>
-        <li><strong>Farms</strong> are a range between two estimates, since EMI publishes no farm split (hover the figure for how each is made).</li>
+        <li><strong>Farms</strong> (marked “~”) are our estimate, since EMI publishes no farm split: every road outside towns with business solar is judged on the land along it (Manaaki Whenua land cover) and the other businesses on it (OpenStreetMap). Solar on farmhouses counts as homes, so farms with any solar are probably more.</li>
+        <li><strong>Solar farms</strong> — grid-scale power stations rather than rooftops — are shown separately and left out of the farm, rural business and town figures.</li>
       </ul>
 
       <h3>Electric vehicles</h3>
@@ -860,20 +892,28 @@ const DOT_COLOR = "#ffb703";
 // "rural" is exactly the flag the rural-business estimate is built
 // from (see fetch_urban_areas in process.py), so switching everything
 // else off shows precisely the points that estimate counts.
+// Grid-scale solar farms (process.py's GRID_SCALE_KW) are their own
+// category: power stations, not rooftop solar, so they're never counted
+// as homes, business or rural business on the map.
+const SOLAR_FARM_COLOR = "#e11d48";
+const NOT_GRID = ["!=", ["get", "grid"], 1];
 const POINT_CATS = [
   { key: "res",      label: "Homes",          color: DOT_COLOR,
-    filter: [">", ["get", "res"], 0] },
+    filter: ["all", [">", ["get", "res"], 0], NOT_GRID] },
   { key: "bus",      label: "Business",       color: "#c084fc",
-    filter: ["all", [">", ["get", "bus"], 0], ["!=", ["get", "rural"], 1]] },
+    filter: ["all", [">", ["get", "bus"], 0], ["!=", ["get", "rural"], 1], NOT_GRID] },
   { key: "ruralBus", label: "Rural business", color: "#4ade80",
-    filter: ["all", [">", ["get", "bus"], 0], ["==", ["get", "rural"], 1]] },
+    filter: ["all", [">", ["get", "bus"], 0], ["==", ["get", "rural"], 1], NOT_GRID] },
+  { key: "grid",     label: "Solar farms",    color: SOLAR_FARM_COLOR,
+    filter: ["==", ["get", "grid"], 1] },
 ];
-const pointCatOn = { res: true, bus: true, ruralBus: true };
+const pointCatOn = { res: true, bus: true, ruralBus: true, grid: true };
 
 // Colour by the most specific category the street falls into, so the
 // classification is visible on the map rather than only in the totals.
 const POINT_COLOR = [
   "case",
+  ["==", ["get", "grid"], 1], SOLAR_FARM_COLOR,
   ["all", [">", ["get", "bus"], 0], ["==", ["get", "rural"], 1]], "#4ade80",
   [">", ["get", "bus"], 0], "#c084fc",
   DOT_COLOR,
@@ -938,7 +978,7 @@ function installDotFeatures() {
   const seen = new Set(), out = [];
   for (const f of src) {
     const p = f.properties;
-    if (p.est == 1 || !(p.icps > 1)) continue;          // estimated, or nothing to fan out
+    if (p.est == 1 || !(p.icps > 1) || p.grid == 1) continue;   // estimated, nothing to fan out, or a solar farm
     const key = p.sa2 + "|" + p.street;
     if (seen.has(key)) continue;                        // tiles repeat features
     seen.add(key);
@@ -1039,9 +1079,8 @@ function esc(s) {
 // process.py). Anything under four is therefore that placeholder and is
 // shown as the range it stands for, never as a measured "2".
 const SUPPRESSED_TEXT = "1–3";
-const SUPPRESSED_TITLE = "EMI publishes any count of three or fewer as ‘3 or less’ to protect privacy.";
 function streetCount(n) {
-  return n > 0 && n < 4 ? `<span title="${SUPPRESSED_TITLE}">${SUPPRESSED_TEXT}</span>` : fmt(n);
+  return n > 0 && n < 4 ? infoTerm("suppressed", SUPPRESSED_TEXT) : fmt(n);
 }
 
 function shortDate(iso) {
@@ -1062,6 +1101,26 @@ function showPopup(f) {
   const since = shortDate(metaNational && metaNational.changeSince);
   const change = p.change > 0
     ? `<br><span class="up">+${p.change} since ${since || "the previous release"}</span>` : "";
+  if (p.grid == 1) {
+    new maplibregl.Popup()
+      .setLngLat(f.geometry.coordinates)
+      .setHTML(
+        `<strong>${esc(p.street)}</strong><br><small class="muted">${esc(p.area)}</small><br>` +
+        `${infoTerm("solar-farm", "Grid-scale solar farm")}<br>` +
+        `Capacity: <strong>${fmtMW(p.kW)} MW</strong>` +
+        (p.icps >= 4 ? ` <small class="muted">(${fmt(p.icps)} connections)</small>` : "")
+      ).addTo(map);
+    return;
+  }
+  // How the farm estimate judged this road (see estimate_farms).
+  const FARM_LABEL = {
+    likely: "Likely a farm", unlikely: "Probably not a farm",
+    uncertain: p.farmP != null ? `Might be a farm (about ${Math.round(p.farmP * 100)}% likely)` : "Might be a farm",
+  };
+  const farmLine = p.farm && FARM_LABEL[p.farm]
+    ? `<br><span class="popup-sub">${infoTerm("farms", FARM_LABEL[p.farm], { scope: "New Zealand" })}` +
+      (p.farmWhy ? ` <small class="muted">— ${esc(p.farmWhy)}</small>` : "") + `</span>`
+    : "";
   // A suppressed row's capacity is EMI's published per-install average
   // times the placeholder count, so only the average is a real figure.
   const capacity = !(p.kW > 0)
@@ -1075,7 +1134,7 @@ function showPopup(f) {
       `<strong>${esc(p.street)}</strong><br><small class="muted">${esc(p.area)}</small><br>` +
       `Solar connections: <strong>${streetCount(p.icps)}</strong>${change}<br>` +
       `Residential ${streetCount(p.res)} · Business ${streetCount(p.bus)}${segNote}<br>` +
-      capacity
+      capacity + farmLine
     ).addTo(map);
 }
 
@@ -1214,6 +1273,7 @@ const backToNzBtnEl = document.getElementById("backToNzBtn");
 function updateBackToNzButton() {
   backToNzBtnEl.classList.toggle("hidden", currentFocus.level === "national");
 }
+map.on("movestart", () => { if (typeof closeInfo === "function") closeInfo(); });
 backToNzBtnEl.addEventListener("click", () => {
   map.flyTo({ center: NZ_VIEW.center, zoom: NZ_VIEW.zoom, duration: 800 });
 });
@@ -1248,38 +1308,165 @@ const fmtMW = kW => (kW / 1000).toLocaleString(undefined, {
 const MONTHS3 = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MONTHS_FULL = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-// Towns and districts have no published connection total, so their
-// counts are added up from EMI's street file and their % is modelled
-// (see suppressed_weights and _estimate_town_pcts in process.py). The
-// "~" and "est" tags keep both visibly distinct from the region
-// figures, which are EMI's own.
-const TOWN_APPROX_TITLE = "Approximate. Added up from EMI's street-level file, where streets with three or " +
-  "fewer installs are published as ‘3 or less’ for privacy. Those streets are counted at their region's " +
-  "measured average (so each region's streets add up to EMI's exact regional total), which makes a town's " +
-  "count a close estimate rather than an exact figure. Region totals are EMI's own and are exact.";
+/* ================= INFO BUBBLES ================= */
+/* Every figure that needs explaining gets a click-to-open bubble: a small
+   "i" button (infoBtn) or a dotted term (infoTerm), both carrying
+   data-info="<key>" plus any data-* the entry needs. Each entry gives a
+   one-or-two-sentence answer up front and, where there's more to say,
+   "How it's worked out" folded underneath -- so nothing extra shows by
+   default but the method is always one click away. Click, not hover, so
+   it works on phones. */
 
-const REGION_PCT_TITLE = "EMI's own published uptake rate: solar connections as a share of all electricity " +
-  "connections (ICPs) in this region.";
-const EV_FLEET_TITLE = "Electric vehicles as a share of all registered vehicles here, excluding trailers " +
-  "and caravans (which have no engine). NZTA Motor Vehicle Register.";
-
-const EST_PCT_TITLE = "Estimated, not measured: 2023 Census dwellings in this area, projected forward at " +
-  "its own 2018–2023 growth rate, then scaled up to all connections using its region's mix of " +
-  "residential and other connections (EMI). The region % is EMI's own published figure; this one is modelled.";
-
-// Battery counts come from EMI's distributed-generation trends report
-// (GUEHMT), as at its latest month end. The install counts beside them
-// come from EMI's installs-by-region file, published on a different
-// date, so the two can differ slightly. Naming the base the percentage
-// was measured against keeps that visible instead of inviting a
-// division that's a fraction of a percent out.
-function battBaseTitle(area, battInstalls, base) {
-  return base
-    ? `${fmt(battInstalls)} of ${fmt(base)} ${area} solar installs have a battery, in EMI's `
-      + `distributed-generation trends report. Its install count is as at its latest month end, `
-      + `so it can differ slightly from the install count shown above.`
-    : `${fmt(battInstalls)} ${area} solar installs have a battery (EMI).`;
+function infoBtn(key, data) {
+  return `<button type="button" class="info-btn" data-info="${key}"${infoData(data)} aria-label="What does this mean?" aria-expanded="false">i</button>`;
 }
+function infoTerm(key, html, data) {
+  return `<span class="info-term" role="button" tabindex="0" data-info="${key}"${infoData(data)}>${html}</span>`;
+}
+function infoData(data) {
+  return Object.entries(data || {}).map(([k, v]) => ` data-${k}="${esc(v)}"`).join("");
+}
+
+function battTerm(text, area, batt, base) {
+  return infoTerm("battery", text, { area, batt, base: base != null ? base : "" });
+}
+
+function regionRow(scope) {
+  return !scope || scope === "New Zealand" ? metaNational : regionData.find(r => r.name === scope);
+}
+
+const INFO = {
+  "region-pct": () => ({
+    title: "% of connections",
+    body: "The share of all electricity connections in this region that have solar. This is the Electricity Authority's own published figure (EMI).",
+    more: "Every home and business with its own power meter is one connection (an “ICP”). EMI counts the connections with solar and divides by all connections in the region, using the same regional boundaries for both.",
+  }),
+  "homes-business": () => ({
+    title: "Homes and business",
+    body: "The Electricity Authority's own split, so the two add up exactly to the total.",
+    more: "Each connection is classed by what it's used for. A farmhouse is normally classed as a home and a milking shed or pump as a business, so farms can appear on both sides.",
+  }),
+  farms: el => {
+    const r = regionRow(el.dataset.scope) || {};
+    const where = !el.dataset.scope || el.dataset.scope === "New Zealand" ? "New Zealand" : el.dataset.scope;
+    const sf = r.solarFarms ? ` It also leaves out ${fmt(r.solarFarms)} grid-scale solar farm${r.solarFarms === 1 ? "" : "s"} here.` : "";
+    return {
+      title: "Farms with solar (estimate)",
+      body: `About ${fmt(r.farmEst || 0)} of ${where}'s business solar installs are probably on farms. ` +
+        `The Electricity Authority doesn't publish a farm figure, so this is our estimate.`,
+      more: [
+        "We look along every road outside towns that has business solar, using land cover from Manaaki Whenua and businesses mapped in OpenStreetMap:",
+        "<b>Likely a farm</b> — mostly farmland along the road, and no other kind of business on it.",
+        "<b>Likely not</b> — a school, marae, church, shop, café, accommodation or industry right on a short road, or mostly forest, scrub or built-up land.",
+        "<b>Uncertain</b> — usually a long farming road with a hall, church or school somewhere along it. These count as part-farm: the more farms a road that long would have compared with the other businesses on it, the more it counts.",
+        r.farmLow != null ? `If typical rural roads have half or twice as many farms as the national average, the estimate moves to ${fmt(r.farmLow)}–${fmt(r.farmHigh)}. Roads can also be misjudged — OpenStreetMap misses some rural businesses — so treat it as a guide, not a count.` : "",
+        `Not counted: solar on farmhouses, which the Electricity Authority classes as homes — so the number of farms with any solar is probably higher.${sf}`,
+        "On the street map, click a green dot to see how that road was judged.",
+      ].filter(Boolean).map(t => `<p>${t}</p>`).join(""),
+    };
+  },
+  "solar-farm": () => ({
+    title: "Grid-scale solar farm",
+    body: "A solar power station feeding the grid, not rooftop solar.",
+    more: "Anything averaging over 1 MW per connection outside towns; in towns, over 3 MW per connection or 5 MW on one street (the biggest warehouse rooftops reach about 2 MW). These are kept out of the farm, rural business and town figures; region totals include them, as the Electricity Authority does. Where it publishes the row as “3 or less”, we count one plant at its published average size, so a single 24 MW farm isn't shown as 48 MW.",
+  }),
+  battery: el => ({
+    title: "Solar with a battery",
+    body: `${el.dataset.batt ? fmt(+el.dataset.batt) : "These"} of ${el.dataset.base ? fmt(+el.dataset.base) : "the"} solar installs in ${esc(el.dataset.area || "this region")} also have a battery (Electricity Authority).`,
+    more: "Published for whole regions only, so towns show their region's rate. The install count it's measured against is from EMI's monthly trends report, so it can differ slightly from the install count shown above.",
+  }),
+  "town-count": () => ({
+    title: "Approximate install count",
+    body: "Added up from the Electricity Authority's street-by-street data, so it's a close estimate rather than an exact count. Region totals are exact.",
+    more: "Streets with three or fewer installs are published as “3 or less” to protect privacy. We count those at their region's measured average (about 1.6 installs per street), which makes each region's streets add up to its exact published total. Grid-scale solar farms aren't included — they're shown separately on the map.",
+  }),
+  "town-est": () => ({
+    title: "Estimated % of connections",
+    body: "Our estimate of the share of connections here with solar. The Electricity Authority doesn't publish connection totals below region level.",
+    more: "2023 Census homes in the area, grown to today at the area's own 2018–2023 rate, then scaled up to all connections using the region's mix of homes and other connections. The region's % (shown separately) is the Electricity Authority's own figure.",
+  }),
+  suppressed: () => ({
+    title: "1–3 installs",
+    body: "The Electricity Authority publishes any count of three or fewer as “3 or less”, to protect privacy.",
+  }),
+  "ev-fleet": () => ({
+    title: "% of the fleet",
+    body: "Electric vehicles as a share of all registered vehicles in the area, from NZTA's Motor Vehicle Register.",
+    more: "Trailers and caravans are left out — about one in seven registered vehicles, and none has an engine. Each vehicle type's % is out of that type's own local fleet (e.g. % of all utes).",
+  }),
+  "ev-types": () => ({
+    title: "By vehicle type",
+    body: "Electric vehicles split by the register's own vehicle and body types.",
+    more: "The headline total also includes electric vehicles outside these types — mainly forklifts and other mobile machines, and ATVs — so the types don't quite add up to it.",
+  }),
+  leaderboard: () => {
+    const since = shortDate(DATASET === "ev" ? evChangeSince : (metaNational && metaNational.changeSince));
+    return {
+      title: "Leaderboard",
+      body: `Growth in each region since the previous data release${since ? ` (${since})` : ""}.`,
+      more: "Ranked by % growth by default, so large regions don't top the list just by being large; switch to Number for the raw count. Falls aren't shown — they're almost always reclassifications rather than systems removed.",
+    };
+  },
+  fuels: () => ({
+    title: "Electric and fossil fuel",
+    body: "Electric is battery-electric only, matching every EV figure on this page. Fossil fuel is anything with a combustion engine.",
+    more: "That includes petrol, diesel, hybrid, plug-in hybrid (PHEV), LPG/CNG and range-extended EVs. Vehicles with no motive power recorded (mostly trailers) are in neither list.",
+  }),
+};
+
+const infoPopEl = document.getElementById("infoPop");
+let infoAnchor = null;
+
+function closeInfo() {
+  infoPopEl.classList.add("hidden");
+  if (infoAnchor) infoAnchor.setAttribute("aria-expanded", "false");
+  infoAnchor = null;
+}
+
+function openInfo(el) {
+  const entry = INFO[el.dataset.info];
+  if (!entry) return;
+  if (infoAnchor === el) { closeInfo(); return; }
+  closeInfo();
+  const { title, body, more } = entry(el);
+  infoPopEl.innerHTML =
+    `<button type="button" class="info-close" aria-label="Close">&times;</button>` +
+    `<div class="info-title">${title}</div><p>${body}</p>` +
+    (more ? `<details><summary>How it's worked out</summary>${more.startsWith("<p>") ? more : `<p>${more}</p>`}</details>` : "");
+  infoPopEl.classList.remove("hidden");
+  infoAnchor = el;
+  el.setAttribute("aria-expanded", "true");
+  positionInfo();
+}
+
+function positionInfo() {
+  if (!infoAnchor) return;
+  const a = infoAnchor.getBoundingClientRect(), pop = infoPopEl.getBoundingClientRect();
+  const left = Math.min(Math.max(8, a.left + a.width / 2 - pop.width / 2), window.innerWidth - pop.width - 8);
+  const below = a.bottom + 6, above = a.top - pop.height - 6;
+  // Below the trigger if it fits, else above, else as high as it needs
+  // to be to stay on screen (it scrolls internally past 100vh).
+  let top = below + pop.height <= window.innerHeight - 8 ? below : above >= 8 ? above : window.innerHeight - pop.height - 8;
+  infoPopEl.style.left = `${left}px`;
+  infoPopEl.style.top = `${Math.max(8, top)}px`;
+}
+
+// Capture phase, so a bubble inside a clickable row or popup opens
+// without also triggering the row (e.g. flying the map to a town).
+document.addEventListener("click", e => {
+  const trigger = e.target.closest("[data-info]");
+  if (trigger) { e.stopPropagation(); e.preventDefault(); openInfo(trigger); return; }
+  if (e.target.closest(".info-close") || (infoAnchor && !e.target.closest("#infoPop"))) closeInfo();
+}, true);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeInfo();
+  else if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches(".info-term")) {
+    e.preventDefault(); openInfo(e.target);
+  }
+});
+// The details toggle changes the bubble's height.
+infoPopEl.addEventListener("toggle", positionInfo, true);
+window.addEventListener("resize", closeInfo);
 
 /* ================= CSV EXPORT ================= */
 /* Every download hands over exactly the real numbers on screen -- no
@@ -1344,16 +1531,16 @@ function downloadBtnHTML(kind, key, title) {
 // them, which reads as an error even though both numbers are real.
 function solarPopupHTML({ name, subtitle, pct, icps, kW, regionSection, csv }) {
   const pctLine = pct != null
-    ? `<div class="popup-pct popup-solar">${pct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></div>`
+    ? `<div class="popup-pct popup-solar">${pct.toFixed(1)}% ${infoTerm("town-est", "<b>est</b>")}</div>`
     : "";
   let lower = "";
   if (regionSection) {
     const lines = [];
-    if (regionSection.pct != null) lines.push(`${regionSection.pct.toFixed(1)}% of connections have solar`);
+    if (regionSection.pct != null) lines.push(`${regionSection.pct.toFixed(1)}% of ${infoTerm("region-pct", "connections")} have solar`);
     const seg = regionSection.segments;
     if (seg && seg.resIcps != null && seg.busIcps != null) {
       lines.push(`${fmt(seg.resIcps)} homes &middot; ${fmt(seg.busIcps)} business` +
-        (seg.ruralBus != null ? ` (${farmRangeHTML(seg)})` : ""));
+        (seg.farmEst != null ? ` (${farmHTML(seg, seg.name)})` : ""));
     }
     if (regionSection.battPct != null) {
       lines.push(`<strong class="popup-battery">${regionSection.battPct.toFixed(1)}%</strong> of solar installs have a battery`);
@@ -1370,7 +1557,7 @@ function solarPopupHTML({ name, subtitle, pct, icps, kW, regionSection, csv }) {
   return `<strong>${esc(name)}</strong><br>` +
     (subtitle ? `<span style="opacity:.7">${esc(subtitle)}</span><br>` : "") +
     pctLine +
-    `<span class="popup-sub"><span class="town-approx" title="${TOWN_APPROX_TITLE}">~${fmt(icps)} solar installs</span> &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
+    `<span class="popup-sub">${infoTerm("town-count", `~${fmt(icps)} solar installs`)} &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
     lower + dl;
 }
 
@@ -1400,7 +1587,11 @@ function focusRegion() {
   const view = currentView();
   if (!view || !map.getZoom || map.getZoom() < 6) return { level: "national", name: "New Zealand" };
 
-  const center = view.getCenter();
+  // The camera centre, not the canvas centre: the camera carries the
+  // panel padding (applyViewPadding), so this is the middle of the part
+  // of the map the viewer can actually see -- on a phone the top third of
+  // the canvas sits under the stats panel.
+  const center = map.getCenter();
   const coslat = Math.cos(center.lat * Math.PI / 180);
   let bestCouncil = null, bestD = Infinity;
   for (const t of townData) {
@@ -1443,7 +1634,7 @@ function pickClosestStreet(candidates) {
   if (candidates.length === 1) return candidates[0];
   const view = currentView();
   if (!view || !map.getZoom || map.getZoom() < 6) return candidates[0];
-  const center = view.getCenter();
+  const center = map.getCenter();   // visible centre -- see focusRegion
   const coslat = Math.cos(center.lat * Math.PI / 180);
   let best = candidates[0], bestD = Infinity;
   for (const c of candidates) {
@@ -1578,7 +1769,7 @@ function renderTopbarStats() {
   const stats = currentFocus.level === "national" ? metaNational : currentFocus.data;
   const segs = [`<span class="stat-seg">Solar installs: <strong>${fmt(stats.icps)}</strong></span>`];
   segs.push(`<span class="stat-seg"><strong>${fmtMW(stats.kW)}</strong> MW</span>`);
-  if (stats.pct) segs.push(`<span class="stat-seg" title="${REGION_PCT_TITLE}"><strong>${stats.pct.toFixed(1)}%</strong> of connections</span>`);
+  if (stats.pct) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of connections${infoBtn("region-pct")}</span>`);
   const chartOpen = topbarEl.classList.contains("expanded");
   let html = `<div class="topbar-toprow">`;
   html += `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span></div>`;
@@ -1591,23 +1782,23 @@ function renderTopbarStats() {
   // unlike battery, these are measured against the same base as the
   // install count directly above them and do add up to it.
   if (stats.resIcps != null && stats.busIcps != null) {
-    const rural = stats.ruralBus != null
-      ? `<span class="stat-seg">${farmRangeHTML(stats)}</span>`
+    const farms = stats.farmEst != null
+      ? `<span class="stat-seg">${farmHTML(stats, currentFocus.level === "national" ? "New Zealand" : currentFocus.name)}</span>`
       : "";
     html += `<div class="stat-line stat-line-seg">` +
       `<span class="stat-seg"><strong>${fmt(stats.resIcps)}</strong> homes</span>` +
-      `<span class="stat-seg"><strong>${fmt(stats.busIcps)}</strong> business</span>` +
-      rural + `</div>`;
+      `<span class="stat-seg"><strong>${fmt(stats.busIcps)}</strong> business${infoBtn("homes-business")}</span>` +
+      farms + `</div>`;
   }
   // Battery figures on their own line rather than appended to the solar
   // stats above -- they're measured against a different base (see
-  // battBaseTitle), so running them into the same line would read as
+  // INFO.battery), so running them into the same line would read as
   // one continuous set of numbers that divide into each other.
   if (stats.battInstalls != null && stats.battPct != null) {
     html += `<div class="stat-line stat-line-batt">` +
       `<span class="stat-seg">Battery installs: <strong>${fmt(stats.battInstalls)}</strong></span>` +
-      `<span class="stat-seg"><strong>${stats.battPct.toFixed(1)}%</strong> ` +
-      `<span class="batt-base" title="${battBaseTitle(currentFocus.name, stats.battInstalls, stats.battBase)}">of solar installs</span></span>` +
+      `<span class="stat-seg"><strong>${stats.battPct.toFixed(1)}%</strong> of solar installs` +
+      `${infoBtn("battery", { area: currentFocus.name, batt: stats.battInstalls, base: stats.battBase != null ? stats.battBase : "" })}</span>` +
       `</div>`;
   }
   html += `<div class="topbar-actions">`;
@@ -1649,21 +1840,20 @@ function rowHTML(t, rank) {
   // process.py). Keeping them under a "region" heading is what stops
   // them being misread as the town's.
   const est = t.estPct != null
-    ? `<span class="row-primary">${t.estPct.toFixed(1)}% <span class="est-badge" title="${EST_PCT_TITLE}"><b>est</b></span></span>`
+    ? `<span class="row-primary">${t.estPct.toFixed(1)}% ${infoTerm("town-est", '<span class="est-badge"><b>est</b></span>')}</span>`
     : "";
-  const own = `<span class="town-approx" title="${TOWN_APPROX_TITLE}">~${fmt(t.icps)} installs</span> &middot; ${fmtMW(t.kW)} MW`;
+  const own = `${infoTerm("town-count", `~${fmt(t.icps)} installs`)} &middot; ${fmtMW(t.kW)} MW`;
 
   const solarBits = [];
-  if (t.councilPct != null) solarBits.push(`<span title="${REGION_PCT_TITLE}">${t.councilPct.toFixed(1)}% of connections</span>`);
+  if (t.councilPct != null) solarBits.push(infoTerm("region-pct", `${t.councilPct.toFixed(1)}% of connections`));
   if (t.councilIcps != null) solarBits.push(`${fmt(t.councilIcps)} installs`);
   // Battery % and count come from a different EMI report to the install
-  // count above them, so they don't divide out (see battBaseTitle) --
+  // count above them, so they don't divide out (see INFO.battery) --
   // the base is on the tooltip.
   const battLine = (t.councilBattPct != null && t.councilBattInstalls != null)
     ? `<div class="row-ctx-line row-ctx-batt"><span class="row-ctx-tag">Battery</span>` +
-      `${t.councilBattPct.toFixed(1)}% ` +
-      `<span class="batt-base" title="${battBaseTitle(t.council, t.councilBattInstalls, t.councilBattBase)}">` +
-      `(${fmt(t.councilBattInstalls)})</span> of installs</div>`
+      battTerm(`${t.councilBattPct.toFixed(1)}% (${fmt(t.councilBattInstalls)}) of installs`,
+        t.council, t.councilBattInstalls, t.councilBattBase) + `</div>`
     : "";
   const context = t.council
     ? `<div class="row-ctx">
@@ -1947,7 +2137,7 @@ function loadSolarRegionsLayer() {
         // real geographic install data, summed inside this exact TLA
         // boundary (see write_region_boundaries/process.py), not the
         // council total. p.estPct is a modelled estimate (same
-        // methodology as the Towns mode -- see EST_PCT_TITLE); r.pct is
+        // methodology as the Towns mode -- see INFO["town-est"]); r.pct is
         // the real council-wide % shown for context underneath.
         const isDistrict = p.tla && p.tla !== r.name;
         // Everything EMI publishes for this area is at council level, so
@@ -2028,39 +2218,16 @@ function visibleRegions() {
   return view ? regionData.filter(r => bboxIntersects(r.bbox, view)) : regionData;
 }
 
-// Residential and business are EMI's own published rows, so they add up
-// to the install count beside them exactly. Rural business is ours: the
-// share of a region's business installs that fall outside every town or
-// settlement (Stats NZ urban/rural areas), applied to EMI's published
-// business count -- the street file's own business rows are 98%
-// privacy-suppressed and can't be summed. Badged "est" for that reason.
-const FARM_RANGE_TITLE =
-  "Two independent estimates, shown as a range because neither is definitive. The upper figure "
-  + "is the share of business installs more than 100 m outside every town and rural settlement (Stats NZ "
-  + "urban/rural areas), applied to EMI's business count -- that runs high, because it also catches rural "
-  + "schools, marae, packhouses and tourism. The lower figure applies agriculture's share of the region's "
-  + "non-residential connections (EMI's ANZSIC industry classification) to its business installs -- that "
-  + "likely runs low, since it assumes farms adopt solar at the same rate as other businesses, while rural "
-  + "business systems are typically much larger. The two agree closely in strongly agricultural regions and "
-  + "diverge where rural non-farm business is common. EMI publishes no farm/solar split, so a single number "
-  + "here would imply precision neither method has.";
-
-// Renders the farm figure as "low-high" where both estimates exist, and
-// falls back to the geographic one alone otherwise.
-function farmRangeHTML(row, opts) {
-  if (row.ruralBus == null) return "";
-  const low = row.farmAnzsic;
-  const label = opts && opts.label !== undefined ? opts.label : "farms";
-  const text = (low != null && low < row.ruralBus)
-    ? `${fmt(low)}\u2013${fmt(row.ruralBus)}`
-    : fmt(row.ruralBus);
-  return `<span class="seg-rural" title="${FARM_RANGE_TITLE}">${text} ${label} ` +
-    `<span class="est-badge"><b>est</b></span></span>`;
+// The farm figure: one central number, its range and method a click away
+// (see INFO.farms and estimate_farms in process.py).
+function farmHTML(row, scope) {
+  if (row.farmEst == null) return "";
+  return infoTerm("farms", `~${fmt(row.farmEst)} farms`, { scope: scope || "New Zealand" });
 }
 
 function segmentLineHTML(row) {
   if (row.resIcps == null || row.busIcps == null) return "";
-  const rural = row.ruralBus != null ? ` (${farmRangeHTML(row)})` : "";
+  const rural = row.farmEst != null ? ` (${farmHTML(row, row.name)})` : "";
   return `<span class="detail seg-line">${fmt(row.resIcps)} homes &middot; ` +
     `${fmt(row.busIcps)} business${rural}</span>`;
 }
@@ -2070,13 +2237,12 @@ function solarRegionRowHTML(r, rank) {
   // process.py). These do NOT divide out against the install count in
   // this same row: they come from EMI's trends report, which groups
   // connections by council differently from the installs-by-region file
-  // (see battBaseTitle). The tooltip names the base they were actually
+  // (see INFO.battery). The tooltip names the base they were actually
   // measured against. Cyan to match the EV dashboard, so battery reads
   // as a distinct figure from the amber solar ones.
   const battLine = r.battPct != null
     ? `<span class="detail" style="color:var(--cyan-text)">${r.battPct.toFixed(1)}% ` +
-      `<span class="batt-base" title="${battBaseTitle(r.name, r.battInstalls, r.battBase)}">` +
-      `(${fmt(r.battInstalls)})</span> have batteries</span>`
+      battTerm(`(${fmt(r.battInstalls)}) have batteries`, r.name, r.battInstalls, r.battBase) + `</span>`
     : "";
   return `
     <div class="row-main row-clickable" data-council="${r.name}">
@@ -2086,7 +2252,7 @@ function solarRegionRowHTML(r, rank) {
       </div>
       <div class="row-metric">
         <span class="headline">${fmt(r.icps)} installs</span>
-        <span class="detail">${fmtMW(r.kW)} MW${r.pct != null ? ` · <span title="${REGION_PCT_TITLE}">${r.pct.toFixed(1)}% of connections</span>` : ""}</span>
+        <span class="detail">${fmtMW(r.kW)} MW${r.pct != null ? ` · ${infoTerm("region-pct", `${r.pct.toFixed(1)}% of connections`)}` : ""}</span>
         ${segmentLineHTML(r)}
         ${battLine}
       </div>
@@ -2373,7 +2539,7 @@ function addEvLayer(boundaries) {
       .setHTML(
         `<strong>${esc(t.name)}</strong><br><small class="muted">${esc(t.region || "")}</small><br>` +
         `Electric vehicles: <strong>${fmt(t.ev)}</strong>` +
-        (t.pct != null ? ` <small class="muted" title="${EV_FLEET_TITLE}">(${t.pct.toFixed(1)}% of the local fleet)</small>` : "") +
+        (t.pct != null ? ` <small class="muted">(${infoTerm("ev-fleet", `${t.pct.toFixed(1)}% of the local fleet`)})</small>` : "") +
         `<div class="ev-categories" style="padding-left:0;margin-top:6px">${catLines}</div>` +
         `<div class="popup-actions">${downloadBtnHTML("ev", t.name, `Download ${t.name}'s EV figures as a CSV`)}</div>`
       ).addTo(map);
@@ -2472,7 +2638,7 @@ function renderEvBoard() {
 function renderEvTopbarStats() {
   const stats = currentFocus.level === "national" ? evNational : currentFocus.data;
   const segs = [`<span class="stat-seg">Electric vehicles: <strong>${fmt(stats.ev)}</strong></span>`];
-  if (stats.pct != null) segs.push(`<span class="stat-seg" title="${EV_FLEET_TITLE}"><strong>${stats.pct.toFixed(1)}%</strong> of the fleet</span>`);
+  if (stats.pct != null) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of the fleet${infoBtn("ev-fleet")}</span>`);
   const chartOpen = topbarEl.classList.contains("expanded");
   let html = `<div class="topbar-toprow">`;
   html += `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span></div>`;
@@ -2501,6 +2667,7 @@ function renderEvTopbarStats() {
   // than the map deserves to lose, and a fixed break keeps the columns
   // roughly aligned across regions instead of wrapping wherever the
   // numbers happen to fall.
+  if (catSegs.length) catSegs[catSegs.length - 1] = catSegs[catSegs.length - 1].replace(/<\/span>$/, `${infoBtn("ev-types")}</span>`);
   for (let i = 0; i < catSegs.length; i += EV_CATS_PER_LINE) {
     html += `<div class="stat-line stat-line-seg stat-line-cats">${catSegs.slice(i, i + EV_CATS_PER_LINE).join("")}</div>`;
   }
@@ -2938,9 +3105,9 @@ function renderLeaderboard() {
   const asOf = isEv ? evUpdated : metaUpdated;
   const heading = byPct ? "Fastest growth" : "Biggest increases";
   const monthLine = since
-    ? `<div class="lb-month">${heading} since ${since}</div>`
+    ? `<div class="lb-month">${heading} since ${since}${infoBtn("leaderboard")}</div>`
     : asOf
-      ? `<div class="lb-month">${heading} &mdash; ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()} vs the previous release</div>`
+      ? `<div class="lb-month">${heading} &mdash; ${MONTHS_FULL[asOf.getUTCMonth()]} ${asOf.getUTCFullYear()} vs the previous release${infoBtn("leaderboard")}</div>`
       : "";
   const rows = leaderboardRows(list).slice(0, 10);
   if (!rows.length) {
@@ -3128,7 +3295,7 @@ chartTabsEl.addEventListener("click", e => {
 // Solar trend: the real monthly GUEHMT series behind the line chart.
 // Battery % is computed against that same series' own install count --
 // the pair share a denominator here, unlike the region cards (see
-// battBaseTitle), so the column is safe to derive.
+// INFO.battery), so the column is safe to derive.
 async function exportSolarTrend() {
   // Awaited rather than read from a cache: the Trend tab is the default
   // view, so by the time its download button can be clicked loadTrends()
@@ -3227,6 +3394,7 @@ const AREA_CSV_HEADERS = [
   "Name", "Level", "Region", "Solar installs", "Capacity (MW)",
   "% of connections (measured)", "% of connections (estimated)",
   "Installs with battery", "% with battery", "Battery figure measured against",
+  "Farms with solar (estimate)", "Farms: low", "Farms: high",
 ];
 
 function regionCsvRow(r) {
@@ -3234,7 +3402,8 @@ function regionCsvRow(r) {
     r.pct != null ? r.pct : "", "",
     r.battInstalls != null ? r.battInstalls : "",
     r.battPct != null ? r.battPct : "",
-    r.battBase != null ? r.battBase : ""];
+    r.battBase != null ? r.battBase : "",
+    r.farmEst != null ? r.farmEst : "", r.farmLow != null ? r.farmLow : "", r.farmHigh != null ? r.farmHigh : ""];
 }
 
 function townCsvRow(t) {
@@ -3242,7 +3411,7 @@ function townCsvRow(t) {
     "", t.estPct != null ? t.estPct : "",
     t.councilBattInstalls != null ? t.councilBattInstalls : "",
     t.councilBattPct != null ? t.councilBattPct : "",
-    t.councilBattBase != null ? t.councilBattBase : ""];
+    t.councilBattBase != null ? t.councilBattBase : "", "", "", ""];
 }
 
 // Battery columns on a town row are its *council's* figures, not the
@@ -3419,14 +3588,16 @@ chartSelectEl.addEventListener("change", async () => {
           icps: nat.icps || 0, kW: nat.kW || 0, pct: nat.pct || 0,
           resIcps: nat.resIcps != null ? nat.resIcps : null,
           busIcps: nat.busIcps != null ? nat.busIcps : null,
-          ruralBus: nat.ruralBus != null ? nat.ruralBus : null,
-          farmAnzsic: nat.farmAnzsic != null ? nat.farmAnzsic : null,
+          farmEst: nat.farmEst != null ? nat.farmEst : null,
+          farmLow: nat.farmLow != null ? nat.farmLow : null,
+          farmHigh: nat.farmHigh != null ? nat.farmHigh : null,
+          solarFarms: nat.solarFarms != null ? nat.solarFarms : null,
           battInstalls: nat.battInstalls != null ? nat.battInstalls : null,
           battPct: nat.battPct != null ? nat.battPct : null,
           battBase: nat.battBase != null ? nat.battBase : null,
           changeSince: nat.changeSince || null,
         }
-      : { icps: 0, kW: 0, pct: 0, resIcps: null, busIcps: null, ruralBus: null, farmAnzsic: null,
+      : { icps: 0, kW: 0, pct: 0, resIcps: null, busIcps: null, farmEst: null, farmLow: null, farmHigh: null, solarFarms: null,
           battInstalls: null, battPct: null, battBase: null, changeSince: null };
     metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
     const matchEl = document.getElementById("methMatchRate");

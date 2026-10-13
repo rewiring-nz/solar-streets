@@ -33,7 +33,7 @@ visibly apart:
 | Street installs | Measured, but "3 or less" rows are suppressed | EMI street file (`SolarInstallationsByStreet.csv`) |
 | Town/district installs and MW ("~") | Estimated from streets | Street file, calibrated to EMI's region totals |
 | Town/district % ("est") | Modelled | Census dwellings + EMI connection mix |
-| Farms (a range, "est") | Modelled | Stats NZ urban/rural areas and EMI ANZSIC classification |
+| Farms ("~") | Modelled | EMI business installs, Stats NZ urban/rural areas, Manaaki Whenua land cover, OpenStreetMap |
 | EV counts and % of fleet | Measured | NZTA Motor Vehicle Register |
 
 `reconcile()` in `process.py` checks the measured figures against EMI's
@@ -128,21 +128,89 @@ the region's own measured figures, labelled as such.
 ## Homes, business and farms
 
 Homes and business are EMI's own published split (they add up exactly
-to the total). "Farms" is shown as a range, because EMI publishes no farm
-split and each available method is biased in a known direction:
+to the total). Each connection is classed by its use, so a farmhouse is
+normally a home and a milking shed or pump a business.
 
-- **Upper:** the share of a region's street-level business installs more
-  than 100 m outside every Stats NZ urban area and rural settlement,
-  applied to EMI's business count. Catches rural schools, marae,
-  packhouses and tourism too, so it runs high. (100 m tolerance because
-  the boundaries hug shorelines and are simplified to ~11 m.)
-- **Lower:** agriculture's share of the region's non-residential
-  connections (EMI's ANZSIC classification), applied to its business
-  installs. Assumes farms adopt solar at the same rate as other
-  businesses, which likely runs low.
+**Farms** are an estimate (`estimate_farms`): EMI publishes no farm split,
+and no other public dataset links solar to farms. Every road outside
+towns and rural settlements (Stats NZ urban/rural areas, 100 m tolerance)
+with business solar is judged on the evidence along the road itself,
+within 250 m either side (`farm_evidence`, `farm_class`):
+
+| Class | Rule |
+|---|---|
+| Likely farm | ≥ 60% farmland (Manaaki Whenua LCDB 2023: pasture, cropland, orchard/vineyard, tussock) and no non-farm business on the road |
+| Likely not | a non-farm business (school, marae, church, hall, shop, café, fuel, accommodation, winery, industry, quarry — from OpenStreetMap) on a road ≤ 1.5 km, or < 30% farmland |
+| Uncertain | anything else — usually a long road with farmland and a school or hall somewhere along it; counted part-farm (below) |
+
+An uncertain road counts as part-farm, in proportion to how many farms
+line it compared with other businesses (`farm_probability`):
+
+```
+P(farm) = F / (F + k)
+F = farm connections per km × road km × farmland share
+k = non-farm businesses mapped along the road
+    + other businesses per km × road km × (1 − farmland share)
+```
+
+The second part of k allows for businesses OpenStreetMap doesn't know
+about on the non-farm part of a road, at the density mapped across all
+rural business roads (~0.4 per km); without it, a half-forest road with
+nothing mapped would count as certainly a farm.
+
+Farm connections per km is EMI's national count of agricultural
+connections (ANZSIC A, ~85,000) over NZTA's rural road length (76,700 km,
+June 2024): about 1.1. The range is the same calculation at half and
+twice that density. (Splitting uncertain roads at the farm rate of the
+clear-cut ones instead gives ~84% against this model's ~70%; it's biased
+upward, because "likely not" can only fire on short roads.)
+
+Each road's business installs count at their published value, or at the
+national measured average per "3 or less" business row (about 1.3, from
+EMI's exact business total). Each region's share of business installs
+that are farms is applied to EMI's own business count for the region, so
+the estimate scales to EMI's totals rather than the street file's.
+
+Known limits, stated in the UI:
+
+- **Farmhouse solar is excluded.** EMI classes it as residential, so the
+  number of farms with *any* solar is probably higher than the estimate.
+- **A long road's school or hall doesn't mean the install is there,**
+  which is why long roads with mixed evidence are "uncertain", not "no".
+- **OpenStreetMap misses some rural businesses** (contractors, home
+  businesses), so "likely farm" is not certain.
+
+Why not the obvious alternatives: assuming every business outside a town
+is a farm overcounted badly — 58% of those roads have a non-farm business
+on them, and the very largest "rural businesses" were grid-scale solar
+farms. Applying agriculture's share of business connections (EMI's ANZSIC
+file) assumes farms adopt solar at the business average, which nothing
+supports. EMI's meter-register file can't identify solar (export
+registers are configured on far more connections than have generation),
+and only two networks have farm-specific tariffs.
+
+Evidence is cached per road in `farm_evidence.json` (land cover and
+businesses change slowly) and rechecked yearly; new roads are looked up
+as they appear, a capped number per run. Road lines for business streets
+are kept in `road_lines.json` for this.
+
+**Solar farms.** A street is a grid-scale solar farm when it averages
+1 MW or more per connection (`GRID_SCALE_KW`) and is either outside
+towns, or averages 3 MW+ per connection (`GRID_SCALE_URBAN_KW`), or has a
+published street total of 5 MW+ (`GRID_SCALE_STREET_KW`). Inside towns
+the largest warehouse and airport rooftops reach about 2 MW per
+connection but never 5 MW on one street, while solar farms on a
+settlement's edge do. It's shown as its own map
+category and excluded from the farm, rural business, town and district
+figures (region totals include it, as EMI's do). When EMI
+publishes such a row as "3 or less", it's counted as one plant at its
+published average size — otherwise the placeholder count would double a
+single plant's capacity in town and district totals.
 
 On the street map, individual install dots are coloured by segment
-(home, business, rural business) using the street's own split.
+(home, business, rural business, solar farm) using the street's own
+split, and a rural business street's popup says how the farm estimate
+judged it and why.
 
 ## Batteries
 

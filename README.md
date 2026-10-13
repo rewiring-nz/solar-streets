@@ -152,6 +152,8 @@ top of `docs/index.html`.
 | `town_anchors.json` | One centre point per NZ town (LINZ), cached |
 | `town_polygons.json` | Each town's footprint, the union of its LINZ localities, cached — decides which town a street belongs to |
 | `urban_areas.json` | Stats NZ urban areas and rural settlements, cached — decides which business installs count as rural |
+| `road_lines.json` | Simplified road lines for streets with business solar, from the latest geocode — the farm estimate looks along the whole road |
+| `farm_evidence.json` | Per rural business road: farmland share and other businesses along it, rechecked yearly — the farm estimate's inputs |
 | `sa1_dwellings.json` | 2018/2023 Census dwelling counts by small area, cached — powers the estimated town/district % figures |
 | `previous_counts.json` | Per-street counts at the current and previous EMI release, for the "+N since" figures |
 | `previous_town_totals.json` | Per-region solar totals at the current and previous EMI release, for the Leaderboard |
@@ -164,7 +166,8 @@ top of `docs/index.html`.
 - Solar installations: [EMI, Electricity Authority](https://www.emi.ea.govt.nz/Retail/Datasets/SolarInstallations) (CC BY 4.0)
 - Uptake rates, battery counts and history: [EMI, Installed distributed generation trends](https://www.emi.ea.govt.nz/Retail/Reports/GUEHMT) (CC BY 4.0)
 - ICP counts by network and industry: [EMI, ICP and metering details](https://www.emi.ea.govt.nz/Retail/Datasets/MarketStructure/ICPandMeteringDetails) (CC BY 4.0)
-- Street locations: [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL)
+- Street locations and rural businesses: [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors (ODbL)
+- Land cover (farm estimate): [Manaaki Whenua – Landcare Research, Land Cover Database](https://lris.scinfo.org.nz/) via Stats NZ (CC BY 4.0)
 - Electric vehicle counts: [NZTA Waka Kotahi, Motor Vehicle Register](https://opendata-nzta.opendata.arcgis.com/datasets/NZTA::motor-vehicle-register) (CC BY 4.0)
 - Statistical areas, regional councils, territorial authorities, urban/rural areas and Census dwelling counts: [Stats NZ](https://datafinder.stats.govt.nz/) (CC BY 4.0)
 - Town/locality names: [LINZ, Suburbs and Localities](https://data.linz.govt.nz/layer/113764-nz-suburbs-and-localities/) (CC BY 4.0)
