@@ -274,7 +274,8 @@ since EMI publishes no street-level history.
 ## The animated monthly leaderboard
 
 The 🏆 button (top right) plays an animated summary for whichever
-dataset the map is on: the headline figure counted up from zero with
+dataset the map is on (a Solar Installs / Electric Vehicles switch at the
+top of the popup swaps leaderboard and map together): the headline figure counted up from zero with
 fireworks, then the top 3 regions revealed 3rd, 2nd, 1st and the rest
 listed. A toggle switches between:
 

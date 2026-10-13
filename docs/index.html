@@ -638,9 +638,18 @@
     box-shadow: 0 24px 64px var(--shadow); color: var(--text); padding: 18px 20px 14px;
   }
 
-  /* Header */
-  .awards-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  #awardsTitle { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -.2px; }
+  /* Header: the dataset switch, mirroring the map's own (Solar Installs /
+     Electric Vehicles), so one click swaps leaderboard and map together. */
+  .awards-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .awards-datasets { display: flex; padding: 3px; border-radius: 999px; background: var(--hover); border: 1px solid var(--border); }
+  .awards-dataset {
+    border: none; background: transparent; color: var(--dim); border-radius: 999px; padding: 6px 13px; white-space: nowrap;
+    font: 700 11.5px system-ui, -apple-system, "Segoe UI", Arial, sans-serif; cursor: pointer; transition: background .15s, color .15s;
+  }
+  .awards-dataset:not(.active):hover { color: var(--text); }
+  .awards-dataset.active[data-awards-dataset="solar"] { background: var(--amber); color: #241a00; }
+  .awards-dataset.active[data-awards-dataset="ev"] { background: var(--cyan); color: #062229; }
   .awards-close { border: none; background: none; color: var(--dim); font-size: 22px; line-height: 1; cursor: pointer; padding: 2px 4px; margin-right: -4px; }
   .awards-close:hover { color: var(--text); }
   .awards-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; padding: 3px; border-radius: 10px; background: var(--hover); }
@@ -803,7 +812,11 @@
     <canvas id="awardsFx" aria-hidden="true"></canvas>
     <div id="awardsModal" role="dialog" aria-modal="true" aria-labelledby="awardsTitle">
       <header class="awards-head">
-        <h2 id="awardsTitle">Leaderboard</h2>
+        <h2 id="awardsTitle" class="sr-only">Leaderboard</h2>
+        <div class="awards-datasets" role="tablist" aria-label="Which leaderboard">
+          <button type="button" class="awards-dataset" data-awards-dataset="solar" role="tab">Solar Installs</button>
+          <button type="button" class="awards-dataset" data-awards-dataset="ev" role="tab">Electric Vehicles</button>
+        </div>
         <button type="button" class="awards-close" aria-label="Close">&times;</button>
       </header>
       <div class="awards-modes" role="tablist">
@@ -3902,11 +3915,15 @@ async function awardsPlay() {
   const $ = id => document.getElementById(id);
   awardsOverlayEl.classList.toggle("awards-solar", awardsDataset === "solar");
   document.querySelectorAll(".awards-mode").forEach(b => b.classList.toggle("active", b.dataset.awardsMode === awardsMode));
+  document.querySelectorAll(".awards-dataset").forEach(b => {
+    const on = b.dataset.awardsDataset === awardsDataset;
+    b.classList.toggle("active", on); b.setAttribute("aria-selected", on);
+  });
   ["awardsSub", "awardsSection", "awardsPodium", "awardsRest"].forEach(id => $(id).classList.remove("show"));
   $("awardsPodium").innerHTML = ""; $("awardsRest").innerHTML = "";
   const d = await awardsData(awardsDataset, awardsMode);
   if (run !== awardsRun) return;   // replayed or closed while loading
-  $("awardsTitle").textContent = awardsDataset === "ev" ? "EV Leaderboard" : "Solar Leaderboard";
+  $("awardsTitle").textContent = awardsDataset === "ev" ? "Electric vehicle leaderboard" : "Solar leaderboard";
   if (!d) { $("awardsMonth").textContent = "No data yet"; $("awardsCount").textContent = "–"; return; }
   $("awardsMonth").textContent = d.kicker;
   $("awardsCountLabel").textContent = d.countLabel;
@@ -3976,6 +3993,13 @@ async function awardsOpen(dataset, mode) {
 function awardsClose() { awardsStop(); awardsOverlayEl.classList.add("hidden"); }
 
 awardsBtnEl.addEventListener("click", () => awardsOpen(DATASET, "month"));
+// Switching dataset swaps the map behind too (awardsOpen), keeping the
+// current Last month / Total adoption choice.
+document.querySelector(".awards-datasets").addEventListener("click", e => {
+  const b = e.target.closest(".awards-dataset");
+  if (!b || b.dataset.awardsDataset === awardsDataset) return;
+  awardsOpen(b.dataset.awardsDataset, awardsMode);
+});
 document.querySelector(".awards-modes").addEventListener("click", e => {
   const b = e.target.closest(".awards-mode");
   if (!b || b.dataset.awardsMode === awardsMode) return;
