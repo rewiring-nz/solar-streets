@@ -3890,7 +3890,7 @@ function awardsStreamers(left, w, count) {
     awardsParticles.push({ kind: "confetti", x: left + Math.random() * w, y: -10 - Math.random() * 120,
       vx: (Math.random() - .5) * 2.2, vy: 1.8 + Math.random() * 2.6, rot: Math.random() * Math.PI,
       vr: (Math.random() - .5) * .3, w: 5 + Math.random() * 5, h: 8 + Math.random() * 8,
-      colour: AWARDS_COLOURS[Math.floor(Math.random() * AWARDS_COLOURS.length)], age: 0, life: 400, sway: Math.random() * 6.28 });
+      colour: AWARDS_COLOURS[Math.floor(Math.random() * AWARDS_COLOURS.length)], age: 0, life: Infinity, sway: Math.random() * 6.28 });
   }
 }
 function awardsCelebrate(big) {
@@ -3908,7 +3908,10 @@ function awardsFrame() {
   const ctx = awardsCanvas.getContext("2d");
   const { w, h } = awardsSize;
   ctx.clearRect(0, 0, w, h);
-  awardsParticles = awardsParticles.filter(p => p.age < p.life && p.y < h + 20);
+  // Sparks fade out with age; confetti has no lifetime and is only removed
+  // once it has fallen clear of the bottom (or drifted off a side), so no
+  // piece ever vanishes mid-air on a tall screen.
+  awardsParticles = awardsParticles.filter(p => p.age < p.life && p.y < h + 30 && p.x > -60 && p.x < awardsSize.w + 60);
   for (const p of awardsParticles) {
     p.age++;
     if (p.kind === "spark") {
