@@ -83,7 +83,6 @@
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; }
   #app { position: relative; height: 100%; width: 100%; overflow: hidden; }
-  #app.pseudo-fullscreen { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9999; }
   #map { height: 100%; width: 100%; background: #0b1622; }
 
   /* The corner attribution only needs to carry what the imagery
@@ -156,7 +155,7 @@
 
   /* Only shown once zoomed into anything smaller than the whole
      country (see updateBackToNzButton) -- top-centre on desktop, clear
-     of the top-left topWrap and the top-right fullscreen toggle; moved
+     of the top-left topWrap and the top-right (i) and trophy buttons; moved
      to the bottom on mobile, where the top is already crowded, offset
      from the Methodology button so the two don't collide. */
   #backToNzBtn {
@@ -466,10 +465,11 @@
   .popup-region-header { font-weight: 700; color: var(--text); font-size: 12.5px; margin-bottom: 4px; }
 
   /* ============ Methodology button + popup ============ */
-  /* Sits under the fullscreen control, top-right -- clear of the
-     regions handle, which occupies the bottom edge on mobile. */
+  /* Top-right corner -- clear of the regions handle, which occupies the
+     bottom edge on mobile. (No fullscreen control: it couldn't work
+     reliably inside the embed.) */
   #methodologyBtn {
-    position: absolute; z-index: 20; top: 52px; right: 10px;
+    position: absolute; z-index: 20; top: 10px; right: 10px;
     width: 29px; height: 29px; padding: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
@@ -608,7 +608,7 @@
 
   /* Trophy-only round button under the (i), same footprint as it. */
   #awardsBtn {
-    position: absolute; z-index: 20; top: 90px; right: 9px;
+    position: absolute; z-index: 20; top: 48px; right: 9px;
     width: 32px; height: 32px; padding: 0;
     display: flex; align-items: center; justify-content: center;
     background: var(--glass); backdrop-filter: blur(16px) saturate(140%);
@@ -988,42 +988,6 @@ const map = new maplibregl.Map({
 });
 
 map.addControl(new maplibregl.ScaleControl({ maxWidth: 110 }), "bottom-right");
-
-// iOS Safari has no Fullscreen API for arbitrary elements (only
-// <video>), so MapLibre's own FullscreenControl silently no-ops there
-// -- the button shows but does nothing. Fake it with a fixed-position
-// overlay instead on browsers that lack real support; everywhere else,
-// use the native control as normal. Styled to match maplibre's own
-// control (same icon classes) so it looks identical either way.
-const appEl = document.getElementById("app");
-if (document.fullscreenEnabled || document.webkitFullscreenEnabled) {
-  map.addControl(new maplibregl.FullscreenControl({ container: appEl }), "top-right");
-} else {
-  class PseudoFullscreenControl {
-    onAdd(mapInstance) {
-      this._container = document.createElement("div");
-      this._container.className = "maplibregl-ctrl maplibregl-ctrl-group";
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "maplibregl-ctrl-fullscreen";
-      btn.setAttribute("aria-label", "Toggle fullscreen");
-      const icon = document.createElement("span");
-      icon.className = "maplibregl-ctrl-icon";
-      icon.setAttribute("aria-hidden", "true");
-      btn.appendChild(icon);
-      btn.addEventListener("click", () => {
-        const on = appEl.classList.toggle("pseudo-fullscreen");
-        btn.classList.toggle("maplibregl-ctrl-fullscreen", !on);
-        btn.classList.toggle("maplibregl-ctrl-shrink", on);
-        setTimeout(() => mapInstance.resize(), 50);
-      });
-      this._container.appendChild(btn);
-      return this._container;
-    }
-    onRemove() { this._container.remove(); }
-  }
-  map.addControl(new PseudoFullscreenControl(), "top-right");
-}
 
 const mapReady = new Promise(r => map.loaded() ? r() : map.once("load", r));
 
