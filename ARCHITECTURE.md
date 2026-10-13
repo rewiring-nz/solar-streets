@@ -65,10 +65,17 @@ rate.
 ## Regions
 
 The 16 regional councils. Installs, MW and the residential/business
-split are EMI's own per-council rows. **% of connections is EMI's own
-published uptake rate** for the council, from the "Installed distributed
-generation trends" report (GUEHMT), under the same council attribution
-as the counts.
+split are EMI's own per-council rows. **% of connections** divides that
+count by the council's total connections, which come from EMI's own
+published uptake rate in the "Installed distributed generation trends"
+report (GUEHMT: solar ICPs ÷ rate), under the same council attribution
+as the counts. GUEHMT is monthly and weeks behind, while the region file
+is near-live, so the % is recomputed from today's count rather than
+taking GUEHMT's rate as-is: otherwise "93,896 (3.9%)" put an October
+count beside an August rate (the right figure was 4.0%), and "2,443 of
+27,837" sat next to a % that wasn't 2,443 ÷ 27,837. Connection totals
+move by a fraction of a percent a month; solar counts don't. The same
+applies to the homes and business %s.
 
 It is deliberately *not* computed by dividing the council's solar count
 by total ICPs rolled up from EMI's 39 network reporting regions
@@ -234,8 +241,12 @@ Solar: GUEHMT's monthly series since 2014 at national, council and
 network level — installs, total MW, the average size of *new* residential
 systems each month (as EMI publishes it; one month, July 2025, reflects a
 reclassification rather than a real jump, and is annotated), and % of
-installs with a battery. National counts are the sum of councils;
-national averages come from GUEHMT's own NZ row.
+installs with a battery, plus EMI's own count of new installs each month
+(`newInstalls`, GUEHMT's "ICP count - new installations"). National
+figures come from GUEHMT's own NZ rows rather than summing councils:
+about 70 solar connections and ~18 MW aren't attributed to any council.
+A blank monthly average (no new residential systems that month, common
+in small regions) is a gap in the line, not a 0.
 
 EVs: vehicles still on the road today, by the year they were first
 registered in NZ, stacked by category. Not a strict history (a vehicle
@@ -252,12 +263,11 @@ series directly, so it always has data and never depends on when the
 pipeline ran:
 
 - **Solar:** EMI's monthly install count per region (GUEHMT, the same
-  series as the trend chart). New installs = latest month-end minus the
-  month-end k months earlier; the % is new installs as a share of ALL
-  the region's electricity connections (homes and businesses), not of
-  its existing solar. Growth on its own solar base let regions with
-  very few systems top the board on a handful of installs (West Coast
-  "won" August with 11).
+  series as the trend chart). New installs are EMI's own monthly count
+  (`newInstalls`); the month-end change in the total is only a fallback,
+  since it runs a little lower (net of removals and connections moving
+  between regions). % growth = new installs ÷ the region's installs at
+  the start of the period.
 - **EVs:** vehicles first registered in NZ in each month, per region, from
   the register's own `FIRST_NZ_REGISTRATION_YEAR/MONTH`
   (`fetch_ev_recent`, `ev.json` → `recent`). Only months before the
@@ -273,7 +283,9 @@ near-identical releases and showed nothing.)
 
 The "+N since …" line in street popups still uses a saved per-street
 snapshot (`rolling_baseline`, keyed on a fingerprint of the figures),
-since EMI publishes no street-level history.
+since EMI publishes no street-level history. EMI republishes almost
+daily, so the baseline only moves on once it's at least a week old
+(`BASELINE_MIN_DAYS`); "since" is always 1–2 weeks back, not a day.
 
 ## The animated monthly leaderboard
 
@@ -286,7 +298,7 @@ listed. A toggle switches between:
 | | Last month (default) | Total adoption |
 |---|---|---|
 | EVs | New EVs in the latest complete month; regions by share of newly registered vehicles that were electric (trailers excluded; regions with < 50 new vehicles listed, not ranked) | EVs on the road; regions by share of the fleet that's electric |
-| Solar | New installs in the latest complete month; regions by new installs as a % of all their electricity connections (homes and businesses), the same measure as the Leaderboard tab | Homes and businesses with solar; regions by EMI's % of connections |
+| Solar | EMI's count of new installs in the latest complete month; regions by % growth on the installs they already had, the same measure as the Leaderboard tab | Homes and businesses with solar; regions by EMI's % of connections |
 
 Solar's "last month" is the latest month in EMI's trends report, which
 EMI publishes a few weeks after the month ends (installs are registered
@@ -332,14 +344,17 @@ two regions).
 
 - **Electric** means `MOTIVE_POWER = 'ELECTRIC'` (battery-electric).
 - **% of the fleet** is electric vehicles over all registered vehicles
-  in the area *excluding trailers and caravans* (`FLEET_WHERE`), which are
+  in the area *excluding trailers, caravans and mobile machines* (`FLEET_WHERE`); trailers and caravans are
   ~15% of the register and have no engine.
 - **Categories** (cars, utes, vans, motorbikes, trucks, buses, tractors)
   come from the register's own `VEHICLE_TYPE`/`BODY_TYPE` (`EV_CATEGORIES`);
   each category's % is against that category's local fleet. The headline
   EV count also includes electric vehicles outside these categories
-  (forklifts and other mobile machines, ATVs), so the categories don't
-  quite sum to it.
+  (ATVs, motor caravans), so the categories don't quite sum to it. Each
+  vehicle is in at most one category (a UTILITY body is a ute even when
+  registered as a passenger car; a bus with a truck body is a bus).
+  Forklifts and other mobile machines are excluded from every EV and
+  fleet figure (`NON_FLEET_TYPES`): registered, but not road vehicles.
 - **Vehicle Details** lists the 50 most common models per area, electric
   or fossil-fuelled (petrol, diesel, hybrid, plug-in hybrid, LPG/CNG,
   range-extended), with the fuel shown per model. The electric list's

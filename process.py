@@ -158,7 +158,7 @@ NETWORK_TO_COUNCIL = {
     "Central Canterbury (Orion New Zealand)": "Canterbury",
     "Ashburton (Electricity Ashburton)": "Canterbury",
     "South Canterbury (Alpine Energy)": "Canterbury",
-    "Waitaki (Network Waitaki)": "Canterbury",
+    "Waitaki (Network Waitaki)": "Otago",
     "Central Otago (Aurora Energy)": "Otago",
     "Queenstown (Aurora Energy)": "Otago",
     "Frankton (Lakelands)": "Otago",
@@ -265,14 +265,16 @@ OUT_EV_BOUNDARIES = "docs/ev_boundaries.geojson"
 # avoid double-counting the same vehicle in two categories.
 # Motorbikes covers MOPED and MOTORCYCLE; ATV (quad bikes) is left
 # out even though the MVR tags it BODY_TYPE="MOTORCYCLE" too, since
-# it isn't what "motorbike" means in common usage.
+# it isn't what "motorbike" means in common usage. Utes are any UTILITY
+# body, including double-cabs registered as passenger cars; buses with a
+# truck body stay buses. Each vehicle lands in at most one category.
 EV_CATEGORIES = [
-    ("Cars", "VEHICLE_TYPE = 'PASSENGER CAR/VAN' AND BODY_TYPE NOT IN ('LIGHT VAN','HEAVY VAN')"),
+    ("Cars", "VEHICLE_TYPE = 'PASSENGER CAR/VAN' AND BODY_TYPE NOT IN ('LIGHT VAN','HEAVY VAN','UTILITY')"),
     ("Utes", "BODY_TYPE = 'UTILITY'"),
     ("Vans", "BODY_TYPE IN ('LIGHT VAN','HEAVY VAN')"),
     ("Motorbikes", "VEHICLE_TYPE IN ('MOTORCYCLE','MOPED')"),
     ("Trucks", "BODY_TYPE IN ('FLAT-DECK TRUCK','ARTICULATED TRUCK','OTHER TRUCK',"
-               "'CAB AND CHASSIS ONLY')"),
+               "'CAB AND CHASSIS ONLY') AND (VEHICLE_TYPE IS NULL OR VEHICLE_TYPE <> 'BUS')"),
     ("Buses", "VEHICLE_TYPE = 'BUS'"),
     ("Tractors", "VEHICLE_TYPE = 'TRACTOR'"),
 ]
@@ -283,18 +285,28 @@ EV_CATEGORIES = [
 # every "% of the fleet" figure -- nationally 1.8% against a true 2.2%
 # of powered vehicles. Per-category shares are unaffected (no category
 # includes trailers).
-FLEET_WHERE = ("(VEHICLE_TYPE IS NULL OR VEHICLE_TYPE NOT IN "
-               "('TRAILER/CARAVAN','TRAILER NOT DESIGNED FOR H/WAY USE'))")
+#
+# Mobile machines (forklifts, ~28,000, about 2,000 of them electric) are
+# left out of both sides too: they're registered but aren't road vehicles,
+# and counted ~1.8% of "electric vehicles" as forklifts.
+NON_FLEET_TYPES = ("TRAILER/CARAVAN", "TRAILER NOT DESIGNED FOR H/WAY USE", "MOBILE MACHINE")
+FLEET_WHERE = ("(VEHICLE_TYPE IS NULL OR VEHICLE_TYPE NOT IN ("
+               + ",".join(f"'{t}'" for t in NON_FLEET_TYPES) + "))")
+EV_WHERE = f"MOTIVE_POWER = 'ELECTRIC' AND {FLEET_WHERE}"
 
 # Rotorua Lakes District's territory straddles Bay of Plenty and
 # Waikato -- most of its area and Rotorua city itself is Bay of Plenty,
 # but the district's geometric centroid falls on its (larger, rural)
-# Waikato-side land. Every other TLA resolves correctly via real
-# point-in-polygon against council boundaries (checked all 67 against
-# known fact); this is the one genuine exception, the same kind of
+# Waikato-side land. Other TLAs resolve correctly via real
+# point-in-polygon against council boundaries; Rotorua and Waitaki
+# (below) are the exceptions, the same kind of
 # real-world straddle NETWORK_TO_COUNCIL above already documents.
 TLA_REGION_OVERRIDES = {
     "Rotorua District": "Bay of Plenty",
+    # Same straddle the other way: Waitaki's rural north bank of the
+    # river is in Canterbury, but Oamaru and most of its people are in
+    # Otago, which is the council it belongs to.
+    "Waitaki District": "Otago",
 }
 
 # EMI spells one council without macrons across *every* one of its
@@ -558,6 +570,9 @@ def content_vintage(*parts):
     return hashlib.sha1(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()[:12]
 
 
+BASELINE_MIN_DAYS = 7
+
+
 def rolling_baseline(path, vintage, totals, date=None):
     """(baseline_totals, snapshot_to_save) for a change comparison.
 
@@ -578,6 +593,16 @@ def rolling_baseline(path, vintage, totals, date=None):
     if snap.get("vintage") == vintage:
         # Nothing new upstream: keep comparing against the same release
         # as last time, and leave the stored snapshot alone.
+        return snap.get("baseline") or {}, snap
+    # EMI republishes almost daily, so rolling on every new release left
+    # "+N since" measured over a day or two (and a manual run reset it).
+    # Only move on once the stored release is at least a week old; until
+    # then keep the snapshot, and its baseline, as they are.
+    try:
+        age = (datetime.fromisoformat(str(date)[:10]) - datetime.fromisoformat(str(snap.get("date"))[:10])).days
+    except (TypeError, ValueError):
+        age = None
+    if snap.get("baseline") and age is not None and 0 <= age < BASELINE_MIN_DAYS:
         return snap.get("baseline") or {}, snap
     return snap.get("totals") or {}, {
         "vintage": vintage,
@@ -748,7 +773,12 @@ def fetch_data_date(url):
 
 
 def read_streets(text):
-    """One record per (area, street), with the three segments merged."""
+    """One record per (area, street), with the three segments merged.
+
+    Different spellings can normalise to the same street ("X WAY" and
+    "X WAY (PVT)", "PARAPARA -TOATOA" / "PARAPARA-TOATOA"), so rows are
+    added together rather than overwriting each other; the record is
+    flagged suppressed if any part of it was."""
     import csv
     import io
 
@@ -768,12 +798,12 @@ def read_streets(text):
         n, suppressed = icp_value(row.get("ICPs"))
         seg = row.get("MarketSegment")
         if seg == "All":
-            rec["icps"] = n
-            rec["est"] = suppressed
+            rec["icps"] += n
+            rec["est"] = rec["est"] or suppressed
             raw_sum = (row.get("GenerationCapacityKilowattsSum") or "").strip()
             if raw_sum:
                 try:
-                    rec["kW"] = float(raw_sum)
+                    rec["kW"] += float(raw_sum)
                 except ValueError:
                     pass
             else:
@@ -789,13 +819,13 @@ def read_streets(text):
                 # summed over them.
                 try:
                     avg = float(row.get("GenerationCapacityKilowattsAvg") or 0)
-                    rec["kW"] = avg * n
+                    rec["kW"] += avg * n
                 except ValueError:
                     pass
         elif seg == "Res":
-            rec["res"] = n
+            rec["res"] += n
         elif seg == "Bus":
-            rec["bus"] = n
+            rec["bus"] += n
     return out
 
 
@@ -1389,6 +1419,22 @@ def assign_tla_regions(tlas, councils):
     return result, centroids
 
 
+def segment_pcts_now(up, res_now, bus_now):
+    """resPct/busPct for today's residential and business counts, over
+    the residential and non-residential connection totals implied by
+    EMI's latest uptake rates (see council_snapshot)."""
+    out = {}
+    res_total = up.get("resTotalIcps")
+    if not res_total:
+        return {k: up[k] for k in ("resPct", "busPct") if k in up}
+    bus_total = up["totalIcps"] - res_total
+    if res_now is not None:
+        out["resPct"] = round(res_now / res_total * 100, 2)
+    if bus_now is not None and bus_total > 0:
+        out["busPct"] = round(bus_now / bus_total * 100, 2)
+    return out
+
+
 def build_region_tree(emi_councils, council_uptake, total_icps, council_bounds):
     """One row per regional council: installs, MW and the residential/
     business split from EMI's own per-council rows (read_regions), and
@@ -1418,8 +1464,15 @@ def build_region_tree(emi_councils, council_uptake, total_icps, council_bounds):
         lat, lng = _representative_point(bounds["coords"], bounds["multi"]) if bounds else (None, None)
         up = council_uptake.get(council)
         if up:
-            total, pct, pct_source = up["totalIcps"], up["pct"], "EMI uptake rate"
-            seg_pcts = {k: up[k] for k in ("resPct", "busPct") if k in up}
+            # The denominator (all connections) comes from EMI's uptake
+            # rate for the latest trends month; the count is the near-
+            # live region file. Recomputing the % from that count keeps
+            # the figure and the "N of M" beside it on the same date --
+            # the number of connections barely moves in a few weeks,
+            # the number with solar does.
+            total, pct_source = up["totalIcps"], "EMI uptake rate"
+            pct = round(row["icps"] / total * 100, 2)
+            seg_pcts = segment_pcts_now(up, row.get("resIcps"), row.get("busIcps"))
         else:
             total = rolled.get(council) or None
             pct = round(row["icps"] / total * 100, 2) if total and total >= row["icps"] else None
@@ -1680,6 +1733,7 @@ def write_town_boundaries(towns, town_anchors=None, sa1_dwellings=None, anzsic_r
 
 GUEHMT_MW_COLUMN = "Total capacity installed (MW)"
 GUEHMT_NEW_AVG_COLUMN = "Avg. capacity - new installations (kW)"
+GUEHMT_NEW_COUNT_COLUMN = "ICP count - new installations"
 # EMI's own "% of ICPs with this fuel type" for the region -- solar ICPs
 # over that region's total ICPs, both counted under the same regional
 # council attribution. This is the figure the site publishes as a
@@ -1725,6 +1779,14 @@ def _fetch_guehmt(fuel_type, region_type, market_segment=None):
         except ValueError:
             return 0.0
 
+    def num_or_none(row, col, dp):
+        # Blank means "nothing to average/count this month", which must
+        # not become a real-looking 0 (a 0 kW average on the chart).
+        try:
+            return round(float(row.get(col) or ""), dp)
+        except ValueError:
+            return None
+
     def rate(row):
         # None rather than 0 when the column is missing or blank, so a
         # renamed column falls back to the network-derived % instead of
@@ -1755,7 +1817,12 @@ def _fetch_guehmt(fuel_type, region_type, market_segment=None):
             # (those give the lifetime average), and can't be summed
             # across regions either -- so it's read per region, and the
             # national series takes it from GUEHMT's own NZ row.
-            "avgNew": num(row, GUEHMT_NEW_AVG_COLUMN, 2),
+            "avgNew": num_or_none(row, GUEHMT_NEW_AVG_COLUMN, 2),
+            # Connections that gained solar that month, as EMI counts
+            # them. Not the same as the month-on-month change in "ICP
+            # count": that is net of systems removed and connections
+            # moved between regions, and runs a little lower.
+            "new": num_or_none(row, GUEHMT_NEW_COUNT_COLUMN, 0),
         }
     return by_region
 
@@ -1783,11 +1850,15 @@ def fetch_trends():
     # taken from GUEHMT's own New Zealand rows instead.
     nz_all = _fetch_guehmt("solar_all", "NZ")
     nz_res = _fetch_guehmt("solar_all", "NZ", "Res")
+    nz_batt = _fetch_guehmt("solarplusbattery", "NZ")
 
     dates = sorted({d for series in council_all.values() for d in series}
                     | {d for series in network_all.values() for d in series})
 
-    BLANK = {"icps": 0, "mw": 0.0, "avgNew": 0.0, "uptake": None}
+    BLANK = {"icps": 0, "mw": 0.0, "avgNew": None, "uptake": None, "new": None}
+
+    def new_count(row):
+        return int(row["new"]) if row.get("new") is not None else None
 
     def series_for(all_map, batt_map, res_map):
         out = {}
@@ -1799,6 +1870,7 @@ def fetch_trends():
             # is why it needs its own segment pull.
             out[name] = {
                 "installs": [all_map[name].get(d, BLANK)["icps"] for d in dates],
+                "newInstalls": [new_count(all_map[name].get(d, BLANK)) for d in dates],
                 "battery": [batt_map.get(name, {}).get(d, BLANK)["icps"] for d in dates],
                 "mw": [all_map[name].get(d, BLANK)["mw"] for d in dates],
                 "resAvgNewKW": [res_map.get(name, {}).get(d, BLANK)["avgNew"] for d in dates],
@@ -1808,13 +1880,27 @@ def fetch_trends():
     councils = series_for(council_all, council_batt, council_res)
     networks = series_for(network_all, network_batt, network_res)
 
-    # National = sum of councils, rather than more fetches -- except the
-    # average, see nz_res above.
+    # National from GUEHMT's own New Zealand rows, not the sum of
+    # councils: about 70 solar connections (and ~18 MW) aren't attributed
+    # to any council, so the sum runs short of EMI's national figure.
+    # Falls back to the sum for any month the NZ rows lack.
     nz_row = nz_res.get("New Zealand", {})
+    nz_tot, nz_bat = nz_all.get("New Zealand", {}), nz_batt.get("New Zealand", {})
+
+    def nat(key, src, field, dp=None):
+        out = []
+        for i, d in enumerate(dates):
+            row = src.get(d)
+            v = row[field] if row and row.get(field) is not None else sum(
+                (c[key][i] or 0) for c in councils.values())
+            out.append(round(v, dp) if dp is not None else v)
+        return out
+
     national = {
-        "installs": [sum(c["installs"][i] for c in councils.values()) for i in range(len(dates))],
-        "battery": [sum(c["battery"][i] for c in councils.values()) for i in range(len(dates))],
-        "mw": [round(sum(c["mw"][i] for c in councils.values()), 3) for i in range(len(dates))],
+        "installs": nat("installs", nz_tot, "icps"),
+        "newInstalls": [new_count(nz_tot[d]) if d in nz_tot else None for d in dates],
+        "battery": nat("battery", nz_bat, "icps"),
+        "mw": nat("mw", nz_tot, "mw", 3),
         "resAvgNewKW": [nz_row.get(d, BLANK)["avgNew"] for d in dates],
     }
 
@@ -1992,6 +2078,8 @@ def fetch_ev_snapshot(tla_names):
     """
     print("Fetching EV snapshot from the Motor Vehicle Register...")
 
+    unmatched = {}
+
     def counts_by_tla(where):
         rows = _mvr_query(where, "TLA")
         out = {}
@@ -2000,10 +2088,18 @@ def fetch_ev_snapshot(tla_names):
             name = tla_names.get(raw)
             if name:
                 out[name] = out.get(name, 0) + r["attributes"]["cnt"]
+            elif raw:
+                unmatched[raw] = unmatched.get(raw, 0) + r["attributes"]["cnt"]
         return out
 
-    overall_ev = counts_by_tla("MOTIVE_POWER = 'ELECTRIC'")
+    overall_ev = counts_by_tla(EV_WHERE)
     overall_total = counts_by_tla(FLEET_WHERE)
+    if unmatched:
+        # A district spelt differently by the register and the boundary
+        # layer (e.g. one side adopting macrons) would otherwise vanish
+        # from every total without anything noticing.
+        note_failure("EV district names", f"unmatched: {', '.join(sorted(unmatched))}",
+                     "those districts are missing from the EV figures -- extend the name matching")
 
     categories = {}
     for name, clause in EV_CATEGORIES:
@@ -2104,7 +2200,7 @@ def _ev_category_for(vehicle_type, body_type):
     they're simple enough that a real SQL-clause evaluator would be
     overkill) rather than 7 separate per-category queries.
     """
-    if vehicle_type == "PASSENGER CAR/VAN" and body_type not in ("LIGHT VAN", "HEAVY VAN"):
+    if vehicle_type == "PASSENGER CAR/VAN" and body_type not in ("LIGHT VAN", "HEAVY VAN", "UTILITY"):
         return "Cars"
     if body_type == "UTILITY":
         return "Utes"
@@ -2112,13 +2208,27 @@ def _ev_category_for(vehicle_type, body_type):
         return "Vans"
     if vehicle_type in ("MOTORCYCLE", "MOPED"):
         return "Motorbikes"
-    if body_type in ("FLAT-DECK TRUCK", "ARTICULATED TRUCK", "OTHER TRUCK", "CAB AND CHASSIS ONLY"):
-        return "Trucks"
     if vehicle_type == "BUS":
         return "Buses"
+    if body_type in ("FLAT-DECK TRUCK", "ARTICULATED TRUCK", "OTHER TRUCK", "CAB AND CHASSIS ONLY"):
+        return "Trucks"
     if vehicle_type == "TRACTOR":
         return "Tractors"
-    return None   # e.g. ATVs -- not one of EV_CATEGORIES' buckets, and left out of "All" too
+    return None   # e.g. ATVs -- in "All", but not one of EV_CATEGORIES' buckets
+
+
+# The register's MODEL field names some electric versions after the
+# petrol model they share a badge with; as an electric, these can only
+# be the EV. Applied to the electric lists only.
+EV_MODEL_NAMES = {
+    ("BMW", "I"): "i3",
+    ("BMW", "4 Series"): "i4",
+    ("BMW", "X1"): "iX1",
+    ("Ford", "Mustang"): "Mustang Mach-E",
+    ("Volkswagen", "Golf"): "e-Golf",
+    ("Peugeot", "208"): "e-208",
+    ("Polestar", "Polestar 2"): "2",
+}
 
 
 def build_top_vehicles(tla_models, tla_region, fuels):
@@ -2154,9 +2264,12 @@ def build_top_vehicles(tla_models, tla_region, fuels):
     for tla, models in tla_models.items():
         counters = empty_counters()
         for fuel, vehicle_type, body_type, make, model, cnt in models:
-            if fuel not in fuels:
+            if fuel not in fuels or vehicle_type in NON_FLEET_TYPES:
                 continue
-            key = _fmt_vehicle(make, model) + (fuel,)
+            make_f, model_f = _fmt_vehicle(make, model)
+            if fuel == "electric":
+                model_f = EV_MODEL_NAMES.get((make_f, model_f), model_f)
+            key = (make_f, model_f, fuel)
             counters[VEHICLE_CATEGORY_ALL][key] = counters[VEHICLE_CATEGORY_ALL].get(key, 0) + cnt
             cat = _ev_category_for(vehicle_type, body_type)
             if cat:
@@ -2202,7 +2315,7 @@ def fetch_ev_trends(tla_names):
             yearly[year] = yearly.get(year, 0) + a["cnt"]
         return out
 
-    series = {"All": yearly_by_tla("MOTIVE_POWER = 'ELECTRIC'")}
+    series = {"All": yearly_by_tla(EV_WHERE)}
     for name, clause in EV_CATEGORIES:
         series[name] = yearly_by_tla(f"MOTIVE_POWER = 'ELECTRIC' AND {clause}")
 
@@ -2251,7 +2364,7 @@ def fetch_ev_recent(tla_names, tla_region, vintage):
                 regions.setdefault(region, [0] * len(months))[i] += a["cnt"]
         return national, regions
 
-    ev_nat, ev_reg = monthly("MOTIVE_POWER = 'ELECTRIC'")
+    ev_nat, ev_reg = monthly(EV_WHERE)
     # Every vehicle first registered that month (same fleet definition as
     # "% of the fleet": trailers and caravans excluded), so the monthly
     # leaderboard can rank regions by the share of new vehicles that were
@@ -2776,7 +2889,7 @@ def build_towns(features, town_anchors, council_bounds, rural_known=False, polyg
         p = f["properties"]
         lng, lat = f["geometry"]["coordinates"]
         name = nearest_town(lat, lng)
-        t = towns.setdefault(name, {"icps": 0.0, "kW": 0.0, "res": 0, "bus": 0,
+        t = towns.setdefault(name, {"icps": 0.0, "kW": 0.0, "res": 0.0, "bus": 0.0,
                                     "ruralBus": 0, "ruralBusKW": 0.0})
         if p.get("grid"):
             # Town and district figures describe rooftop uptake; a solar
@@ -2784,13 +2897,16 @@ def build_towns(features, town_anchors, council_bounds, rural_known=False, polyg
             # footprint, and would swamp a small town's capacity.
             continue
         icps, kW = p["icps"], p["kW"]
+        res, bus = p.get("res", 0), p.get("bus", 0)
         w = weights.get(p["sa2"]) if p.get("est") else None
         if w and icps:
             # kW for a suppressed row is EMI's per-install average times
-            # the placeholder count (see read_streets), so rescale it.
-            kW, icps = kW / icps * w, w
+            # the placeholder count (see read_streets), so rescale it --
+            # and the res/bus split with it, so res + bus = icps.
+            f = w / icps
+            kW, icps, res, bus = kW * f, w, res * f, bus * f
         t["icps"] += icps; t["kW"] += kW
-        t["res"] += p.get("res", 0); t["bus"] += p.get("bus", 0)
+        t["res"] += res; t["bus"] += bus
         if p.get("rural"):
             t["ruralBus"] += p.get("bus", 0)
             # Apportion this street's capacity to its business share --
@@ -2807,7 +2923,7 @@ def build_towns(features, town_anchors, council_bounds, rural_known=False, polyg
         row = {
             "name": name, "council": council,
             "icps": round(t["icps"]), "kW": round(t["kW"], 1),
-            "res": t["res"], "bus": t["bus"],
+            "res": round(t["res"]), "bus": round(t["bus"]),
             "lat": round(alat, 4), "lng": round(alng, 4),
         }
         # Only when a rural classifier actually ran (see build()) --
@@ -3145,7 +3261,11 @@ def main():
             name: {
                 "icps": row["icps"], "kW": row["kW"],
                 "totalIcps": total_icps.get(name),
-                "pct": round(row["icps"] / total_icps[name] * 100, 2) if total_icps.get(name) else None,
+                # Not for a network small enough that its count is EMI's
+                # "3 or less" placeholder (Nelson Electricity's own patch
+                # is a few blocks: 2 of 14 would read as 14%).
+                "pct": round(row["icps"] / total_icps[name] * 100, 2)
+                       if total_icps.get(name) and row["icps"] > 3 and total_icps[name] >= 100 else None,
             }
             for name, row in networks.items()
         }
@@ -3166,9 +3286,8 @@ def main():
                 }
 
         # Whole-country equivalent, for the topbar's national view --
-        # GUEHMT's own national series (itself the sum of its councils,
-        # see fetch_trends), so it carries the same base/percentage
-        # relationship as the per-council figures above.
+        # GUEHMT's own national rows (see fetch_trends), installs and
+        # battery from the same month.
         nat_installs = trends["national"]["installs"][-1]
         nat_battery = trends["national"]["battery"][-1]
         if nat_installs:
@@ -3262,10 +3381,11 @@ def main():
             totals = totals or prev_meta.get("national") or {}
     nat_up = snapshot.get("national")
     if totals and nat_up:
-        totals["totalIcps"], totals["pct"] = nat_up["totalIcps"], nat_up["pct"]
-        for k in ("resPct", "busPct"):
-            if k in nat_up:
-                totals[k] = nat_up[k]
+        # Same rule as the councils: today's count over EMI's latest
+        # connection total, so "93,896 (x%)" is one date.
+        totals["totalIcps"] = nat_up["totalIcps"]
+        totals["pct"] = round(totals["icps"] / nat_up["totalIcps"] * 100, 2)
+        totals.update(segment_pcts_now(nat_up, totals.get("resIcps"), totals.get("busIcps")))
     elif totals and total_icps:
         national_total = sum(total_icps.values())
         totals["totalIcps"] = national_total

@@ -212,6 +212,8 @@
   .stat-line-batt { color: var(--cyan-text); margin-top: 2px; }
   .stat-line-batt strong { color: var(--cyan-text); }
   .stat-seg + .stat-seg::before { content: "|"; margin: 0 7px; color: var(--border); }
+  /* A divider at the start of a wrapped line (narrow screens) is noise. */
+  .stat-seg.wrap-start::before { content: none; }
   .updated-line { font-size: 9.5px; color: var(--dim); opacity: .8; white-space: nowrap; flex: none; }
 
   .topbar-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
@@ -620,6 +622,10 @@
   body:not(.dataset-ev) #awardsBtn { border-color: var(--amber); }
   #awardsBtn.hidden { display: none; }
   #awardsBtn .trophy { font-size: 15px; line-height: 1; }
+  /* Phones: the stats panel spans the full width under the top row, so
+     the trophy moves up into that row, beside the (i), instead of
+     sitting on the panel's corner. */
+  @media (max-width: 767px) { #awardsBtn { top: 8px; right: 46px; } }
   @keyframes awardsPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.04); } }
 
   #awardsOverlay {
@@ -884,7 +890,7 @@
 
       <h3>Electric vehicles</h3>
       <ul>
-        <li>Counts by district from NZTA's Motor Vehicle Register, not modelled. “% of the fleet” is electric vehicles as a share of all registered vehicles in that district, excluding trailers and caravans.</li>
+        <li>Counts by district from NZTA's Motor Vehicle Register, not modelled. “% of the fleet” is electric vehicles as a share of all registered vehicles in that district, excluding trailers, caravans and forklifts.</li>
         <li>Vehicle Details lists the most common electric and fossil-fuelled models (petrol, diesel, hybrid, plug-in hybrid) by region and district.</li>
       </ul>
 
@@ -938,9 +944,11 @@ function readPlaceParam(search) {
     if (v) return v;
   }
   // Bare form: ?Wellington, or ?Queen Street, Auckland -- the whole
-  // thing arrives as a valueless key.
+  // thing arrives as a valueless key. Our own valueless flags
+  // (?leaderboard) aren't place names.
+  const FLAGS = new Set(["leaderboard", "dataset", "gestures", "parent"]);
   for (const [k, v] of params) {
-    if (!v && k.trim()) return decodeURIComponent(k.replace(/\+/g, " ")).trim();
+    if (!v && k.trim() && !FLAGS.has(k.trim().toLowerCase())) return decodeURIComponent(k.replace(/\+/g, " ")).trim();
   }
   return "";
 }
@@ -1129,13 +1137,22 @@ function installDotFeatures() {
     src = map.querySourceFeatures("streets", { sourceLayer: undefined });
   } catch (_) { return []; }
 
+  // querySourceFeatures also returns off-screen and stale tiles; only
+  // streets actually in view (plus a margin) are fanned out, so the dot
+  // cap is spent where people are looking.
+  const b = map.getBounds(), padX = (b.getEast() - b.getWest()) * 0.15, padY = (b.getNorth() - b.getSouth()) * 0.15;
+  const inView = ([lng, lat]) => lng >= b.getWest() - padX && lng <= b.getEast() + padX &&
+                                 lat >= b.getSouth() - padY && lat <= b.getNorth() + padY;
   const seen = new Set(), out = [];
+  out.expanded = [];
   for (const f of src) {
     const p = f.properties;
     if (p.est == 1 || !(p.icps > 1) || p.grid == 1) continue;   // estimated, nothing to fan out, or a solar farm
+    if (!inView(f.geometry.coordinates)) continue;
     const key = p.sa2 + "|" + p.street;
     if (seen.has(key)) continue;                        // tiles repeat features
     seen.add(key);
+    out.expanded.push(key);
     const centre = map.project({ lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1] });
     const n = p.icps;
     // Give each dot its own category rather than the street's colour, so
@@ -1174,11 +1191,13 @@ function refreshInstallDots() {
   const feats = installDotFeatures();
   map.getSource("install-dots").setData({ type: "FeatureCollection", features: feats });
   // The aggregate dot is hidden for exactly the streets now drawn as
-  // individual installs, so nothing is represented twice.
+  // individual installs (by key, not by rule -- a street past the cap or
+  // out of view keeps its dot), so nothing is shown twice or not at all.
   const expanded = feats.length > 0;
   if (map.getLayer("street-points")) {
     const base = pointFilter();
-    const notExpanded = ["any", ["==", ["get", "est"], 1], ["<=", ["get", "icps"], 1]];
+    const notExpanded = ["!", ["in", ["concat", ["to-string", ["get", "sa2"]], "|", ["get", "street"]],
+                               ["literal", feats.expanded || []]]];
     map.setFilter("street-points", expanded
       ? (base ? ["all", base, notExpanded] : notExpanded)
       : base);
@@ -1281,7 +1300,7 @@ function showPopup(f) {
     ? `<small class="muted">Capacity not published</small>`
     : p.est == 1
       ? `Average system: ${p.kWper} kW <small class="muted">(EMI's figure for this street)</small>`
-      : `Capacity: ${p.kW} kW` + (p.kWper ? ` <small class="muted">(${p.kWper} kW each)</small>` : "");
+      : `Capacity: ${p.kW >= 1000 ? `${fmtMW(p.kW)} MW` : `${p.kW} kW`}` + (p.kWper ? ` <small class="muted">(${p.kWper} kW each)</small>` : "");
   new maplibregl.Popup()
     .setLngLat(f.geometry.coordinates)
     .setHTML(
@@ -1399,8 +1418,13 @@ function addLayers(data) {
   });
 
   map.on("moveend", unspiderfy);
-  map.on("moveend", refreshInstallDots);
+  // Tiles for the new view may still be loading when the move ends (a
+  // jump, or arriving on a ?region= street link), so redo it once the map
+  // is idle as well -- once per move, so it can't feed itself.
+  const refreshAfterMove = () => { refreshInstallDots(); map.once("idle", refreshInstallDots); };
+  map.on("moveend", refreshAfterMove);
   map.on("zoomend", refreshInstallDots);
+  map.once("idle", refreshInstallDots);
   ["street-points", "spider-nodes", "install-dots"].forEach(l => {
     map.on("mouseenter", l, () => map.getCanvas().style.cursor = "pointer");
     map.on("mouseleave", l, () => map.getCanvas().style.cursor = "");
@@ -1492,8 +1516,8 @@ function regionRow(scope) {
 const INFO = {
   "region-pct": () => ({
     title: "% of connections",
-    body: "The share of all electricity connections in this region that have solar. This is the Electricity Authority's own published figure (EMI).",
-    more: "Every home and business with its own power meter is one connection (an “ICP”). EMI counts the connections with solar and divides by all connections in the region, using the same regional boundaries for both.",
+    body: "The share of all electricity connections in this region that have solar, from the Electricity Authority's figures (EMI).",
+    more: "Every home and business with its own power meter is one connection (an “ICP”). The number of connections comes from EMI's published uptake rate for the latest month, on the same regional boundaries as the solar count; the count with solar is EMI's latest, so the % and the count beside it are always the same date. For an electricity network picked from the chart, it's the network's own solar count over its own connections.",
   }),
   "homes-business": () => ({
     title: "Homes and business",
@@ -1532,7 +1556,7 @@ const INFO = {
   "town-count": () => ({
     title: "Approximate install count",
     body: "Added up from the Electricity Authority's street-by-street data, so it's a close estimate rather than an exact count. Region totals are exact.",
-    more: "Streets with three or fewer installs are published as “3 or less” to protect privacy. We count those at their region's measured average (about 1.6 installs per street), which makes each region's streets add up to its exact published total. Grid-scale solar farms aren't included — they're shown separately on the map.",
+    more: "Streets with three or fewer installs are published as “3 or less” to protect privacy. We count those at their region's measured average (about 1.6 installs per street), so each region's streets add up to roughly its published total (towns only include streets we could place on the map, so they run a little under). Grid-scale solar farms aren't included — they're shown separately on the map.",
   }),
   "town-est": () => ({
     title: "Estimated % of connections",
@@ -1551,7 +1575,7 @@ const INFO = {
   "ev-types": () => ({
     title: "By vehicle type",
     body: "Electric vehicles of each type, and in brackets the share of that type that's electric — e.g. the % of all cars in the area that are electric.",
-    more: "Types come from the register's own vehicle and body types. The headline total also includes electric vehicles outside these types — mainly forklifts and other mobile machines, and ATVs — so the types don't quite add up to it.",
+    more: "Types come from the register's own vehicle and body types. The headline total also includes a few electric vehicles outside these types — mainly ATVs and motor caravans — so the types don't quite add up to it. Forklifts and other mobile machines aren't road vehicles, so they're left out of every figure.",
   }),
   leaderboard: () => ({
     title: "Leaderboard",
@@ -1560,7 +1584,7 @@ const INFO = {
       : "Which regions added the most solar over the period, from the Electricity Authority's monthly install counts.",
     more: (DATASET === "ev"
       ? "% growth is new EVs as a share of the EVs the region already had at the start of the period, so small regions can compete with big ones."
-      : "% of connections is new installs as a share of all the region's electricity connections (homes and businesses), so small regions can compete with big ones — 0.20% means 1 in 500 homes and businesses got solar in the period.") +
+      : "% growth is new installs (the Electricity Authority's own monthly count) as a share of the solar the region already had at the start of the period, so small regions can compete with big ones.") +
       " Switch to Number for the raw count. Only complete months are used. Falls aren't shown — in these figures they're almost always a connection or vehicle moving between regions, not one removed.",
   }),
   fuels: () => ({
@@ -1663,12 +1687,15 @@ function downloadCSV(nameParts, headers, rows, note) {
   return true;
 }
 
-function sourceNote() {
+// `monthEnd` ("2026-08") for monthly series, which end at a month's end
+// rather than on the day the data files were refreshed.
+function sourceNote(monthEnd) {
   const d = DATASET === "ev" ? evUpdated : metaUpdated;
   const src = DATASET === "ev"
     ? "NZTA Motor Vehicle Register"
     : "EMI (Electricity Authority)";
-  const when = d ? `${MONTHS3[d.getUTCMonth()]} ${d.getUTCFullYear()}` : "unknown";
+  const when = monthEnd ? `the end of ${periodLabel([monthEnd.slice(0, 7)])}`
+    : d ? `${MONTHS3[d.getUTCMonth()]} ${d.getUTCFullYear()}` : "unknown";
   return `Source: ${src}, data as at ${when}. Downloaded from ${location.origin}${location.pathname}`;
 }
 
@@ -1708,12 +1735,12 @@ function solarPopupHTML({ name, subtitle, pct, icps, kW, regionSection, csv }) {
       : "";
   }
   const dl = csv
-    ? `<div class="popup-actions">${downloadBtnHTML(csv.kind, csv.key, `Download ${esc(name)}'s figures as a CSV`)}</div>`
+    ? `<div class="popup-actions">${downloadBtnHTML(csv.kind, csv.key, `Download ${esc(csv.label || name)}'s figures as a CSV`)}</div>`
     : "";
   return `<strong>${esc(name)}</strong><br>` +
     (subtitle ? `<span style="opacity:.7">${esc(subtitle)}</span><br>` : "") +
     pctLine +
-    `<span class="popup-sub">${infoTerm("town-count", `~${fmt(icps)} solar installs`)} &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
+    `<span class="popup-sub">${infoTerm("town-count", `~${fmt(icps)} solar install${Math.round(icps) === 1 ? "" : "s"}`)} &nbsp;|&nbsp; <strong class="popup-solar">${fmtMW(kW)} MW</strong></span>` +
     lower + dl;
 }
 
@@ -1765,7 +1792,7 @@ function focusRegion() {
 function visibleTowns() {
   const view = currentView();
   const list = view ? townData.filter(t => pointInView(t.lat, t.lng, view)) : townData;
-  return list;   // already sorted by installs at build time
+  return list;   // in meta.towns order (process.py sorts by estimated %)
 }
 
 // Free-text lookup for the ?region= embed param and the topbar search box
@@ -1775,9 +1802,9 @@ function visibleTowns() {
 // Street" without needing to know which kind of place it is. Exact match
 // wins outright; otherwise prefix, then substring, each tier checking
 // regions before towns before streets (broader intent first, and a
-// region/town name is rarely also someone's target street). townData and
-// streetIndex are both pre-sorted by installs/icps, so a substring tier
-// matching several candidates naturally prefers the more prominent one.
+// region/town name is rarely also someone's target street). When a tier
+// matches several towns, the one with the most installs (or EVs) wins --
+// "Ham" means Hamilton, not Hamurana -- whatever order the list is in.
 // When several streets share a name -- very common; NZ has many Queen
 // Streets -- prefer whichever is closest to the current map view over
 // always the nationally busiest one. If the user is already zoomed into
@@ -1838,10 +1865,12 @@ function findPlace(term) {
     s => norm(s).startsWith(q),
     s => norm(s).includes(q),
   ];
+  const size = t => (DATASET === "ev" ? t.ev : t.icps) || 0;
+  const biggest = list => list.reduce((best, t) => (!best || size(t) > size(best) ? t : best), null);
   for (const test of tiers) {
-    const region = regions.find(r => test(r.name));
+    const region = biggest(regions.filter(r => test(r.name)));
     if (region) return region;
-    const place = places.find(t => test(t.name));
+    const place = biggest(places.filter(t => test(t.name)));
     if (place) return place;
     const candidates = streets.filter(f => test(f.street));
     if (candidates.length) return streetMatch(pickClosestStreet(candidates));
@@ -1928,7 +1957,7 @@ function renderTopbarStats() {
   if (stats.pct) segs.push(`<span class="stat-seg"><strong>${stats.pct.toFixed(1)}%</strong> of connections${infoBtn("region-pct")}</span>`);
   const chartOpen = topbarEl.classList.contains("expanded");
   let html = `<div class="topbar-toprow">`;
-  html += `<div class="topbar-label">Region in view <span class="topbar-region">${currentFocus.name}</span></div>`;
+  html += `<div class="topbar-label">${currentFocus.level === "network" ? "Network" : "Region"} in view <span class="topbar-region">${currentFocus.name}</span></div>`;
   if (metaUpdated) {
     html += `<div class="updated-line">Updated ${MONTHS3[metaUpdated.getUTCMonth()]} ${metaUpdated.getUTCFullYear()}</div>`;
   }
@@ -1998,7 +2027,7 @@ function rowHTML(t, rank) {
   const est = t.estPct != null
     ? `<span class="row-primary">${t.estPct.toFixed(1)}% ${infoTerm("town-est", '<span class="est-badge"><b>est</b></span>')}</span>`
     : "";
-  const own = `${infoTerm("town-count", `~${fmt(t.icps)} installs`)} &middot; ${fmtMW(t.kW)} MW`;
+  const own = `${infoTerm("town-count", `~${fmt(t.icps)} install${t.icps === 1 ? "" : "s"}`)} &middot; ${fmtMW(t.kW)} MW`;
 
   const solarBits = [];
   if (t.councilPct != null) solarBits.push(infoTerm("region-pct", `${t.councilPct.toFixed(1)}% of connections`));
@@ -2308,7 +2337,9 @@ function loadSolarRegionsLayer() {
             name: `${r.name} region`,
             pct: r.pct, battPct: r.battPct, segments: r,
           },
-          csv: { kind: "region", key: r.name },
+          // The export is the region's (district figures are street
+          // estimates within it), so the button says so.
+          csv: { kind: "region", key: r.name, label: `${r.name} region` },
         })
         ).addTo(map);
         // Solar's real trend data only goes down to council/region level
@@ -2359,7 +2390,7 @@ function setSolarMode(mode) {
   if (mode === SOLAR_MODE) return;
   const go = () => {
     SOLAR_MODE = mode;
-    listCaptionEl.textContent = mode === "regions" ? "Districts within map view" : "Towns within map view";
+    listCaptionEl.textContent = mode === "regions" ? "Regions within map view" : "Towns within map view";
     applySolarLayers(mode);
     refreshInstallDots();   // may be entering points mode already zoomed in
     renderBoard();
@@ -2377,10 +2408,16 @@ function visibleRegions() {
 // "(2.5%)" after a homes/business count: that segment's own adoption
 // rate (EMI) -- the share of homes, or of non-residential connections,
 // that have solar.
+// One decimal, but a real non-zero share never reads as "0.0".
+function pct1(v) { return v > 0 && v < 0.05 ? "<0.1" : v.toFixed(1); }
+
 function segPct(v) {
   if (v == null) return "";
-  return ` <span class="seg-pct">(${v > 0 && v < 0.05 ? "<0.1" : v.toFixed(1)}%)</span>`;
+  return ` <span class="seg-pct">(${pct1(v)}%)</span>`;
 }
+
+// "1 tractor", "2 tractors" (category names are plural: Cars, Utes, ...).
+function catWord(cat, n) { const w = cat.toLowerCase(); return n === 1 ? w.replace(/s$/, "") : w; }
 
 // The farm figure: one central number, its range and method a click away
 // (see INFO.farms and estimate_farms in process.py).
@@ -2404,7 +2441,7 @@ function solarRegionRowHTML(r, rank) {
   // (see INFO.battery). The tooltip names the base they were actually
   // measured against. Cyan to match the EV dashboard, so battery reads
   // as a distinct figure from the amber solar ones.
-  const battLine = r.battPct != null
+  const battLine = r.battPct != null && r.battInstalls != null
     ? `<span class="detail" style="color:var(--cyan-text)">${r.battPct.toFixed(1)}% ` +
       battTerm(`(${fmt(r.battInstalls)}) have batteries`, r.name, r.battInstalls, r.battBase) + `</span>`
     : "";
@@ -2517,6 +2554,33 @@ function toggleRegionsPanel() {
   else { openRegionsPanel(); }
 }
 dashArrow.addEventListener("click", toggleRegionsPanel);
+// Phones: the stats panel and Regions sheet cover much of the map, so a
+// popup could open half underneath them. Once one opens, fold away the
+// sheet (and an open chart), then nudge the map so the popup sits in the
+// clear space between the panel and the bottom of the screen.
+function keepPopupInView(popup) {
+  if (!window.matchMedia("(max-width: 767px)").matches) return;
+  let wait = 0;
+  if (!dashHidden) { closeRegionsPanel(); wait = PANEL_ANIM_MS + 20; }
+  if (isChartOpen()) { closeChartPanel(); wait = Math.max(wait, 60); }
+  setTimeout(() => {
+    const el = popup.getElement && popup.getElement();
+    if (!el || !el.isConnected) return;
+    const r = el.getBoundingClientRect();
+    const top = topbarEl.getBoundingClientRect().bottom + 8, bottom = window.innerHeight - 44;
+    let dy = 0;
+    if (r.top < top) dy = r.top - top;                                     // under the panel: move down
+    else if (r.bottom > bottom) dy = Math.min(r.bottom - bottom, r.top - top);   // off the bottom: move up
+    if (Math.abs(dy) > 2) map.panBy([0, dy], { duration: 250 });
+  }, wait);
+}
+const _popupAddTo = maplibregl.Popup.prototype.addTo;
+maplibregl.Popup.prototype.addTo = function (m) {
+  const out = _popupAddTo.call(this, m);
+  requestAnimationFrame(() => keepPopupInView(this));
+  return out;
+};
+
 window.addEventListener("resize", () => { syncDashArrow(); applyViewPadding(); });
 // The panel also changes height whenever its list re-renders (panning
 // the map, switching mode, an empty view). Observing it covers every
@@ -2618,7 +2682,7 @@ function loadEvData() {
       evUpdated = ev.updated ? new Date(ev.updated + "T00:00:00Z") : null;
       evRecent = ev.recent || null;
       addEvLayer(boundaries);
-    });
+    }).catch(err => { evLoadPromise = null; throw err; });   // let a later call retry
   }
   return evLoadPromise;
 }
@@ -2693,7 +2757,7 @@ function addEvLayer(boundaries) {
     if (!t) return;
     const catLines = EV_CHART_ORDER.map(cat => {
       const c = (t.categories && t.categories[cat]) || {};
-      const pctText = c.pct != null ? `${c.pct.toFixed(1)}% of all ${cat.toLowerCase()}` : "no data";
+      const pctText = c.pct != null ? `${pct1(c.pct)}% of all ${cat.toLowerCase()}` : "no data";
       const color = EV_CATEGORY_COLORS[cat] || "#888";
       return `<div class="ev-cat-line"><span><i class="swatch" style="background:${color}"></i>Electric ${cat}</span><span class="n">${fmt(c.ev || 0)}, ${pctText}</span></div>`;
     }).join("");
@@ -2759,9 +2823,10 @@ function evRowHTML(t, rank) {
   const region = t.region
     ? `<span class="row-region" data-ev-region="${t.region}">${t.region}</span>`
     : "";
-  const cats = evCategoryNames.map(cat => {
+  // Same order as the chart, legend and topbar.
+  const cats = EV_CHART_ORDER.filter(cat => evCategoryNames.includes(cat)).map(cat => {
     const c = (t.categories && t.categories[cat]) || { ev: 0, pct: null };
-    const pctText = c.pct != null ? `${c.pct.toFixed(1)}% of all ${cat.toLowerCase()}` : "no data";
+    const pctText = c.pct != null ? `${pct1(c.pct)}% of all ${cat.toLowerCase()}` : "no data";
     const color = EV_CATEGORY_COLORS[cat] || "#888";
     return `<div class="ev-cat-line"><span><i class="swatch" style="background:${color}"></i>Electric ${cat}</span><span class="n">${fmt(c.ev)}, ${pctText}</span></div>`;
   }).join("");
@@ -2814,17 +2879,17 @@ function renderEvTopbarStats() {
   // bar's homes/business line: the same per-category counts the chart
   // and district rows use, in the chart's order and colours. They don't
   // quite add up to the headline -- it also counts electric vehicles
-  // outside these categories (forklifts and other mobile machines, ATVs,
-  // motor caravans). Empty categories are left out rather than shown as
-  // a row of zeros.
+  // outside these categories (ATVs, motor caravans; forklifts and other
+  // mobile machines are excluded everywhere, see FLEET_WHERE). Empty
+  // categories are left out rather than shown as a row of zeros.
   const catSegs = EV_CHART_ORDER
     .map(cat => [cat, stats.categories && stats.categories[cat]])
     .filter(([, c]) => c && c.ev > 0)
     .map(([cat, c]) => {
-      const share = c.pct != null ? ` -- ${c.pct.toFixed(1)}% of the ${cat.toLowerCase()} here are electric` : "";
+      const share = c.pct != null ? ` -- ${pct1(c.pct)}% of the ${cat.toLowerCase()} here are electric` : "";
       return `<span class="stat-seg" title="Electric ${cat.toLowerCase()}${share}">` +
         `<i class="swatch" style="background:${EV_CATEGORY_COLORS[cat]}"></i>` +
-        `<strong>${fmt(c.ev)}</strong> ${cat.toLowerCase()}${segPct(c.pct)}</span>`;
+        `<strong>${fmt(c.ev)}</strong> ${catWord(cat, c.ev)}${segPct(c.pct)}</span>`;
     });
   // One flowing line, separated by the coloured dots rather than pipes,
   // so it wraps cleanly at any panel width (narrower with the chart open)
@@ -2856,7 +2921,7 @@ function setDataset(name) {
     } else {
       // Returning to solar restores whichever map mode was last picked
       // (points/towns/regions), rather than always resetting to points.
-      listCaptionEl.textContent = SOLAR_MODE === "regions" ? "Districts within map view" : "Towns within map view";
+      listCaptionEl.textContent = SOLAR_MODE === "regions" ? "Regions within map view" : "Towns within map view";
       applySolarLayers(SOLAR_MODE);
     }
     setEvLayerVisible(name === "ev");
@@ -2920,7 +2985,10 @@ const chartSvgEl = document.getElementById("chartSvg");
 let trendsPromise = null;
 
 function loadTrends() {
-  if (!trendsPromise) trendsPromise = fetch(TRENDS_URL).then(r => r.json());
+  if (!trendsPromise) {
+    trendsPromise = fetch(TRENDS_URL).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .catch(err => { trendsPromise = null; throw err; });   // let a later call retry
+  }
   return trendsPromise;
 }
 
@@ -2943,10 +3011,11 @@ const TREND_SERIES = [
     tick: v => v.toFixed(1),
     note: "The average size of the residential systems connected in each month, as EMI publishes it "
         + "-- not the lifetime average of every install ever (much lower, held down by a "
-        + "decade of smaller systems). One month, July 2025, reads 17.1 kW against about 7.5 either "
-        + "side: EMI's own figure, but that month it also moved 1,869 connections into the "
-        + "residential segment while counting only 944 new installs, so it reflects a "
-        + "reclassification rather than a real jump in system size. Shown as published." },
+        + "decade of smaller systems). One month, July 2025, reads about 17 kW against about 7.5 either "
+        + "side: EMI's own figure, but that month it also moved nearly 1,900 connections into the "
+        + "residential segment while counting under 1,000 new installs, so it reflects a "
+        + "reclassification rather than a real jump in system size. Shown as published; months "
+        + "with no new residential systems to average are left blank." },
   { key: "battPct", label: "% of installs with a battery", color: "#38bdf8", axis: "right",
     dash: true, tick: v => `${Math.round(v)}%` },
 ];
@@ -2997,6 +3066,17 @@ chartLegendEl.addEventListener("click", e => {
   if (lastTrend) drawTrendChart(lastTrend.dates, lastTrend.series);
 });
 
+// The chart's drawing size follows the space it has (700 units wide on
+// desktop, down to 380 on a phone), so its 9.5-unit labels stay ~9px on
+// screen instead of being scaled down to ~4px in a narrow panel.
+function chartBox() {
+  const w = chartSvgEl.parentElement.clientWidth || 700;
+  const W = Math.round(Math.max(380, Math.min(700, w)));
+  const H = Math.round(W < 560 ? W * 0.62 : 320);
+  chartSvgEl.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  return { W, H };
+}
+
 function drawTrendChart(dates, series) {
   const values = trendValues(series);
   lastTrend = { dates, series, values };
@@ -3008,8 +3088,8 @@ function drawTrendChart(dates, series) {
 
   // Margins follow how many axes are actually on screen, so hiding a
   // line reclaims its tick column instead of leaving a gap.
-  const W = 700, H = 320, T = 14, B = 26;
-  const COL = 46;
+  const { W, H } = chartBox(), T = 14, B = 26;
+  const COL = W < 560 ? 38 : 46;
   const L = Math.max(14, lefts.length * COL);
   const R = rights.length ? 44 : 16;
   const x0 = L, x1 = W - R, y0 = T, y1 = H - B;
@@ -3018,7 +3098,7 @@ function drawTrendChart(dates, series) {
 
   // Each absolute series scales to its own maximum; the percentage is
   // always 0-100 so the axis doesn't rescale as regions change.
-  const maxOf = d => d.axis === "right" ? 100 : Math.max(...values[d.key], 1) * 1.08;
+  const maxOf = d => d.axis === "right" ? 100 : Math.max(...values[d.key].filter(v => v != null), 1) * 1.08;
   const yFor = d => {
     const max = maxOf(d);
     return v => y1 - Math.min(1, v / max) * (y1 - y0);
@@ -3048,9 +3128,16 @@ function drawTrendChart(dates, series) {
 
   const lines = visible.map(d => {
     const yFn = yFor(d);
-    const pts = values[d.key].map((v, i) => `${xAt(i).toFixed(1)},${yFn(v).toFixed(1)}`).join(" L");
+    // A blank month (e.g. no new residential systems to average) breaks
+    // the line rather than dropping it to zero.
+    let path = "", pen = false;
+    values[d.key].forEach((v, i) => {
+      if (v == null) { pen = false; return; }
+      path += `${pen ? "L" : "M"}${xAt(i).toFixed(1)},${yFn(v).toFixed(1)} `;
+      pen = true;
+    });
     const dash = d.dash ? ' stroke-dasharray="4,3"' : "";
-    return `<path d="M${pts}" fill="none" stroke="${seriesColor(d)}" stroke-width="${d.dash ? 1.6 : 2}"${dash}/>`;
+    return `<path d="${path}" fill="none" stroke="${seriesColor(d)}" stroke-width="${d.dash ? 1.6 : 2}"${dash}/>`;
   }).join("");
 
   chartSvgEl.innerHTML = grid + xLabels + lines;
@@ -3065,10 +3152,18 @@ function populateChartSelect(td, focus) {
     for (const r of regionData) {
       html += `<option value="council:${r.name}">${r.name} (region)</option>`;
     }
-  } else if (focus.level === "council") {
-    html += `<option value="council:${focus.name}" selected>${focus.name} (region)</option>`;
-    for (const net of (td.networksByCouncil[focus.name] || [])) {
-      html += `<option value="network:${net}">${net.split(" (")[0]} (network)</option>`;
+  } else if (focus.level === "council" || focus.level === "network") {
+    // A network keeps its parent region and sibling networks on offer,
+    // so re-rendering (tab switch, theme change) doesn't lose the pick.
+    const council = focus.level === "council" ? focus.name : focus.council;
+    html += `<option value="council:${council}"${focus.level === "council" ? " selected" : ""}>${council} (region)</option>`;
+    for (const net of (td.networksByCouncil[council] || [])) {
+      // Networks that no longer report any installs (Nelson Electricity's
+      // own patch went to 0 in 2026) would only offer a flat line.
+      const series = td.networks[net] && td.networks[net].installs;
+      if (!series || !series[series.length - 1]) continue;
+      const sel = focus.level === "network" && focus.key === net ? " selected" : "";
+      html += `<option value="network:${net}"${sel}>${net.split(" (")[0]} (network)</option>`;
     }
   }
   chartSelectEl.innerHTML = html;
@@ -3086,7 +3181,8 @@ function solarFocusFor(level, name, td) {
     if (data) return { level: "council", name, data };
   } else if (level === "network") {
     const snap = td.networkSnapshot && td.networkSnapshot[name];
-    if (snap) return { level: "network", name: name.split(" (")[0], data: snap };
+    const council = Object.keys(td.networksByCouncil || {}).find(c => td.networksByCouncil[c].includes(name));
+    if (snap) return { level: "network", name: `${name.split(" (")[0]} (network)`, key: name, council, data: snap };
   }
   return { level: "national", name: "New Zealand" };
 }
@@ -3106,7 +3202,7 @@ function renderChartSelection(td, value) {
 // the smaller categories necessarily read as thin bands -- that's the
 // real shape of the data, not a rendering fault.
 function drawEvStackedChart(dates, seriesByCategory) {
-  const W = 700, H = 320, L = 48, R = 20, T = 14, B = 26;
+  const { W, H } = chartBox(), L = 48, R = 20, T = 14, B = 26;
   const x0 = L, x1 = W - R, y0 = T, y1 = H - B;
   const n = dates.length;
   const xAt = i => x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0);
@@ -3206,7 +3302,7 @@ function renderEvChartLegend(level, name) {
   const snap = evSnapshotFor(level, name);
   chartLegendEl.innerHTML = EV_CHART_ORDER.map(cat => {
     const c = (snap && snap.categories && snap.categories[cat]) || {};
-    const pctText = c.pct != null ? `${c.pct.toFixed(1)}%` : "no data";
+    const pctText = c.pct != null ? `${pct1(c.pct)}%` : "no data";
     return `<span><i class="swatch" style="background:${EV_CATEGORY_COLORS[cat]}"></i>${cat}: <strong>${pctText}</strong></span>`;
   }).join("");
 }
@@ -3229,15 +3325,13 @@ function renderEvChartSelection() {
 // Both always have a full history, so the board never depends on when
 // the pipeline happened to run. Ranked by % by default -- on raw numbers
 // the biggest regions head the list just by being biggest:
-//   solar -- new installs as a share of ALL the region's electricity
-//            connections (homes and businesses), i.e. how much of the
-//            region went solar in the period; growth on its own installs
-//            would favour regions that start with very few
+//   solar -- EMI's count of new installs, as a share of the region's
+//            installs at the start of the period
 //   EVs   -- new EVs as a share of the region's EVs at the start
 let leaderboardSort = "pct";   // "pct" | "count"
 let leaderboardPeriod = 1;     // months
 const LB_SORTS = [
-  { key: "pct",   label: "%" },
+  { key: "pct",   label: "% growth" },
   { key: "count", label: "Number" },
 ];
 const LB_PERIODS = [
@@ -3257,11 +3351,17 @@ function periodLabel(months) {   // ["2026-06", ..., "2026-08"] -> "Jun–Aug 20
   return first.slice(-4) === last.slice(-4) ? `${first.slice(0, 3)}–${last}` : `${first} – ${last}`;
 }
 
-// All electricity connections (ICPs) per region, from EMI's uptake rate.
-function solarConnections() {
-  const m = {};
-  for (const r of regionData) if (r.totalIcps) m[r.name] = r.totalIcps;
-  return m;
+// New solar installs over the k months to `last`, and the installs the
+// region had before them. "New" is EMI's own count of connections that
+// gained solar each month; the month-on-month change in the total runs a
+// little lower (it's net of removals and connections moving between
+// regions), so it's only the fallback for months without that count.
+function solarAdded(s, last, k) {
+  const news = (s.newInstalls || []).slice(last - k + 1, last + 1);
+  const added = news.length === k && news.every(v => v != null)
+    ? news.reduce((a, b) => a + b, 0)
+    : s.installs[last] - s.installs[last - k];
+  return { added, base: s.installs[last - k] };
 }
 
 // {rows: [{name, change, changePct}], months: [...], unit} for the current
@@ -3282,10 +3382,10 @@ async function leaderboardData() {
   }
   const td = await loadTrends();
   if (!td || !td.dates || td.dates.length < 2) return null;
-  const last = td.dates.length - 1, n = Math.min(k, last), conns = solarConnections();
+  const last = td.dates.length - 1, n = Math.min(k, last);
   const rows = Object.entries(td.councils).map(([name, s]) => {
-    const change = s.installs[last] - s.installs[last - n];
-    return { name, change, changePct: conns[name] ? change / conns[name] * 100 : null };
+    const { added, base } = solarAdded(s, last, n);
+    return { name, change: added, changePct: base > 0 ? added / base * 100 : null };
   });
   return { rows, months: td.dates.slice(last - n + 1).map(d => d.slice(0, 7)), unit: "installs" };
 }
@@ -3306,23 +3406,20 @@ async function renderLeaderboard() {
   const toggle = (opts, cls, key, cur) => `<div class="lb-sort">` + opts.map(o =>
     `<button type="button" class="lb-sort-btn ${cls}${o[key] === cur ? " active" : ""}" data-${cls}="${o[key]}">${o.label}</button>`
   ).join("") + `</div>`;
-  const sorts = LB_SORTS.map(o => o.key === "pct" ? { ...o, label: DATASET === "ev" ? "% growth" : "% of connections" } : o);
   const bars = toggle(LB_PERIODS, "lb-period", "months", leaderboardPeriod) +
-               toggle(sorts, "lb-by", "key", leaderboardSort);
+               toggle(LB_SORTS, "lb-by", "key", leaderboardSort);
   const data = await leaderboardData();
   if (!data) {
     leaderboardViewEl.innerHTML = bars + `<div class="leaderboard-empty">Loading…</div>`;
     return;
   }
   const byPct = leaderboardSort === "pct";
-  const isEv = data.unit === "EVs", dp = isEv ? 1 : 2;
-  const heading = isEv
-    ? `${byPct ? "Fastest growth" : "Most new"} EVs, ${periodLabel(data.months)}`
-    : `${byPct ? "Fastest solar uptake" : "Most new solar installs"}, ${periodLabel(data.months)}`;
+  const isEv = data.unit === "EVs", dp = 1;
+  const heading = `${byPct ? "Fastest growth" : "Most new"} ${isEv ? "EVs" : "solar installs"}, ${periodLabel(data.months)}`;
   const rows = leaderboardRows(data.rows);
   const growthTitle = isEv
     ? "New EVs as a share of the region's EVs at the start of the period -- not its share of the fleet."
-    : "New installs as a share of all the region's electricity connections (homes and businesses).";
+    : "New installs as a share of the region's installs at the start of the period -- not its share of connections.";
   leaderboardViewEl.innerHTML = bars + `<div class="lb-month">${heading}${infoBtn("leaderboard")}</div>` +
     (rows.length ? `<div class="leaderboard-list">` + rows.map((r, i) =>
       `<div class="lb-row">` +
@@ -3517,21 +3614,24 @@ async function exportSolarTrend() {
   // not a snapshot of the current view.
   const hasMW = Array.isArray(s.mw);
   const hasResAvg = Array.isArray(s.resAvgNewKW);
+  const hasNew = Array.isArray(s.newInstalls);
   const rows = td.dates.map((d, i) => {
     const inst = s.installs[i], batt = s.battery[i];
     const row = [d, inst];
     if (hasMW) row.push(s.mw[i]);
-    if (hasResAvg) row.push(s.resAvgNewKW[i]);
+    if (hasResAvg) row.push(s.resAvgNewKW[i] != null ? s.resAvgNewKW[i] : "");
+    if (hasNew) row.push(s.newInstalls[i] != null ? s.newInstalls[i] : "");
     row.push(batt, inst ? (batt / inst * 100).toFixed(1) : "");
     return row;
   });
   const headers = ["Month end", "Solar installs"];
   if (hasMW) headers.push("Total capacity (MW)");
   if (hasResAvg) headers.push("Avg. new residential system (kW)");
+  if (hasNew) headers.push("New installs that month");
   headers.push("Installs with battery", "% with battery");
   return downloadCSV(
     ["nz-solar", level === "national" ? "new-zealand" : name, "monthly"],
-    headers, rows, sourceNote(),
+    headers, rows, sourceNote(td.dates[td.dates.length - 1]),
   );
 }
 
@@ -3554,14 +3654,13 @@ async function exportLeaderboard() {
   const data = await leaderboardData();
   const isEv = DATASET === "ev";
   const rows = data ? leaderboardRows(data.rows).map((r, i) => [i + 1, r.name, r.change,
-    r.changePct != null ? r.changePct.toFixed(isEv ? 1 : 3) : ""]) : [];
+    r.changePct != null ? r.changePct.toFixed(1) : ""]) : [];
   if (!rows.length) return false;
   return downloadCSV(
     ["nz", isEv ? "ev" : "solar", "leaderboard", `${data.months[0]}-to-${data.months[data.months.length - 1]}`],
-    ["Rank", "Region", isEv ? "New EVs" : "New solar installs", isEv ? "Growth %" : "% of connections"], rows,
-    `${sourceNote()} Period: ${periodLabel(data.months)}. ` + (isEv
-      ? "Growth % is against the region's own EV count at the start of the period."
-      : "% of connections is new installs as a share of all the region's electricity connections (homes and businesses)."),
+    ["Rank", "Region", isEv ? "New EVs" : "New solar installs", "Growth %"], rows,
+    `${sourceNote(data.months[data.months.length - 1])} Period: ${periodLabel(data.months)}. Growth % is against the region's own ` +
+      (isEv ? "EV count" : "solar install count") + " at the start of the period.",
   );
 }
 
@@ -3710,6 +3809,31 @@ async function applyFocusFromMap(level, name) {
   }
 }
 
+// Marks stat segments that begin a new line when the topbar wraps, so
+// their leading "|" can be hidden (see .wrap-start). Re-run whenever the
+// topbar re-renders or the window changes width.
+function markWrapStarts() {
+  topbarStatsEl.querySelectorAll(".stat-line").forEach(line => {
+    let prevTop = null;
+    line.querySelectorAll(":scope > .stat-seg").forEach(seg => {
+      seg.classList.remove("wrap-start");
+      const top = seg.offsetTop;
+      if (prevTop != null && top > prevTop + 2) seg.classList.add("wrap-start");
+      prevTop = top;
+    });
+  });
+}
+new MutationObserver(markWrapStarts).observe(topbarStatsEl, { childList: true });
+window.addEventListener("resize", markWrapStarts);
+// Redraw an open chart at its new size (see chartBox), once resizing stops.
+let chartResizeTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(chartResizeTimer);
+  chartResizeTimer = setTimeout(() => {
+    if (topbarEl.classList.contains("expanded") && chartMode === "trend") renderFocusChart();
+  }, 200);
+});
+
 topbarStatsEl.addEventListener("click", e => {
   if (e.target.closest("#chartToggleBtn")) { toggleChartPanel(); return; }
   const chip = e.target.closest(".point-chip");
@@ -3792,11 +3916,14 @@ async function awardsData(dataset, mode) {
       .map(r => ({ name: r.name, pct: r.ev / r.total * 100, detail: `${fmt(r.ev)} of ${fmt(r.total)}`, n: r.ev }))
       .sort((a, b) => b.pct - a.pct || b.n - a.n);
     return {
-      title: "EV Leaderboard", kicker: `As at ${asAtText(evUpdated)}`,
+      // The register is published a few days into the month with data
+      // to the end of the last one, so the "as at" is that month's end.
+      title: "EV Leaderboard", kicker: evRecent && evRecent.months
+        ? `As at end of ${periodLabel([evRecent.months[evRecent.months.length - 1]])}` : `As at ${asAtText(evUpdated)}`,
       total: evNational.ev, countLabel: "electric vehicles on NZ roads",
       sub: `That's ${(evNational.ev / evNational.total * 100).toFixed(1)}% of all ${fmt(evNational.total)} registered vehicles.`,
       section: "Highest share of vehicles that are electric", ranked, unranked: [],
-      note: "Share of all registered vehicles in each region (excluding trailers and caravans) that are electric. Source: NZTA Motor Vehicle Register.",
+      note: "Share of all registered vehicles in each region (excluding trailers, caravans and forklifts) that are electric. Source: NZTA Motor Vehicle Register.",
     };
   }
   if (dataset === "ev") {
@@ -3813,9 +3940,9 @@ async function awardsData(dataset, mode) {
     const unranked = rows.filter(r => r.base < AWARDS_MIN_NEW);
     return {
       title: "EV Leaderboard", kicker: monthName, total, countLabel: `new electric vehicles on NZ roads in ${monthOnly}`,
-      sub: `That's ${(all ? total / all * 100 : 0).toFixed(1)}% of all ${fmt(all)} vehicles newly registered in ${monthName}.`,
+      sub: `That's ${(all ? total / all * 100 : 0).toFixed(1)}% of all ${fmt(all)} vehicles first registered in NZ in ${monthName}, including used imports.`,
       section: `Top regions for EV adoption in ${monthName}`, ranked, unranked,
-      note: "Share of each region's newly registered vehicles (excluding trailers) that were electric, by month of first NZ " +
+      note: "Share of each region's newly registered vehicles (excluding trailers and forklifts) that were electric, by month of first NZ " +
         "registration, including used imports. Source: NZTA Motor Vehicle Register." +
         (unranked.length ? ` Regions with fewer than ${AWARDS_MIN_NEW} new vehicles that month aren't ranked.` : ""),
     };
@@ -3837,24 +3964,20 @@ async function awardsData(dataset, mode) {
   if (!td || !td.dates || td.dates.length < 2) return null;
   const last = td.dates.length - 1, monthName = periodLabel([td.dates[last].slice(0, 7)]);
   const monthOnly = MONTHS_FULL[+td.dates[last].slice(5, 7) - 1];
-  const natNew = td.national.installs[last] - td.national.installs[last - 1];
-  const conns = solarConnections(), natConns = metaNational && metaNational.totalIcps;
-  // % = new installs / all the region's electricity connections, so a
-  // region with few systems to start with can't top the board on a
-  // handful of installs.
+  const nat = solarAdded(td.national, last, 1);
   const ranked = Object.entries(td.councils).map(([name, sr]) => {
-    const added = sr.installs[last] - sr.installs[last - 1];
-    return { name, pct: conns[name] ? added / conns[name] * 100 : null, detail: `+${fmt(added)} installs`, n: added };
+    const { added, base } = solarAdded(sr, last, 1);
+    return { name, pct: base > 0 ? added / base * 100 : null, detail: `+${fmt(added)} install${added === 1 ? "" : "s"}`, n: added };
   }).filter(r => r.n > 0 && r.pct != null).sort((a, b) => b.pct - a.pct || b.n - a.n);
   return {
-    title: "Solar Leaderboard", kicker: `${monthName} · latest month published`, total: natNew, dp: 2,
+    title: "Solar Leaderboard", kicker: `${monthName} · latest month published`, total: nat.added,
     countLabel: `new solar installs in ${monthOnly}`,
-    sub: natConns ? `That's ${(natNew / natConns * 100).toFixed(2)}% of all homes and businesses in NZ in one month — ${fmt(td.national.installs[last])} have solar now.`
-                  : `${fmt(td.national.installs[last])} homes and businesses have solar now.`,
-    section: `Top regions for new solar in ${monthName}`, ranked, unranked: [],
-    note: "New solar installs in each region that month as a share of all its electricity connections (homes and businesses), " +
-      "so big and small regions compare fairly. Source: the Electricity Authority's monthly install counts (EMI). Installs are " +
-      "registered a few weeks after they're fitted, so EMI publishes each month a few weeks after it ends; this updates the day it does.",
+    sub: `${nat.base ? `Up ${(nat.added / nat.base * 100).toFixed(1)}% in a month — ` : ""}` +
+      `${fmt(td.national.installs[last])} homes and businesses had solar by the end of ${monthOnly}.`,
+    section: `Fastest-growing regions for solar in ${monthName}`, ranked, unranked: [],
+    note: "Growth in each region's solar over the month: new installs (the Electricity Authority's own monthly count, EMI) as a " +
+      "share of the installs the region already had. Installs are registered a few weeks after they're fitted, so EMI " +
+      "publishes each month a few weeks after it ends; this updates the day it does.",
   };
 }
 
