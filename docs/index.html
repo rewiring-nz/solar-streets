@@ -1530,14 +1530,14 @@ const INFO = {
     const sf = r.solarFarms ? ` It also leaves out ${fmt(r.solarFarms)} grid-scale solar farm${r.solarFarms === 1 ? "" : "s"} here.` : "";
     return {
       title: "Farms with solar (estimate)",
-      body: `About ${fmt(r.farmEst || 0)} of ${where}'s business solar installs are probably on farms. ` +
+      body: `${r.farmEst != null && r.farmEst < 10 ? "Fewer than 10" : `About ${farmRound(r.farmEst || 0)}`} of ${where}'s business solar installs are probably on farms. ` +
         `The Electricity Authority doesn't publish a farm figure, so this is our estimate.`,
       more: [
         "We look along every road outside towns that has business solar, using land cover from Manaaki Whenua and businesses mapped in OpenStreetMap:",
         "<b>Likely a farm</b> — mostly farmland along the road, and no other kind of business on it.",
         "<b>Likely not</b> — a school, marae, church, shop, café, accommodation or industry right on a short road, or mostly forest, scrub or built-up land.",
         "<b>Uncertain</b> — usually a long farming road with a hall, church or school somewhere along it. These count as part-farm: the more farms a road that long would have compared with the other businesses on it, the more it counts.",
-        r.farmLow != null ? `If typical rural roads have half or twice as many farms as the national average, the estimate moves to ${fmt(r.farmLow)}–${fmt(r.farmHigh)}. Roads can also be misjudged — OpenStreetMap misses some rural businesses — so treat it as a guide, not a count.` : "",
+        r.farmLow != null ? `If typical rural roads have half or twice as many farms as the national average, the estimate moves to ${r.farmHigh < 10 ? "under 10" : r.farmLow < 10 ? `up to ${farmRound(r.farmHigh)}` : `${farmRound(r.farmLow)}–${farmRound(r.farmHigh)}`}. Roads can also be misjudged — OpenStreetMap misses some rural businesses — so treat it as a guide, not a count.` : "",
         `Not counted: solar on farmhouses, which the Electricity Authority classes as homes — so the number of farms with any solar is probably higher.${sf}`,
         "On the street map, click a green dot to see how that road was judged.",
       ].filter(Boolean).map(t => `<p>${t}</p>`).join(""),
@@ -2419,11 +2419,21 @@ function segPct(v) {
 // "1 tractor", "2 tractors" (category names are plural: Cars, Utes, ...).
 function catWord(cat, n) { const w = cat.toLowerCase(); return n === 1 ? w.replace(/s$/, "") : w; }
 
+// The farm figure is an estimate, so it's shown rounded rather than to
+// the unit: nearest 100 from 1,000 up, nearest 10 below that, and
+// "under 10" for the smallest regions. The CSV keeps the unrounded value.
+function farmRound(n) {
+  if (n == null) return "";
+  if (n < 10) return "under 10";
+  return fmt(Math.round(n / (n >= 1000 ? 100 : 10)) * (n >= 1000 ? 100 : 10));
+}
+
 // The farm figure: one central number, its range and method a click away
 // (see INFO.farms and estimate_farms in process.py).
 function farmHTML(row, scope) {
   if (row.farmEst == null) return "";
-  return infoTerm("farms", `~${fmt(row.farmEst)} farms`, { scope: scope || "New Zealand" });
+  const n = farmRound(row.farmEst);
+  return infoTerm("farms", n === "under 10" ? "under 10 farms" : `~${n} farms`, { scope: scope || "New Zealand" });
 }
 
 function segmentLineHTML(row) {
@@ -3970,7 +3980,10 @@ async function awardsData(dataset, mode) {
     return { name, pct: base > 0 ? added / base * 100 : null, detail: `+${fmt(added)} install${added === 1 ? "" : "s"}`, n: added };
   }).filter(r => r.n > 0 && r.pct != null).sort((a, b) => b.pct - a.pct || b.n - a.n);
   return {
-    title: "Solar Leaderboard", kicker: `${monthName} · latest month published`, total: nat.added,
+    // "Latest month published" is true in the popup, which is always
+    // current, but not in a downloaded video still being shared next
+    // month -- the video says only which month it is.
+    title: "Solar Leaderboard", kicker: `${monthName} · latest month published`, shareKicker: monthName, total: nat.added,
     countLabel: `new solar installs in ${monthOnly}`,
     sub: `${nat.base ? `Up ${(nat.added / nat.base * 100).toFixed(1)}% in a month — ` : ""}` +
       `${fmt(td.national.installs[last])} homes and businesses had solar by the end of ${monthOnly}.`,
@@ -4316,7 +4329,7 @@ function shareScene(ctx, W, d, dataset) {
 
     // Header
     text(`🏆  ${dataset === "ev" ? "ELECTRIC VEHICLE" : "SOLAR"} LEADERBOARD`, W / 2, X(300), FONT(800, 40), TEXT);
-    text(d.kicker.toUpperCase(), W / 2, X(362), FONT(700, 32), accent);
+    text((d.shareKicker || d.kicker).toUpperCase(), W / 2, X(362), FONT(700, 32), accent);
 
     // Big count
     const v = d.total * ease4((t - T.count0) / (T.count1 - T.count0));
