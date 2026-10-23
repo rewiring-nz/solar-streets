@@ -1081,13 +1081,17 @@ const pointCatOn = { res: true, bus: true, ruralBus: true, grid: true };
 
 // Colour by the most specific category the street falls into, so the
 // classification is visible on the map rather than only in the totals.
-const POINT_COLOR = [
-  "case",
-  ["==", ["get", "grid"], 1], SOLAR_FARM_COLOR,
-  ["all", [">", ["get", "bus"], 0], ["==", ["get", "rural"], 1]], "#4ade80",
-  [">", ["get", "bus"], 0], "#c084fc",
-  DOT_COLOR,
-];
+// Only switched-on categories compete: a mixed homes-and-business street
+// left visible by a homes-only filter is there as homes, so it should
+// look like it rather than wearing the colour of a category that's off.
+const POINT_COLOR_ORDER = ["grid", "ruralBus", "bus", "res"];   // most specific first
+function pointColor() {
+  const on = POINT_COLOR_ORDER.map(k => POINT_CATS.find(c => c.key === k))
+    .filter(c => pointCatOn[c.key]);
+  if (on.length <= 1) return (on[0] || POINT_CATS[0]).color;
+  const last = on.pop();
+  return ["case", ...on.flatMap(c => [c.filter, c.color]), last.color];
+}
 
 function pointFilter() {
   const on = POINT_CATS.filter(c => pointCatOn[c.key]);
@@ -1105,6 +1109,9 @@ function applyPointFilter() {
   // filter with "not already drawn as individual installs" -- both write
   // the same layer, so only one of them may own it.
   if (map.getLayer("street-points")) map.setFilter("street-points", f);
+  ["street-points", "spider-nodes"].forEach(id => {
+    if (map.getLayer(id)) map.setPaintProperty(id, "circle-color", pointColor());
+  });
   refreshInstallDots();
   renderPointFilterChips();
 }
@@ -1336,7 +1343,7 @@ function addLayers(data) {
         9,  ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 5.2, 5, 10,  15, 16],
         14, ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 9,   5, 16,  15, 30]
       ],
-      "circle-color": POINT_COLOR,
+      "circle-color": pointColor(),
       "circle-opacity": ["interpolate", ["linear"], ["zoom"], 4, 0.7, 10, 0.9],
       "circle-stroke-width": 1,
       "circle-stroke-color": "rgba(0,0,0,.85)",
@@ -1376,7 +1383,7 @@ function addLayers(data) {
     id: "spider-nodes", type: "circle", source: "spider-nodes",
     paint: {
       "circle-radius": ["interpolate", ["linear"], ["sqrt", ["get", "icps"]], 0, 10, 5, 16, 15, 30],
-      "circle-color": DOT_COLOR, "circle-opacity": .95,
+      "circle-color": pointColor(), "circle-opacity": .95,
       "circle-stroke-width": 1.5, "circle-stroke-color": "rgba(0,0,0,.85)"
     }
   });
