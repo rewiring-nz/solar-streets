@@ -322,6 +322,17 @@ snapshot) or are on the road (total mode). The solar podium shows how many
 of each leader's new installs came with a battery (`trends.json` →
 `newBattery`, EMI's own count of new solar-with-battery connections).
 
+**Street-dot video** (⇩ Video in the solar topbar, Show Streets mode):
+exports the current view as a portrait 1080×1920 MP4. A hidden second
+map the size of a phone screen (360×640 at 3×) is fitted to the same
+area and captured as the background (satellite only); every street dot
+in that frame is then drawn over it with the main map's own colours,
+sizes (`dotRadiusAt` mirrors the `street-points` radius expression) and
+category filters, popping in in a seeded random order with the rate
+easing in and out. A legend and the link fade in once it has filled;
+the imagery credit stays on throughout. It shares `encodeVideo` with
+the leaderboard clips.
+
 **Share downloads** (Video / GIF, top right of the popup): the popup is
 DOM and can't be recorded, so `shareScene()` redraws the same sequence
 frame by frame on a canvas — portrait 9:16 for Reels, Stories and TikTok,

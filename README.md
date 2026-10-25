@@ -33,6 +33,10 @@ Stats NZ boundaries ────┘    (weekly, in       (static files,         
                               GitHub Actions)    served by Pages)
 ```
 
+Share videos: the 🏆 leaderboard has Video / GIF downloads, and in Show
+Streets mode the topbar's **⇩ Video** button exports the current view as
+a portrait clip of its solar dots popping in (Reels, Stories, TikTok).
+
 For where every figure comes from, what's measured versus estimated, and
 the reliability guards the pipeline runs under, see
 [ARCHITECTURE.md](ARCHITECTURE.md).
