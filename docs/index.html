@@ -4766,8 +4766,11 @@ function dotsScene(ctx, snap) {
     ctx.fillStyle = g; ctx.fillRect(0, Math.min(y0, y1), W, Math.abs(y1 - y0));
   };
   const credit = ((map.getStyle().sources.sat || {}).attribution || "").replace(/<[^>]+>/g, "");
+  // The date of the data itself: when EMI published the street file this
+  // was built from (meta.updated, its Last-Modified -- see fetch_data_date
+  // in process.py), never the day the video is made.
   const d0 = metaUpdated;
-  const asAt = d0 ? `Data as at ${d0.getUTCDate()} ${MONTHS_FULL[d0.getUTCMonth()]} ${d0.getUTCFullYear()}` : "";
+  const asAt = d0 ? `Electricity Authority data as at ${d0.getUTCDate()} ${MONTHS_FULL[d0.getUTCMonth()]} ${d0.getUTCFullYear()}` : "";
 
   // Counter laid out once for its final value: the label stays put and
   // the number grows from a fixed point on a fixed digit grid, so nothing
