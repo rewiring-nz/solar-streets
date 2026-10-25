@@ -323,9 +323,14 @@ of each leader's new installs came with a battery (`trends.json` →
 `newBattery`, EMI's own count of new solar-with-battery connections).
 
 **Street-dot video** (⇩ Video in the solar topbar, Show Streets mode):
-exports the current view as a portrait 1080×1920 MP4. A hidden second
-map the size of a phone screen (360×640 at 3×) is fitted to the same
-area and captured as the background (satellite only); every street dot
+exports the current view as an MP4 in one of three formats
+(`DOTS_FORMATS`): phone portrait 1080×1920, widescreen HD 1920×1080 or
+widescreen 4K 3840×2160. A hidden second map laid out like a screen of
+that shape (360×640 at 3×, or 960×540 at 2× / 4×) is fitted to the same
+area and captured as the background (satellite only). Its imagery
+source declares tiles smaller than they are (128 or 64 px), so the map
+fetches them one or two zoom levels deeper and the imagery stays sharp
+at full output resolution instead of being stretched. Every street dot
 in that frame is then drawn over it with the main map's own colours,
 sizes (`dotRadiusAt` mirrors the `street-points` radius expression) and
 category filters, popping in in a seeded random order with the rate

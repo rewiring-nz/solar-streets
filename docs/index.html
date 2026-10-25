@@ -257,6 +257,18 @@
   }
   .point-chip:hover { background: var(--hover-hi); }
   .dots-video-btn:disabled { cursor: progress; opacity: .8; }
+  .dots-video-menu {
+    position: fixed; z-index: 60; display: flex; flex-direction: column; gap: 2px; padding: 6px; min-width: 200px;
+    background: var(--glass); backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 8px 32px var(--shadow);
+  }
+  .dots-video-menu-title { font-size: 10.5px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: .04em; padding: 4px 8px 2px; }
+  .dots-video-menu button {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px; border: none; background: none;
+    color: var(--text); font: inherit; font-size: 12px; font-weight: 600; text-align: left; padding: 7px 8px; border-radius: 7px; cursor: pointer;
+  }
+  .dots-video-menu button:hover { background: var(--hover); }
+  .dots-video-menu small { color: var(--dim); font-weight: 500; font-size: 10.5px; }
   /* Switched-off categories stay listed so it is obvious they exist
      and what colour they are on the map. */
   .point-chip.off { opacity: .45; text-decoration: line-through; }
@@ -3881,7 +3893,8 @@ window.addEventListener("resize", () => {
 });
 
 topbarStatsEl.addEventListener("click", e => {
-  if (e.target.closest("#dotsVideoBtn")) { runDotsVideo(); return; }
+  const dotsBtn = e.target.closest("#dotsVideoBtn");
+  if (dotsBtn) { if (!dotsVideoBusy) openDotsMenu(dotsBtn); return; }
   if (e.target.closest("#chartToggleBtn")) { toggleChartPanel(); return; }
   const chip = e.target.closest(".point-chip");
   if (chip) {
@@ -4525,19 +4538,23 @@ async function makeShareVideo(onProgress) {
 // as an MP4: frame by frame through the browser's H.264 encoder where it
 // has one, otherwise by recording the canvas in real time (MP4 where the
 // browser can, WebM otherwise). progress(t) gets each frame's time.
-async function encodeVideo(canvas, frameAt, progress) {
+async function encodeVideo(canvas, frameAt, progress, bitrate = 6e6) {
   const W = canvas.width, H = canvas.height;
   if (window.VideoEncoder && window.VideoFrame) {
     const { Muxer, ArrayBufferTarget } = await import("https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.2/build/mp4-muxer.mjs");
+    // H.264 level 4.0 tops out around 1080p; 4K needs level 5.1/5.2.
+    const codecs = W * H > 2228224
+      ? ["avc1.640033", "avc1.4d0033", "avc1.640034", "avc1.4d0034"]
+      : ["avc1.640028", "avc1.4d0028", "avc1.42E028"];
     let codec = null;
-    for (const c of ["avc1.640028", "avc1.4d0028", "avc1.42E028"]) {
-      try { if ((await VideoEncoder.isConfigSupported({ codec: c, width: W, height: H, bitrate: 6e6, framerate: SHARE_FPS })).supported) { codec = c; break; } } catch (_) {}
+    for (const c of codecs) {
+      try { if ((await VideoEncoder.isConfigSupported({ codec: c, width: W, height: H, bitrate, framerate: SHARE_FPS })).supported) { codec = c; break; } } catch (_) {}
     }
     if (codec) {
       const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width: W, height: H }, fastStart: "in-memory" });
       let failure = null;
       const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { failure = e; } });
-      enc.configure({ codec, width: W, height: H, bitrate: 6e6, framerate: SHARE_FPS });
+      enc.configure({ codec, width: W, height: H, bitrate, framerate: SHARE_FPS });
       for (let i = 0, last = false; !last; i++) {
         const f = frameAt(i); last = f.last;
         const vf = new VideoFrame(canvas, { timestamp: Math.round(i * 1e6 / SHARE_FPS), duration: Math.round(1e6 / SHARE_FPS) });
@@ -4553,7 +4570,7 @@ async function encodeVideo(canvas, frameAt, progress) {
   // WebM otherwise).
   const mime = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(m => window.MediaRecorder && MediaRecorder.isTypeSupported(m));
   if (!mime) throw new Error("This browser can't make videos");
-  const rec = new MediaRecorder(canvas.captureStream(SHARE_FPS), { mimeType: mime, videoBitsPerSecond: 6e6 });
+  const rec = new MediaRecorder(canvas.captureStream(SHARE_FPS), { mimeType: mime, videoBitsPerSecond: bitrate });
   const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
   const stopped = new Promise(r => { rec.onstop = r; });
   rec.start();
@@ -4605,13 +4622,20 @@ function wireShareButton(id, make, label) {
 wireShareButton("awardsVideo", makeShareVideo, "&#8681; Video");
 
 /* ---- Street-dot animation video ----
-   The current map view as a portrait clip: the satellite map on its own,
-   then every solar street dot in view popping in, in random order, until
-   the view is filled in. The map image comes from a second, hidden map
-   the size of a phone screen (360 x 640 at 3x = 1080 x 1920) fitted to
-   the same area; the dots are drawn over it frame by frame with the main
-   map's own colours, sizes and category filters. */
-const DOTS_W = 1080, DOTS_H = 1920, DOTS_PR = 3, DOTS_HOLD_MS = 2500;
+   The current map view as a clip: the satellite map on its own, then
+   every solar street dot in view popping in, in random order, until the
+   view is filled in. Three formats (DOTS_FORMATS): portrait for phones,
+   widescreen HD and 4K. The map image comes from a second, hidden map
+   laid out like a screen of that shape (a 360-wide phone or a 960-wide
+   desktop) and rendered at the output resolution, fitted to the same
+   area; the dots are drawn over it frame by frame with the main map's
+   own colours, sizes and category filters. */
+const DOTS_HOLD_MS = 2500;
+const DOTS_FORMATS = {
+  portrait: { W: 1080, H: 1920, pr: 3, bitrate: 12e6, label: "Phone · portrait", size: "1080×1920" },
+  hd:       { W: 1920, H: 1080, pr: 2, bitrate: 14e6, label: "Widescreen HD",    size: "1920×1080" },
+  uhd:      { W: 3840, H: 2160, pr: 4, bitrate: 40e6, label: "Widescreen 4K",    size: "3840×2160" },
+};
 
 function dotsVideoLabel() { return dotsVideoText || "&#8681; Video"; }
 function setDotsVideoText(text) {
@@ -4644,26 +4668,31 @@ function dotColorFor(p) {
   return k ? POINT_CATS.find(c => c.key === k).color : null;
 }
 
-// The satellite map for `bounds` at phone size, plus every visible dot's
-// position and size on it.
-async function dotsSnapshot(bounds) {
+// The satellite map for `bounds` in format `fmt`, plus every visible
+// dot's position and size on it.
+async function dotsSnapshot(bounds, fmt) {
+  const { W, H, pr } = fmt;
   const el = document.createElement("div");
-  el.style.cssText = `position:fixed;left:-10000px;top:0;width:${DOTS_W / DOTS_PR}px;height:${DOTS_H / DOTS_PR}px;`;
+  el.style.cssText = `position:fixed;left:-20000px;top:0;width:${W / pr}px;height:${H / pr}px;`;
   document.body.appendChild(el);
-  const sat = map.getStyle().sources.sat;
+  // Imagery tiles are picked for the layout size, so at 2-4x output they
+  // would be stretched and soft. Declaring the tiles smaller than they
+  // are makes the map fetch them one or two zoom levels deeper, so there
+  // are at least as many imagery pixels as output pixels.
+  const sat = { ...map.getStyle().sources.sat, tileSize: 256 / Math.pow(2, Math.ceil(Math.log2(pr))) };
   const m = new maplibregl.Map({
-    container: el, interactive: false, attributionControl: false, fadeDuration: 0, pixelRatio: DOTS_PR,
+    container: el, interactive: false, attributionControl: false, fadeDuration: 0, pixelRatio: pr,
     preserveDrawingBuffer: true, canvasContextAttributes: { preserveDrawingBuffer: true },
     style: { version: 8, sources: { sat }, layers: [{ id: "sat", type: "raster", source: "sat" }] },
   });
   try {
     await new Promise(r => m.once("load", r));
     m.fitBounds(bounds, { animate: false, padding: 0 });
-    // Every tile in, or give up waiting after 30 s and use what's there.
-    await new Promise(r => { const to = setTimeout(r, 30000); m.once("idle", () => { clearTimeout(to); r(); }); });
+    // Every tile in, or give up waiting after 45 s and use what's there.
+    await new Promise(r => { const to = setTimeout(r, 45000); m.once("idle", () => { clearTimeout(to); r(); }); });
     const image = document.createElement("canvas");
-    image.width = DOTS_W; image.height = DOTS_H;
-    image.getContext("2d").drawImage(m.getCanvas(), 0, 0, DOTS_W, DOTS_H);
+    image.width = W; image.height = H;
+    image.getContext("2d").drawImage(m.getCanvas(), 0, 0, W, H);
 
     const zoom = m.getZoom(), view = m.getBounds();
     const pad = (view.getEast() - view.getWest()) * 0.03;
@@ -4674,11 +4703,11 @@ async function dotsSnapshot(bounds) {
       const c = dotColorFor(f.properties);
       if (!c) continue;
       const pt = m.project([lng, lat]);
-      dots.push({ x: pt.x * DOTS_PR, y: pt.y * DOTS_PR, r: dotRadiusAt(zoom, f.properties.icps) * DOTS_PR, c });
+      dots.push({ x: pt.x * pr, y: pt.y * pr, r: dotRadiusAt(zoom, f.properties.icps) * pr, c });
       present.add(c);
     }
     const opacity = Math.min(0.9, Math.max(0.7, 0.7 + (zoom - 4) / 6 * 0.2));   // the layer's circle-opacity
-    return { image, dots, opacity, legend: POINT_CATS.filter(c => present.has(c.color)) };
+    return { image, dots, opacity, legend: POINT_CATS.filter(c => present.has(c.color)), fmt };
   } finally {
     m.remove(); el.remove();
   }
@@ -4688,6 +4717,8 @@ async function dotsSnapshot(bounds) {
 // in at random -- slowly, then in a rush, then the last few -- and a
 // short hold with a small legend and the link.
 function dotsScene(ctx, snap) {
+  const { W, H, pr } = snap.fmt, portrait = H > W;
+  const u = Math.min(W, H) / 1080;   // text and spacing scale with the frame
   const rnd = seededRandom(20261026), dots = snap.dots.slice();
   for (let i = dots.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [dots[i], dots[j]] = [dots[j], dots[i]]; }
   const N = dots.length, T0 = 1200, POP = 320;
@@ -4697,80 +4728,111 @@ function dotsScene(ctx, snap) {
   const inv = y => 0.5 - Math.sin(Math.asin(1 - 2 * y) / 3);
   dots.forEach((d, k) => { d.t = T0 + D * inv((k + 0.5) / N); });
   const END = T0 + D + POP;
+  // Legend and link: above the bottom area Reels/Stories cover on a
+  // phone; near the bottom edge in widescreen.
+  const LEG_Y = portrait ? H - 332 * u : H - 150 * u, URL_Y = LEG_Y + (portrait ? 60 : 64) * u;
 
   const settled = document.createElement("canvas");
-  settled.width = DOTS_W; settled.height = DOTS_H;
+  settled.width = W; settled.height = H;
   const sctx = settled.getContext("2d");
   let done = 0;   // dots[0..done) are drawn on `settled`
   const dot = (g, d, scale, alpha) => {
-    const r = d.r * scale, sw = DOTS_PR;
+    const r = d.r * scale, sw = pr;
     g.globalAlpha = snap.opacity * alpha; g.fillStyle = d.c;
     g.beginPath(); g.arc(d.x, d.y, r, 0, 6.283); g.fill();
     g.globalAlpha = 0.85 * alpha; g.strokeStyle = "#000"; g.lineWidth = sw;
     g.beginPath(); g.arc(d.x, d.y, r + sw / 2, 0, 6.283); g.stroke();
     g.globalAlpha = 1;
   };
-  const back = u => { const c = 2.2; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); };
-  const FONT = (w, px) => `${w} ${px}px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
+  const back = x => { const c = 2.2; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  const FONT = (w, px) => `${w} ${px * u}px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
   const shadowText = (str, x, y, font, colour, align, alpha) => {
     ctx.save(); ctx.globalAlpha = alpha; ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
-    ctx.shadowColor = "rgba(0,0,0,.75)"; ctx.shadowBlur = 12; ctx.fillStyle = colour; ctx.fillText(str, x, y); ctx.restore();
+    ctx.shadowColor = "rgba(0,0,0,.75)"; ctx.shadowBlur = 12 * u; ctx.fillStyle = colour; ctx.fillText(str, x, y); ctx.restore();
   };
+  const credit = ((map.getStyle().sources.sat || {}).attribution || "").replace(/<[^>]+>/g, "");
 
   function draw(t) {
     ctx.drawImage(snap.image, 0, 0);
     while (done < N && dots[done].t + POP <= t) dot(sctx, dots[done++], 1, 1);
     ctx.drawImage(settled, 0, 0);
     for (let k = done; k < N && dots[k].t <= t; k++) {
-      const u = (t - dots[k].t) / POP;
-      dot(ctx, dots[k], Math.max(0, back(u)), Math.min(1, u * 3));
+      const x = (t - dots[k].t) / POP;
+      dot(ctx, dots[k], Math.max(0, back(x)), Math.min(1, x * 3));
     }
-    // Legend and link once the view has filled in; the imagery credit
-    // the tile provider requires stays on throughout.
+    // Legend and link once the view has filled in, over a soft band so
+    // they read over dense dots; the imagery credit the tile provider
+    // requires stays on throughout.
     const a = Math.min(1, Math.max(0, (t - END) / 500));
     if (a > 0) {
-      const g = ctx.createLinearGradient(0, 1480, 0, 1740);   // a soft band so the text reads over dense dots
+      const top = LEG_Y - 110 * u, bottom = portrait ? URL_Y + 70 * u : H;
+      const g = ctx.createLinearGradient(0, top, 0, bottom);
       g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.45, `rgba(0,0,0,${0.55 * a})`); g.addColorStop(1, `rgba(0,0,0,${0.55 * a})`);
-      ctx.fillStyle = g; ctx.fillRect(0, 1480, DOTS_W, 260);
+      ctx.fillStyle = g; ctx.fillRect(0, top, W, bottom - top);
       ctx.font = FONT(700, 34);
-      const items = snap.legend.map(c => ({ c, w: 30 + ctx.measureText(c.label).width }));
-      const total = items.reduce((s, it) => s + it.w, 0) + 36 * Math.max(0, items.length - 1);
-      let x = DOTS_W / 2 - total / 2;
+      const items = snap.legend.map(c => ({ c, w: 30 * u + ctx.measureText(c.label).width }));
+      const total = items.reduce((s, it) => s + it.w, 0) + 36 * u * Math.max(0, items.length - 1);
+      let x = W / 2 - total / 2;
       for (const it of items) {
-        ctx.globalAlpha = a; ctx.fillStyle = it.c.color; ctx.strokeStyle = "#000"; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.arc(x + 11, 1588, 11, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
-        shadowText(it.c.label, x + 30, 1600, FONT(700, 34), "#fff", "left", a);
-        x += it.w + 36;
+        ctx.globalAlpha = a; ctx.fillStyle = it.c.color; ctx.strokeStyle = "#000"; ctx.lineWidth = 3 * u;
+        ctx.beginPath(); ctx.arc(x + 11 * u, LEG_Y - 12 * u, 11 * u, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
+        shadowText(it.c.label, x + 30 * u, LEG_Y, FONT(700, 34), "#fff", "left", a);
+        x += it.w + 36 * u;
       }
-      shadowText("Solar installs · " + SHARE_URL_TEXT, DOTS_W / 2, 1660, FONT(800, 40), "#fff", "center", a);
+      shadowText("Solar installs · " + SHARE_URL_TEXT, W / 2, URL_Y, FONT(800, 40), "#fff", "center", a);
     }
-    const credit = (map.getStyle().sources.sat || {}).attribution || "";
-    if (credit) shadowText(credit.replace(/<[^>]+>/g, ""), DOTS_W - 30, DOTS_H - 30, FONT(500, 24), "rgba(255,255,255,.85)", "right", 1);
+    if (credit) shadowText(credit, W - 30 * u, H - 30 * u, FONT(500, 24), "rgba(255,255,255,.85)", "right", 1);
   }
   draw.endMs = END + DOTS_HOLD_MS;
   return draw;
 }
 
-async function makeDotsVideo(onProgress) {
+async function makeDotsVideo(onProgress, formatKey = "portrait") {
   if (!streetsGeo) throw new Error("street data not loaded");
+  const fmt = DOTS_FORMATS[formatKey] || DOTS_FORMATS.portrait;
   onProgress(0, "Loading map…");
-  const snap = await dotsSnapshot(map.getBounds());
+  const snap = await dotsSnapshot(map.getBounds(), fmt);
   if (!snap.dots.length) throw new Error("no solar dots in this view");
   const canvas = document.createElement("canvas");
-  canvas.width = DOTS_W; canvas.height = DOTS_H;
+  canvas.width = fmt.W; canvas.height = fmt.H;
   const draw = dotsScene(canvas.getContext("2d"), snap);
   const frameAt = i => { const t = i * 1000 / SHARE_FPS; draw(t); return { t, last: t >= draw.endMs }; };
-  return encodeVideo(canvas, frameAt, t => onProgress(Math.min(0.99, t / draw.endMs)));
+  return encodeVideo(canvas, frameAt, t => onProgress(Math.min(0.99, t / draw.endMs)), fmt.bitrate);
 }
 
-async function runDotsVideo() {
+// The format menu under the button. It lives on <body>, not in the
+// topbar, because the topbar re-renders whenever the map moves.
+function closeDotsMenu() { const m = document.getElementById("dotsVideoMenu"); if (m) m.remove(); }
+function openDotsMenu(btn) {
+  if (document.getElementById("dotsVideoMenu")) { closeDotsMenu(); return; }
+  const menu = document.createElement("div");
+  menu.id = "dotsVideoMenu"; menu.className = "dots-video-menu"; menu.setAttribute("role", "menu");
+  menu.innerHTML = `<div class="dots-video-menu-title">Video of this view</div>` +
+    Object.entries(DOTS_FORMATS).map(([k, f]) =>
+      `<button type="button" role="menuitem" data-dots-format="${k}">${f.label}<small>${f.size}</small></button>`).join("");
+  document.body.appendChild(menu);
+  const r = btn.getBoundingClientRect();
+  menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+  menu.style.top = `${r.bottom + 6}px`;
+  menu.addEventListener("click", e => {
+    const b = e.target.closest("[data-dots-format]");
+    if (b) { closeDotsMenu(); runDotsVideo(b.dataset.dotsFormat); }
+  });
+}
+document.addEventListener("click", e => {
+  if (!e.target.closest("#dotsVideoMenu") && !e.target.closest("#dotsVideoBtn")) closeDotsMenu();
+});
+map.on("movestart", closeDotsMenu);
+
+async function runDotsVideo(formatKey) {
   if (dotsVideoBusy) return;
   dotsVideoBusy = true;
   const place = (currentFocus && currentFocus.name) || "new-zealand";
   try {
-    const { blob, ext } = await makeDotsVideo((p, text) => setDotsVideoText(text || `${Math.round(p * 100)}%`));
-    const slug = place.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    downloadBlob(blob, `nz-solar-dots-${slug}.${ext}`);
+    const { blob, ext } = await makeDotsVideo((p, text) => setDotsVideoText(text || `${Math.round(p * 100)}%`), formatKey);
+    const slug = place.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const tag = { portrait: "portrait", hd: "hd", uhd: "4k" }[formatKey] || "portrait";
+    downloadBlob(blob, `nz-solar-dots-${slug}-${tag}.${ext}`);
     setDotsVideoText("Saved ✓");
   } catch (e) {
     console.warn("Dots video failed:", e);

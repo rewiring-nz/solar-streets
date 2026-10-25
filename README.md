@@ -35,7 +35,8 @@ Stats NZ boundaries ────┘    (weekly, in       (static files,         
 
 Share videos: the 🏆 leaderboard has Video / GIF downloads, and in Show
 Streets mode the topbar's **⇩ Video** button exports the current view as
-a portrait clip of its solar dots popping in (Reels, Stories, TikTok).
+a clip of its solar dots popping in: phone portrait (Reels, Stories,
+TikTok), widescreen HD or widescreen 4K.
 
 For where every figure comes from, what's measured versus estimated, and
 the reliability guards the pipeline runs under, see
