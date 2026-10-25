@@ -334,8 +334,13 @@ at full output resolution instead of being stretched. Every street dot
 in that frame is then drawn over it with the main map's own colours,
 sizes (`dotRadiusAt` mirrors the `street-points` radius expression) and
 category filters, popping in in a seeded random order with the rate
-easing in and out. A legend and the link fade in once it has filled;
-the imagery credit stays on throughout. It shares `encodeVideo` with
+easing in and out. A "Solar installs" counter at the top adds each
+street's installs as its dot appears (exact counts, or for a "3 or less"
+street its calibrated count `w`, which process.py publishes from
+`suppressed_weights`, the same figure the town totals use), and shows
+the data date once it has filled. A small legend and the link then fade
+in along the bottom over a gradual dark fade; the imagery credit stays
+on throughout. It shares `encodeVideo` with
 the leaderboard clips.
 
 **Share downloads** (Video / GIF, top right of the popup): the popup is

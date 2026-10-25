@@ -3444,6 +3444,13 @@ def main():
     except Exception as exc:                       # noqa: BLE001
         note_failure("Town footprints", exc, "towns fall back to single-anchor assignment, which over-counts small towns near cities")
     weights = suppressed_weights(records, areas, council_bounds, emi_councils) if emi_councils else {}
+    # Publish each suppressed street's calibrated count ("w") alongside
+    # its placeholder, so anything on the page that adds streets up (the
+    # dots video's counter) counts them the way the town totals do.
+    for f in features:
+        p = f["properties"]
+        if p.get("est") and weights.get(p["sa2"]):
+            p["w"] = round(weights[p["sa2"]], 2)
     towns = build_towns(features, town_anchors, council_bounds, is_rural is not None, town_polygons,
                         weights)
 

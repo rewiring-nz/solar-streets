@@ -4694,6 +4694,12 @@ async function dotsSnapshot(bounds, fmt) {
     image.width = W; image.height = H;
     image.getContext("2d").drawImage(m.getCanvas(), 0, 0, W, H);
 
+    // Installs each dot stands for: the street's exact count, or for a
+    // "3 or less" street its calibrated count ("w", see process.py) --
+    // falling back to the national average implied by EMI's total.
+    let exact = 0, est = 0;
+    for (const f of streetsGeo.features) { if (f.properties.est == 1) est++; else exact += f.properties.icps || 0; }
+    const fallbackW = metaNational && est ? Math.min(3, Math.max(1, (metaNational.icps - exact) / est)) : 1.6;
     const zoom = m.getZoom(), view = m.getBounds();
     const pad = (view.getEast() - view.getWest()) * 0.03;
     const dots = [], present = new Set();
@@ -4703,7 +4709,8 @@ async function dotsSnapshot(bounds, fmt) {
       const c = dotColorFor(f.properties);
       if (!c) continue;
       const pt = m.project([lng, lat]);
-      dots.push({ x: pt.x * pr, y: pt.y * pr, r: dotRadiusAt(zoom, f.properties.icps) * pr, c });
+      const n = f.properties.est == 1 ? (f.properties.w || fallbackW) : (f.properties.icps || 0);
+      dots.push({ x: pt.x * pr, y: pt.y * pr, r: dotRadiusAt(zoom, f.properties.icps) * pr, c, n });
       present.add(c);
     }
     const opacity = Math.min(0.9, Math.max(0.7, 0.7 + (zoom - 4) / 6 * 0.2));   // the layer's circle-opacity
@@ -4727,10 +4734,11 @@ function dotsScene(ctx, snap) {
   // new dots eases in and out instead of starting and stopping dead.
   const inv = y => 0.5 - Math.sin(Math.asin(1 - 2 * y) / 3);
   dots.forEach((d, k) => { d.t = T0 + D * inv((k + 0.5) / N); });
+  // Running install count: each dot adds its street's installs as it
+  // appears (cum[k] = installs of dots[0..k]).
+  const cum = []; dots.forEach((d, k) => { cum[k] = (k ? cum[k - 1] : 0) + d.n; });
+  const TOTAL = Math.round(cum[N - 1] || 0);
   const END = T0 + D + POP;
-  // Legend and link: above the bottom area Reels/Stories cover on a
-  // phone; near the bottom edge in widescreen.
-  const LEG_Y = portrait ? H - 332 * u : H - 150 * u, URL_Y = LEG_Y + (portrait ? 60 : 64) * u;
 
   const settled = document.createElement("canvas");
   settled.width = W; settled.height = H;
@@ -4748,40 +4756,75 @@ function dotsScene(ctx, snap) {
   const FONT = (w, px) => `${w} ${px * u}px system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
   const shadowText = (str, x, y, font, colour, align, alpha) => {
     ctx.save(); ctx.globalAlpha = alpha; ctx.font = font; ctx.textAlign = align; ctx.textBaseline = "alphabetic";
-    ctx.shadowColor = "rgba(0,0,0,.75)"; ctx.shadowBlur = 12 * u; ctx.fillStyle = colour; ctx.fillText(str, x, y); ctx.restore();
+    ctx.shadowColor = "rgba(0,0,0,.7)"; ctx.shadowBlur = 10 * u; ctx.fillStyle = colour; ctx.fillText(str, x, y); ctx.restore();
+  };
+  // A gradual dark fade from an edge: eased stops, so it reads as shading
+  // rather than a band.
+  const fade = (y0, y1, alpha) => {
+    const g = ctx.createLinearGradient(0, y0, 0, y1);
+    [[0, 0], [0.3, 0.1], [0.6, 0.32], [1, 0.6]].forEach(([s, o]) => g.addColorStop(s, `rgba(0,0,0,${o * alpha})`));
+    ctx.fillStyle = g; ctx.fillRect(0, Math.min(y0, y1), W, Math.abs(y1 - y0));
   };
   const credit = ((map.getStyle().sources.sat || {}).attribution || "").replace(/<[^>]+>/g, "");
+  const d0 = metaUpdated;
+  const asAt = d0 ? `Data as at ${d0.getUTCDate()} ${MONTHS_FULL[d0.getUTCMonth()]} ${d0.getUTCFullYear()}` : "";
+
+  // Counter laid out once for its final value: the label stays put and
+  // the number grows from a fixed point on a fixed digit grid, so nothing
+  // jiggles as it counts.
+  const TOP_Y = (portrait ? 170 : 110) * u, LABEL = "Solar installs: ";
+  ctx.font = FONT(800, 54);
+  const digitW = Math.max(...[..."0123456789"].map(c => ctx.measureText(c).width)), commaW = ctx.measureText(",").width;
+  const cellW = c => /\d/.test(c) ? digitW : commaW;
+  const numW = str => [...str].reduce((s, c) => s + cellW(c), 0);
+  ctx.font = FONT(600, 54);
+  const labelW = ctx.measureText(LABEL).width;
+  const counterX = W / 2 - (labelW + numW(fmt(TOTAL))) / 2;
+  const drawCounter = (value, alpha) => {
+    shadowText(LABEL, counterX, TOP_Y, FONT(600, 54), "#fff", "left", alpha);
+    let x = counterX + labelW;
+    for (const c of fmt(value)) {
+      shadowText(c, x + cellW(c) / 2, TOP_Y, FONT(800, 54), DOT_COLOR, "center", alpha);
+      x += cellW(c);
+    }
+  };
 
   function draw(t) {
     ctx.drawImage(snap.image, 0, 0);
     while (done < N && dots[done].t + POP <= t) dot(sctx, dots[done++], 1, 1);
     ctx.drawImage(settled, 0, 0);
+    let shown = done;
     for (let k = done; k < N && dots[k].t <= t; k++) {
       const x = (t - dots[k].t) / POP;
       dot(ctx, dots[k], Math.max(0, back(x)), Math.min(1, x * 3));
+      shown = k + 1;
     }
-    // Legend and link once the view has filled in, over a soft band so
-    // they read over dense dots; the imagery credit the tile provider
-    // requires stays on throughout.
-    const a = Math.min(1, Math.max(0, (t - END) / 500));
+    const a = Math.min(1, Math.max(0, (t - END) / 500));   // the closing details fade in together
+
+    // Top: the counter over a soft fade, then the data date once it's done.
+    fade((portrait ? 330 : 230) * u, 0, 1);
+    drawCounter(shown >= N ? TOTAL : Math.round(shown ? cum[shown - 1] : 0), 1);
+    if (asAt && a > 0) shadowText(asAt, W / 2, TOP_Y + 50 * u, FONT(500, 28), "rgba(255,255,255,.9)", "center", a);
+
+    // Bottom: legend and link once it has filled in, small, along the
+    // bottom edge over a gradual fade. The imagery credit the tile
+    // provider requires stays on throughout.
     if (a > 0) {
-      const top = LEG_Y - 110 * u, bottom = portrait ? URL_Y + 70 * u : H;
-      const g = ctx.createLinearGradient(0, top, 0, bottom);
-      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(0.45, `rgba(0,0,0,${0.55 * a})`); g.addColorStop(1, `rgba(0,0,0,${0.55 * a})`);
-      ctx.fillStyle = g; ctx.fillRect(0, top, W, bottom - top);
-      ctx.font = FONT(700, 34);
-      const items = snap.legend.map(c => ({ c, w: 30 * u + ctx.measureText(c.label).width }));
-      const total = items.reduce((s, it) => s + it.w, 0) + 36 * u * Math.max(0, items.length - 1);
+      fade(H - 260 * u, H, a);
+      ctx.font = FONT(600, 24);
+      const items = snap.legend.map(c => ({ c, w: 22 * u + ctx.measureText(c.label).width }));
+      const total = items.reduce((s, it) => s + it.w, 0) + 26 * u * Math.max(0, items.length - 1);
       let x = W / 2 - total / 2;
+      const ly = H - 76 * u;
       for (const it of items) {
-        ctx.globalAlpha = a; ctx.fillStyle = it.c.color; ctx.strokeStyle = "#000"; ctx.lineWidth = 3 * u;
-        ctx.beginPath(); ctx.arc(x + 11 * u, LEG_Y - 12 * u, 11 * u, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
-        shadowText(it.c.label, x + 30 * u, LEG_Y, FONT(700, 34), "#fff", "left", a);
-        x += it.w + 36 * u;
+        ctx.globalAlpha = a; ctx.fillStyle = it.c.color; ctx.strokeStyle = "#000"; ctx.lineWidth = 2 * u;
+        ctx.beginPath(); ctx.arc(x + 8 * u, ly - 8 * u, 8 * u, 0, 6.283); ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
+        shadowText(it.c.label, x + 22 * u, ly, FONT(600, 24), "#fff", "left", a);
+        x += it.w + 26 * u;
       }
-      shadowText("Solar installs · " + SHARE_URL_TEXT, W / 2, URL_Y, FONT(800, 40), "#fff", "center", a);
+      shadowText(SHARE_URL_TEXT, W / 2, H - 36 * u, FONT(700, 27), "#fff", "center", a);
     }
-    if (credit) shadowText(credit, W - 30 * u, H - 30 * u, FONT(500, 24), "rgba(255,255,255,.85)", "right", 1);
+    if (credit) shadowText(credit, W - 24 * u, H - 36 * u, FONT(500, 18), "rgba(255,255,255,.8)", "right", 1);
   }
   draw.endMs = END + DOTS_HOLD_MS;
   return draw;
