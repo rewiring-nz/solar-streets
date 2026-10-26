@@ -338,7 +338,7 @@ easing in and out. A "Solar installs" counter at the top adds each
 street's installs as its dot appears (exact counts, or for a "3 or less"
 street its calibrated count `w`, which process.py publishes from
 `suppressed_weights`, the same figure the town totals use), and shows
-the data date once it has filled. A small legend and the link then fade
+the data month (e.g. "October 2026") once it has filled. A small legend and the link then fade
 in along the bottom over a gradual dark fade; the imagery credit stays
 on throughout. It shares `encodeVideo` with
 the leaderboard clips.
