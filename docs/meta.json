@@ -19,8 +19,8 @@
   "battBase": 94718,
   "changeSince": "2026-10-12",
   "farmLow": 1919,
-  "farmEst": 2121,
-  "farmHigh": 2293,
+  "farmEst": 2122,
+  "farmHigh": 2294,
   "solarFarms": 15,
   "solarFarmMW": 162.6
  },
@@ -184,8 +184,8 @@
    "change": 24,
    "changePct": 0.5,
    "farmLow": 110,
-   "farmEst": 123,
-   "farmHigh": 135,
+   "farmEst": 124,
+   "farmHigh": 136,
    "ruralBus": 171,
    "solarFarms": 0,
    "solarFarmMW": 0.0
