@@ -3052,22 +3052,37 @@ function trendSeries(td, level, name) {
 // ~1,200 MW vs ~13 kW), colour-matched to its tick column so a line is
 // never read against the wrong axis; the rate keeps the right axis.
 const TREND_SERIES = [
-  { key: "installs", label: "Solar installs", color: "#ffb703", axis: "left",
-    tick: v => fmt(Math.round(v)) },
-  { key: "mw", label: "Total capacity (MW)", color: "#4ade80", axis: "left",
-    tick: v => v >= 100 ? fmt(Math.round(v)) : v.toFixed(v >= 10 ? 0 : 1) },
-  { key: "resAvgNewKW", label: "Avg. new residential system (kW)", color: "#c084fc", axis: "left",
-    tick: v => v.toFixed(1),
+  { key: "installs", label: "Solar installs", color: "#ffb703", unit: "installs",
+    now: v => fmt(Math.round(v)) },
+  { key: "mw", label: "Total capacity (MW)", color: "#4ade80", unit: "MW",
+    now: v => `${fmt(Math.round(v))} MW` },
+  { key: "resAvgNewKW", label: "Avg. new residential system (kW)", color: "#c084fc", unit: "kW",
+    now: v => `${v.toFixed(1)} kW`,
     note: "The average size of the residential systems connected in each month, as EMI publishes it "
         + "-- not the lifetime average of every install ever (much lower, held down by a "
-        + "decade of smaller systems). One month, July 2025, reads about 17 kW against about 7.5 either "
-        + "side: EMI's own figure, but that month it also moved nearly 1,900 connections into the "
-        + "residential segment while counting under 1,000 new installs, so it reflects a "
-        + "reclassification rather than a real jump in system size. Shown as published; months "
-        + "with no new residential systems to average are left blank." },
-  { key: "battPct", label: "% of installs with a battery", color: "#38bdf8", axis: "right",
-    dash: true, tick: v => `${Math.round(v)}%` },
+        + "decade of smaller systems). July 2025 is shown as the average of June and August: EMI's "
+        + "own figure that month (about 17 kW nationally, over 100 kW in Waikato) came from moving "
+        + "nearly 1,900 connections into the residential segment while counting under 1,000 new "
+        + "installs, a reclassification rather than a real jump in system size. Months with no new "
+        + "residential systems to average are left blank." },
+  { key: "battPct", label: "% of installs with a battery", color: "#38bdf8", unit: "% batt.",
+    dash: true, now: v => `${v.toFixed(1)}%` },
 ];
+
+// Months where EMI's average new residential system size is an artefact
+// rather than a measurement (see the resAvgNewKW note). Where the month
+// stands out as a spike against both neighbours, it's replaced by their
+// average; anywhere it doesn't (most regions), it's left as published.
+const RES_AVG_ANOMALY_MONTHS = ["2025-07-31"];
+function cleanResAvg(values, dates) {
+  if (!Array.isArray(values)) return values;
+  const out = values.slice();
+  for (const m of RES_AVG_ANOMALY_MONTHS) {
+    const i = dates.indexOf(m), a = out[i - 1], v = out[i], b = out[i + 1];
+    if (i > 0 && v != null && a != null && b != null && v > 1.5 * Math.max(a, b)) out[i] = Math.round((a + b) / 2 * 100) / 100;
+  }
+  return out;
+}
 
 // Which lines are drawn. Survives re-renders (changing region, reopening
 // the panel) so a chosen view sticks, rather than resetting every time
@@ -3082,14 +3097,28 @@ let lastTrend = null;
 // in each month, exactly as EMI publishes it -- deliberately not the
 // lifetime average of every install ever, and not derived here, because
 // a month's average can't be recovered from cumulative totals.
-function trendValues(s) {
+function trendValues(s, dates) {
   const out = {
     installs: s.installs,
     battPct: s.installs.map((v, i) => (v ? s.battery[i] / v * 100 : 0)),
   };
   if (Array.isArray(s.mw)) out.mw = s.mw;
-  if (Array.isArray(s.resAvgNewKW)) out.resAvgNewKW = s.resAvgNewKW;
+  if (Array.isArray(s.resAvgNewKW)) out.resAvgNewKW = cleanResAvg(s.resAvgNewKW, dates);
   return out;
+}
+
+// A "nice" axis: four equal steps of 1, 2, 2.5 or 5 x a power of ten,
+// enough to clear the series' maximum. Every axis gets four steps, so
+// the gridlines line up across all of them.
+function niceAxis(max) {
+  const raw = Math.max(max, 1e-9) / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 2, 2.5, 5, 10].find(f => f * mag >= raw - 1e-9) * mag;
+  return { step, max: step * 4 };
+}
+function niceTick(v, step) {
+  if (v >= 10000) return `${fmt(v / 1000)}k`;
+  if (v >= 1000) return fmt(v);
+  return step < 1 ? v.toFixed(step < 0.1 ? 2 : 1) : fmt(v);
 }
 
 function renderTrendLegend(available) {
@@ -3127,46 +3156,42 @@ function chartBox() {
 }
 
 function drawTrendChart(dates, series) {
-  const values = trendValues(series);
+  const values = trendValues(series, dates);
   lastTrend = { dates, series, values };
   const available = TREND_SERIES.filter(d => values[d.key]);
   renderTrendLegend(available);
   const visible = available.filter(d => trendVisible[d.key]);
-  const lefts = visible.filter(d => d.axis === "left");
-  const rights = visible.filter(d => d.axis === "right");
 
-  // Margins follow how many axes are actually on screen, so hiding a
-  // line reclaims its tick column instead of leaving a gap.
-  const { W, H } = chartBox(), T = 14, B = 26;
-  const COL = W < 560 ? 38 : 46;
-  const L = Math.max(14, lefts.length * COL);
-  const R = rights.length ? 44 : 16;
+  // One axis column per visible line, all on the left, each headed with
+  // its unit and coloured like its line, with a divider between columns.
+  // The right margin holds each line's current value. Hiding a line
+  // drops its column.
+  const { W, H } = chartBox(), T = 26, B = 26;
+  const COL = W < 560 ? 40 : 48;
+  const L = Math.max(14, visible.length * COL);
+  const R = W < 560 ? 58 : 70;
   const x0 = L, x1 = W - R, y0 = T, y1 = H - B;
   const n = dates.length;
   const xAt = i => x0 + (n > 1 ? i / (n - 1) : 0) * (x1 - x0);
-
-  // Each absolute series scales to its own maximum; the percentage is
-  // always 0-100 so the axis doesn't rescale as regions change.
-  const maxOf = d => d.axis === "right" ? 100 : Math.max(...values[d.key].filter(v => v != null), 1) * 1.08;
-  const yFor = d => {
-    const max = maxOf(d);
-    return v => y1 - Math.min(1, v / max) * (y1 - y0);
-  };
+  const axes = Object.fromEntries(visible.map(d => [d.key, niceAxis(Math.max(...values[d.key].filter(v => v != null), 0))]));
+  const yFor = d => v => y1 - Math.min(1, v / axes[d.key].max) * (y1 - y0);
+  const colRight = col => x0 - (visible.length - 1 - col) * COL;   // right edge of a column
 
   let grid = "";
-  for (let f = 0; f <= 1; f += 0.25) {
-    const y = (y1 - f * (y1 - y0)).toFixed(1);
+  for (let k = 0; k <= 4; k++) {
+    const y = (y1 - k / 4 * (y1 - y0)).toFixed(1);
     grid += `<line x1="${x0}" y1="${y}" x2="${x1}" y2="${y}" stroke="${cssVar("--grid")}"/>`;
-    lefts.forEach((d, col) => {
-      // Right-aligned columns, innermost last, so the numbers line up
-      // against the plot regardless of how many are showing.
-      const x = x0 - 6 - (lefts.length - 1 - col) * COL;
-      grid += `<text x="${x}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="${seriesColor(d)}">${d.tick(f * maxOf(d))}</text>`;
-    });
-    rights.forEach(d => {
-      grid += `<text x="${x1 + 6}" y="${+y + 3}" text-anchor="start" font-size="9.5" fill="${seriesColor(d)}">${d.tick(f * 100)}</text>`;
+    visible.forEach((d, col) => {
+      const a = axes[d.key];
+      grid += `<text x="${colRight(col) - 5}" y="${+y + 3}" text-anchor="end" font-size="9.5" fill="${seriesColor(d)}">${niceTick(a.step * k, a.step)}</text>`;
     });
   }
+  visible.forEach((d, col) => {
+    grid += `<text x="${colRight(col) - 5}" y="${T - 10}" text-anchor="end" font-size="9" font-weight="700" fill="${seriesColor(d)}">${d.unit}</text>`;
+    if (col < visible.length - 1) {
+      grid += `<line x1="${colRight(col)}" y1="${T - 20}" x2="${colRight(col)}" y2="${y1}" stroke="${cssVar("--grid")}"/>`;
+    }
+  });
 
   let xLabels = "";
   const ticks = Math.min(6, n);
@@ -3189,7 +3214,26 @@ function drawTrendChart(dates, series) {
     return `<path d="${path}" fill="none" stroke="${seriesColor(d)}" stroke-width="${d.dash ? 1.6 : 2}"${dash}/>`;
   }).join("");
 
-  chartSvgEl.innerHTML = grid + xLabels + lines;
+  // Latest value of each line, labelled just past its end, nudged apart
+  // so labels never overlap.
+  const ends = visible.map(d => {
+    const vals = values[d.key];
+    let i = vals.length - 1;
+    while (i >= 0 && vals[i] == null) i--;
+    return i < 0 ? null : { d, i, v: vals[i], y: yFor(d)(vals[i]) };
+  }).filter(Boolean).sort((a, b) => a.y - b.y);
+  const GAP = 12;
+  ends.forEach((e, k) => { e.ly = Math.max(e.y, k ? ends[k - 1].ly + GAP : y0 + 4); });
+  for (let k = ends.length - 1; k >= 0; k--) {
+    const limit = k === ends.length - 1 ? y1 : ends[k + 1].ly - GAP;
+    ends[k].ly = Math.min(ends[k].ly, limit);
+  }
+  const labels = ends.map(e =>
+    `<circle cx="${xAt(e.i).toFixed(1)}" cy="${e.y.toFixed(1)}" r="2.6" fill="${seriesColor(e.d)}"/>` +
+    `<text x="${x1 + 6}" y="${(e.ly + 3.5).toFixed(1)}" font-size="10" font-weight="700" fill="${seriesColor(e.d)}">${e.d.now(e.v)}</text>`
+  ).join("");
+
+  chartSvgEl.innerHTML = grid + xLabels + lines + labels;
 }
 
 function populateChartSelect(td, focus) {
@@ -3672,12 +3716,13 @@ async function exportSolarTrend() {
   // not a snapshot of the current view.
   const hasMW = Array.isArray(s.mw);
   const hasResAvg = Array.isArray(s.resAvgNewKW);
+  const resAvg = cleanResAvg(s.resAvgNewKW, td.dates);   // same July 2025 correction as the chart
   const hasNew = Array.isArray(s.newInstalls);
   const rows = td.dates.map((d, i) => {
     const inst = s.installs[i], batt = s.battery[i];
     const row = [d, inst];
     if (hasMW) row.push(s.mw[i]);
-    if (hasResAvg) row.push(s.resAvgNewKW[i] != null ? s.resAvgNewKW[i] : "");
+    if (hasResAvg) row.push(resAvg[i] != null ? resAvg[i] : "");
     if (hasNew) row.push(s.newInstalls[i] != null ? s.newInstalls[i] : "");
     row.push(batt, inst ? (batt / inst * 100).toFixed(1) : "");
     return row;
@@ -3689,7 +3734,8 @@ async function exportSolarTrend() {
   headers.push("Installs with battery", "% with battery");
   return downloadCSV(
     ["nz-solar", level === "national" ? "new-zealand" : name, "monthly"],
-    headers, rows, sourceNote(td.dates[td.dates.length - 1]),
+    headers, rows, sourceNote(td.dates[td.dates.length - 1]) +
+      (hasResAvg ? " Avg. new residential system for July 2025 is the average of June and August where EMI's figure spikes (a reclassification, not real system sizes)." : ""),
   );
 }
 
@@ -3882,7 +3928,12 @@ function markWrapStarts() {
   });
 }
 new MutationObserver(markWrapStarts).observe(topbarStatsEl, { childList: true });
-window.addEventListener("resize", markWrapStarts);
+// The panel animates its width (opening the chart widens it), so a check
+// made mid-animation would mark lines as wrapped that end up on one row:
+// re-check whenever its size actually changes, which covers window
+// resizes too.
+if (window.ResizeObserver) new ResizeObserver(() => markWrapStarts()).observe(topbarStatsEl);
+else window.addEventListener("resize", markWrapStarts);
 // Redraw an open chart at its new size (see chartBox), once resizing stops.
 let chartResizeTimer = null;
 window.addEventListener("resize", () => {

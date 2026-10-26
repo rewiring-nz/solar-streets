@@ -239,14 +239,22 @@ installs-by-region file's figure, so the tooltip names the base.
 
 Solar: GUEHMT's monthly series since 2014 at national, council and
 network level — installs, total MW, the average size of *new* residential
-systems each month (as EMI publishes it; one month, July 2025, reflects a
-reclassification rather than a real jump, and is annotated), and % of
+systems each month (as EMI publishes it, except July 2025: a
+reclassification moved ~1,900 connections into the residential segment
+that month, spiking the national figure to ~17 kW and Waikato's to over
+100 kW, so where that month spikes against both neighbours the chart and
+its CSV use the average of June and August, `cleanResAvg`), and % of
 installs with a battery, plus EMI's own count of new installs each month
 (`newInstalls`, GUEHMT's "ICP count - new installations"). National
 figures come from GUEHMT's own NZ rows rather than summing councils:
 about 70 solar connections and ~18 MW aren't attributed to any council.
 A blank monthly average (no new residential systems that month, common
 in small regions) is a gap in the line, not a 0.
+
+Every line has its own axis on the left, headed with its unit and split
+from the next by a divider. Each axis runs in four "nice" steps (1, 2,
+2.5 or 5 × a power of ten, `niceAxis`), so all the gridlines line up,
+and each line's latest value is labelled at its right-hand end.
 
 EVs: vehicles still on the road today, by the year they were first
 registered in NZ, stacked by category. Not a strict history (a vehicle
