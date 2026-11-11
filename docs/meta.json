@@ -20,7 +20,7 @@
   "changeSince": "2026-11-01",
   "farmLow": 1964,
   "farmEst": 2169,
-  "farmHigh": 2344,
+  "farmHigh": 2345,
   "solarFarms": 15,
   "solarFarmMW": 162.6
  },
@@ -482,7 +482,7 @@
    "changePct": 0.3,
    "farmLow": 128,
    "farmEst": 143,
-   "farmHigh": 157,
+   "farmHigh": 158,
    "ruralBus": 221,
    "solarFarms": 1,
    "solarFarmMW": 4.9
