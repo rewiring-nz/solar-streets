@@ -51,7 +51,7 @@ jobs:
                   road_cache.json sa2_areas.json regc_bounds.json town_anchors.json \
                   tla_bounds.json sa1_dwellings.json town_polygons.json urban_areas.json previous_counts.json \
                   previous_town_totals.json previous_ev_totals.json \
-                  road_lines.json road_glow.json farm_evidence.json
+                  road_lines.json road_glow_v2.json farm_evidence.json
           if git diff --staged --quiet; then
             echo "No changes"
             exit 0

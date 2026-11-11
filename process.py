@@ -195,7 +195,11 @@ ROAD_CACHE = "road_cache.json"      # {sa2: {street: [lng, lat]}} -- committed
 # streets with business solar -- the farm estimate looks along the whole
 # road, not just at its centre point. {sa2: {street: [[[lng, lat], ...], ...]}}
 ROAD_LINES_CACHE = "road_lines.json"
-GLOW_CACHE = "road_glow.json"         # {sa2: {street: packed line}} -- committed, see _pack_glow
+# {sa2: {street: packed line}} -- committed, see _pack_glow. Versioned
+# by GLOW_SCALE: entries packed at another scale can't be mixed in.
+GLOW_SCALE = 100000        # coordinates in 1e-5 degree units (~1 m)
+GLOW_SIMPLIFY = 0.00008    # ~8 m: follows a street's curves at street zoom
+GLOW_CACHE = "road_glow_v2.json"
 OUT_STREET_LINES = "docs/street_lines.json"   # the map's "lines" view
 SA2_CACHE = "sa2_areas.json"        # {sa2: [name, s, w, n, e]}   -- committed
 OUT_GEOJSON = "docs/streets.geojson"
@@ -3036,18 +3040,19 @@ def _simplify_segments(segs):
 
 def _pack_glow(segs):
     """A street's road shape for the map's "lines" view, as small as it
-    can usefully be: every street with solar in the country is drawn at
-    once, so it's simplified to ~40 m (plenty for a glow line) and
-    packed as integers in 1e-4 degree units (~10 m), each segment's
-    first point absolute and the rest as differences from the one
-    before -- a few characters per point instead of ~20."""
+    can usefully be while still following the road: every street with
+    solar in the country is drawn at once. Simplified to ~8 m -- 40 m
+    turned curved streets into straight chords across the corner -- and
+    packed as integers in 1e-5 degree units, each segment's first point
+    absolute and the rest as differences from the one before, a few
+    characters per point instead of ~20."""
     from shapely.geometry import LineString
     out = []
     for seg in segs:
         if len(seg) < 2:
             continue
-        coords = LineString(seg).simplify(0.0004).coords
-        pts = [(round(x * 1e4), round(y * 1e4)) for x, y in coords]
+        coords = LineString(seg).simplify(GLOW_SIMPLIFY).coords
+        pts = [(round(x * GLOW_SCALE), round(y * GLOW_SCALE)) for x, y in coords]
         flat, px, py = [], 0, 0
         for k, (x, y) in enumerate(pts):
             if k and x == px and y == py:
@@ -3616,7 +3621,9 @@ def main():
     # (written together, so always in step): [index, segment, segment...].
     street_lines = [[i] + glow[code][norm] for i, (code, norm) in enumerate(feature_keys)
                     if glow.get(code, {}).get(norm)]
-    save(OUT_STREET_LINES, {"scale": 1e4, "lines": street_lines})
+    save(OUT_STREET_LINES, {"scale": GLOW_SCALE, "lines": street_lines})
+    print(f"Wrote {OUT_STREET_LINES}: {len(street_lines):,} streets "
+          f"({os.path.getsize(OUT_STREET_LINES) / 1e6:.1f} MB)")
     save(PREV_STREET_COUNTS, street_snapshot)
 
     matched = len(features)
