@@ -956,6 +956,7 @@
 const DATA_URL = "streets.geojson";
 const META_URL = "meta.json";
 const UNPLACED_URL = "unplaced_streets.json";   // EMI streets with no OSM road match -- search only
+const SEARCH_PLACES_URL = "search_places.json"; // every NZ road and place, solar or not (build_search.py)
 const TRENDS_URL = "trends.json";
 const EV_URL = "ev.json";
 const EV_BOUNDARIES_URL = "ev_boundaries.geojson";
@@ -1095,6 +1096,7 @@ mapReady.then(() => {
 });
 
 const DOT_COLOR = "#ffb703";
+const SEARCH_HIGHLIGHT_COLOR = "#e11d2e";
 
 // Street-point categories. Deliberately overlapping on purpose: a
 // street can carry both homes and businesses, and EMI publishes both
@@ -1472,6 +1474,21 @@ function addLayers(data) {
     if (hits.length === 1) { showPopup(hits[0]); return; }
     unspiderfy();
   });
+
+  // The searched-for street, drawn red under the dots (see highlightStreet).
+  map.addSource("search-highlight", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({
+    id: "search-highlight-casing", type: "line", source: "search-highlight",
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": "#fff", "line-opacity": 0.85,
+             "line-width": ["interpolate", ["linear"], ["zoom"], 10, 5, 16, 11] }
+  }, "street-points");
+  map.addLayer({
+    id: "search-highlight", type: "line", source: "search-highlight",
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": SEARCH_HIGHLIGHT_COLOR,
+             "line-width": ["interpolate", ["linear"], ["zoom"], 10, 3, 16, 7] }
+  }, "street-points");
 
   map.on("moveend", unspiderfy);
   // Tiles for the new view may still be loading when the move ends (a
@@ -1982,6 +1999,33 @@ function prefixDistance(q, name, max) {
 // Built once per set of loaded lists (see the key): entries grouped by
 // normalised name, so each distinct name -- 26,000-odd, against 38,000
 // streets -- is compared once per keystroke rather than once per street.
+// Every named road, suburb and town in NZ (build_search.py), so people
+// can find their own street whether or not it has solar yet. A few MB,
+// so it's fetched once the map is up rather than holding up the page.
+const OSM_PLACE_KIND = { c: "City", t: "Town", v: "Village", h: "Locality", s: "Suburb",
+                         q: "Suburb", n: "Neighbourhood", l: "Locality" };
+const OSM_PLACE_ZOOM = { c: 11, t: 12.5, v: 13.5, h: 14, s: 14, q: 14.5, n: 14.5, l: 13.5 };
+let osmPlaces = [], osmStreets = [], osmLoad = null;
+function loadSearchPlaces() {
+  if (osmLoad) return osmLoad;
+  osmLoad = fetch(SEARCH_PLACES_URL).then(r => r.ok ? r.json() : null).catch(() => null).then(d => {
+    if (!d || !Array.isArray(d.places)) return;
+    const label = i => {
+      const p = d.places[i];
+      if (!p) return "";
+      const parent = p[4] >= 0 && d.places[p[4]] ? d.places[p[4]][0] : "";
+      return parent && parent !== p[0] ? `${p[0]} · ${parent}` : p[0];
+    };
+    osmPlaces = d.places.map(([name, t, lng, lat, parent]) => ({
+      name, lng, lat, zoom: OSM_PLACE_ZOOM[t] || 13,
+      sub: OSM_PLACE_KIND[t] + (parent >= 0 && d.places[parent] ? ` · ${d.places[parent][0]}` : ""),
+    }));
+    osmStreets = d.streets.map(([street, pi, lng, lat]) => ({ street, area: label(pi), lng, lat, icps: 0, osm: true }));
+    if (placeSearchInputEl.value.trim()) updateSuggestions();
+  });
+  return osmLoad;
+}
+
 let searchCache = null;
 function searchIndex() {
   const regions = DATASET === "ev" ? evRegions : regionData;
@@ -1989,7 +2033,7 @@ function searchIndex() {
   const streets = DATASET === "ev" ? [] : streetIndex;
   // Keyed on the lists themselves, not just the dataset, so typing
   // before the data has loaded can't leave an empty index behind.
-  const key = [DATASET, regions, places, streets];
+  const key = [DATASET, regions, places, streets, osmPlaces, osmStreets];
   if (searchCache && searchCache.key.every((k, i) => k === key[i])) return searchCache;
   const groups = new Map();
   const add = e => {
@@ -2002,6 +2046,30 @@ function searchIndex() {
                             n: normText(t.name), size: t.icps || t.ev || 0, match: t }));
   streets.forEach(f => add({ kind: 2, label: f.street, sub: f.area, n: normText(f.street), na: normText(f.area),
                              size: f.icps, street: f, approx: !!f.approx }));
+  if (DATASET !== "ev") {
+    // Suburbs and the like; a town already in the solar figures stays as
+    // that entry, which carries its numbers.
+    const townNames = new Set(places.map(t => normText(t.name)));
+    osmPlaces.forEach(p => {
+      const n = normText(p.name);
+      if (!townNames.has(n)) add({ kind: 1, label: p.name, sub: p.sub, n, size: 0, match: p });
+    });
+    // Streets with no solar yet. One EMI already lists nearby is the same
+    // street, and the EMI entry wins: it has the solar figures.
+    const emiAt = new Map();
+    streets.forEach(f => {
+      const n = normText(f.street);
+      if (!emiAt.has(n)) emiAt.set(n, []);
+      emiAt.get(n).push(f);
+    });
+    const near = (a, b) => Math.abs(a.lat - b.lat) < 0.03 && Math.abs(a.lng - b.lng) < 0.04;
+    osmStreets.forEach(f => {
+      const n = normText(f.street);
+      const emi = emiAt.get(n);
+      if (emi && emi.some(e => near(e, f))) return;
+      add({ kind: 2, label: f.street, sub: f.area, n, na: normText(f.area), size: 0, street: f, osm: true });
+    });
+  }
   searchCache = { key, names: [...groups.keys()], groups };
   return searchCache;
 }
@@ -2033,8 +2101,14 @@ function suggestPlaces(term, limit = 5) {
   const count = () => { let k = 0; for (const n of scored.keys()) k += groups.get(n).filter(inArea).length; return k; };
   const max = typoBudget(variants[0].length);
   if (max && count() < limit) {
+    // A typo rarely touches both of the first two letters, so a name
+    // that shares neither with the query is skipped -- most of them, which
+    // keeps this quick over ~100,000 names.
+    const heads = variants.map(v => [v.charCodeAt(0), v.charCodeAt(1)]);
     for (const n of names) {
       if (scored.has(n)) continue;
+      const c0 = n.charCodeAt(0), c1 = n.charCodeAt(1);
+      if (!heads.some(([a, b]) => c0 === a || c0 === b || c1 === a)) continue;
       let d = max + 1;
       for (const v of variants) d = Math.min(d, prefixDistance(v, n, max));
       if (d <= max) scored.set(n, 4 + d);
@@ -3225,17 +3299,15 @@ function renderSuggestions() {
   if (!suggestions.length) {
     placeSuggestEl.innerHTML = `<li class="sug-empty">No match. ` +
       (DATASET === "ev" ? "Try a region or district." :
-        "Only streets with at least one solar install are listed, so a street with none yet won't appear.") + `</li>`;
+        "Check the spelling, or add the suburb after a comma, e.g. “Queen Street, Auckland”.") + `</li>`;
     fitSuggestions();
     return;
   }
   // Every suggestion a spelling correction means the text as typed
   // matched nothing -- say so, rather than implying these are hits.
-  const head = suggestions.every(s => s.typo)
-    ? `<li class="sug-empty">No exact match${DATASET === "ev" ? "" : " (streets with no solar yet aren't listed)"}. Closest:</li>`
-    : "";
+  const head = suggestions.every(s => s.typo) ? `<li class="sug-empty">No exact match. Closest:</li>` : "";
   placeSuggestEl.innerHTML = head + suggestions.map((s, i) => {
-    const hint = s.approx ? `<span class="sug-hint">Not pinned to the road, so this shows the suburb</span>` : "";
+    const hint = s.osm ? `<span class="sug-hint">No solar recorded on this street yet</span>` : "";
     return `<li role="option" data-i="${i}"${i === suggestActive ? ` class="active" aria-selected="true"` : ""}>` +
       `<span class="sug-name">${esc(s.label)}</span><span class="sug-sub">${esc(s.sub)}</span>${hint}</li>`;
   }).join("");
@@ -3269,7 +3341,70 @@ function pickSuggestion(i) {
   placeSearchInputEl.value = s.kind === 2 ? `${s.label}, ${s.sub}` : s.label;
   closeSuggestions();
   focusOnMatch(suggestionMatch(s), true);
+  if (s.street) highlightStreet(s.street); else clearHighlight();
   return true;
+}
+
+/* Draws the picked street in red, like a map app does, by asking
+   OpenStreetMap for that road's shape near where we have it. Fetched per
+   search rather than shipped for every road in the country, which
+   would be far too big. If it can't be fetched the search still works,
+   just without the line. */
+const OVERPASS_URLS = ["https://overpass-api.de/api/interpreter", "https://overpass.private.coffee/api/interpreter"];
+let highlightReq = 0, highlightPopup = null;
+
+function clearHighlight() {
+  highlightReq++;
+  if (highlightPopup) { highlightPopup.remove(); highlightPopup = null; }
+  const src = map.getSource && map.getSource("search-highlight");
+  if (src) src.setData({ type: "FeatureCollection", features: [] });
+}
+
+async function highlightStreet(st) {
+  clearHighlight();
+  const req = highlightReq;
+  // Case-insensitive exact name: EMI's names arrive in capitals and are
+  // title-cased here, so "Mcdonald Street" must still find "McDonald Street".
+  const pattern = "^" + st.street.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$";
+  const ql = pattern.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  // An unplaced street is only known to be in its suburb, so look wider.
+  const radius = st.approx ? 4000 : 1500;
+  const query = `[out:json][timeout:20];way["highway"]["name"~"${ql}",i](around:${radius},${st.lat},${st.lng});out geom;`;
+  let ways = null;
+  for (const url of OVERPASS_URLS) {
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 20000);
+      const r = await fetch(url, { method: "POST", body: new URLSearchParams({ data: query }), signal: ctl.signal });
+      clearTimeout(timer);
+      if (!r.ok) continue;
+      ways = (await r.json()).elements || [];
+      break;
+    } catch (_) { /* next mirror */ }
+  }
+  if (req !== highlightReq) return;          // another search since
+  const lines = (ways || []).filter(w => w.geometry && w.geometry.length > 1)
+    .map(w => w.geometry.map(p => [p.lon, p.lat]));
+  if (lines.length) {
+    map.getSource("search-highlight").setData({ type: "FeatureCollection", features: lines.map(c => ({
+      type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: c } })) });
+    // Bring the whole street into view if it runs off the screen (or if
+    // we'd only been able to aim at its suburb).
+    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+    lines.flat().forEach(([x, y]) => { w = Math.min(w, x); e = Math.max(e, x); s = Math.min(s, y); n = Math.max(n, y); });
+    const b = map.getBounds();
+    if (st.approx || w < b.getWest() || e > b.getEast() || s < b.getSouth() || n > b.getNorth()) {
+      map.fitBounds([[w, s], [e, n]], { padding: 60, maxZoom: 16, duration: 800 });
+    }
+  }
+  if (st.osm) {
+    // Nothing on the map marks a street with no solar, so say so there.
+    const mid = lines.length ? lines[0][Math.floor(lines[0].length / 2)] : [st.lng, st.lat];
+    highlightPopup = new maplibregl.Popup({ offset: 8 }).setLngLat(mid)
+      .setHTML(`<strong>${esc(st.street)}</strong><div class="popup-sub">${esc(st.area)}</div>` +
+               `<div class="popup-sub">No solar installs recorded on this street yet.</div>`)
+      .addTo(map);
+  }
 }
 
 placeSearchInputEl.addEventListener("keydown", e => {
@@ -3297,7 +3432,10 @@ placeSearchInputEl.addEventListener("input", () => {
   clearTimeout(suggestTimer);
   suggestTimer = setTimeout(updateSuggestions, 90);
 });
-placeSearchInputEl.addEventListener("focus", () => { if (placeSearchInputEl.value.trim()) updateSuggestions(); });
+placeSearchInputEl.addEventListener("focus", () => {
+  loadSearchPlaces();
+  if (placeSearchInputEl.value.trim()) updateSuggestions();
+});
 // mousedown, not click: click fires after the input's blur, which would
 // already have closed the list.
 placeSuggestEl.addEventListener("mousedown", e => {
@@ -3320,6 +3458,7 @@ placeSearchIconEl.addEventListener("click", () => {
     placeSearchEl.classList.add("collapsed");
     placeSearchEl.classList.remove("no-match");
     closeSuggestions();
+    clearHighlight();
   }
 });
 placeSearchInputEl.addEventListener("blur", () => {

@@ -29,3 +29,13 @@ The site is one file, `docs/index.html`, and MapLibre loads from
 cdnjs. A headless browser in a cloud session may not be able to reach
 the CDN, so check logic in Node if a full page load isn't possible, and
 say so.
+
+## Search data
+
+The search box reads three lists: EMI streets (`streets.geojson`), EMI
+streets that couldn't be placed on a road (`unplaced_streets.json`, from
+`process.py`), and every named NZ road, suburb and town from
+OpenStreetMap (`search_places.json`, from `build_search.py`, rebuilt
+monthly by the "Build search index" workflow). Overpass is often
+unreachable from cloud sessions, so build `search_places.json` by
+running that workflow rather than locally.

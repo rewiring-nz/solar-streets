@@ -1,0 +1,49 @@
+name: Build search index
+
+# Every named road, suburb and town in NZ for the map's search box
+# (build_search.py). Roads change slowly, so monthly is plenty; run it by
+# hand from the Actions tab to refresh sooner.
+on:
+  schedule:
+    - cron: "0 15 1 * *"     # 1st of the month, 4am NZ time
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-search
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests
+
+      - name: Build docs/search_places.json
+        run: python build_search.py --force
+
+      - name: Commit if anything changed
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add docs/search_places.json
+          if git diff --staged --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "Update search index $(date -u +%F)"
+          # The data workflows may have pushed meanwhile.
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && exit 0
+            sleep 10
+          done
+          exit 1
