@@ -59,6 +59,7 @@ def overpass_csv(query, timeout):
             try:
                 r = session.post(url, data={"data": query}, timeout=timeout + 60)
                 r.raise_for_status()
+                r.encoding = "utf-8"    # Overpass doesn't say, and requests then guesses Latin-1 (Tōtara -> TÅtara)
                 rows = [line.split("\t") for line in r.text.splitlines()[1:] if line]
                 if rows:
                     return rows
@@ -160,8 +161,26 @@ def build(places, roads):
         g[0] += lng
         g[1] += lat
         g[2] += 1
-    streets = [[name, pi, round(sx / n, 4), round(sy / n, 4)]
-               for (name, pi), (sx, sy, n) in groups.items()]
+    # OSM splits one road into many ways, and the pieces can sit nearest
+    # different places (Cleveland Road: Parnell and Mechanics Bay). Pieces
+    # of the same name within ~600 m are one street, labelled by the place
+    # most of it is nearest; further apart (the many Queen Streets) they
+    # stay separate.
+    merged = []
+    by_name = {}
+    for (name, pi), (sx, sy, n) in sorted(groups.items(), key=lambda kv: -kv[1][2]):
+        lng, lat = sx / n, sy / n
+        for m in by_name.get(name, ()):
+            if abs(m[3] / m[4] - lat) < 0.006 and abs(m[2] / m[4] - lng) < 0.008:
+                m[2] += sx
+                m[3] += sy
+                m[4] += n
+                break
+        else:
+            m = [name, pi, sx, sy, n]
+            by_name.setdefault(name, []).append(m)
+            merged.append(m)
+    streets = [[name, pi, round(sx / n, 4), round(sy / n, 4)] for name, pi, sx, sy, n in merged]
     streets.sort(key=lambda s: (s[0], s[1]))
     return {"built": date.today().isoformat(), "places": out_places, "streets": streets}
 

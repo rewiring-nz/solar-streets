@@ -2101,17 +2101,28 @@ function searchIndex() {
     });
     // Streets with no solar yet. One EMI already lists nearby is the same
     // street, and the EMI entry wins: it has the solar figures.
+    // Matched on a canonical name, since EMI and OSM spell the same street
+    // "St Heliers Bay Road" and "Saint Heliers Bay Road".
+    const canon = n => n.replace(/^saint /, "st ").replace(/^mount /, "mt ");
     const emiAt = new Map();
     streets.forEach(f => {
-      const n = normText(f.street);
+      const n = canon(normText(f.street));
       if (!emiAt.has(n)) emiAt.set(n, []);
       emiAt.get(n).push(f);
     });
     const near = (a, b) => Math.abs(a.lat - b.lat) < 0.03 && Math.abs(a.lng - b.lng) < 0.04;
+    // OSM often splits one road into pieces that sit nearest different
+    // suburbs (Cleveland Road: Parnell and Mechanics Bay); one result each.
+    const osmAt = new Map();
+    const close = (a, b) => Math.abs(a.lat - b.lat) < 0.006 && Math.abs(a.lng - b.lng) < 0.008;
     osmStreets.forEach(f => {
-      const n = normText(f.street);
-      const emi = emiAt.get(n);
+      const n = normText(f.street), c = canon(n);
+      const emi = emiAt.get(c);
       if (emi && emi.some(e => near(e, f))) return;
+      const seen = osmAt.get(c) || [];
+      if (seen.some(o => close(o, f))) return;
+      seen.push(f);
+      osmAt.set(c, seen);
       add({ kind: 2, label: f.street, sub: f.area, n, na: normText(f.area), size: 0, street: f, osm: true });
     });
   }
@@ -2122,6 +2133,21 @@ function searchIndex() {
 function suggestPlaces(term, limit = 5) {
   const raw = (term || "").trim();
   if (!raw) return [];
+  const found = suggestPlacesAs(raw, limit);
+  if (found.length && !found.every(s => s.typo)) return found;
+  // "cleveland rd parnell", typed the way people search Google: when the
+  // whole text doesn't match, try the last word or two as the suburb.
+  if (!raw.includes(",")) {
+    const words = raw.split(/\s+/);
+    for (let cut = words.length - 1; cut >= Math.max(1, words.length - 2); cut--) {
+      const split = suggestPlacesAs(`${words.slice(0, cut).join(" ")}, ${words.slice(cut).join(" ")}`, limit);
+      if (split.length && !split.every(s => s.typo)) return split;
+    }
+  }
+  return found;
+}
+
+function suggestPlacesAs(raw, limit) {
   const commaAt = raw.indexOf(",");
   const q0 = normText(commaAt === -1 ? raw : raw.slice(0, commaAt));
   const qArea = commaAt === -1 ? "" : normText(raw.slice(commaAt + 1));
@@ -5606,6 +5632,7 @@ function awardsFromUrl() {
       if (!Array.isArray(list) || !list.length) return;
       streetIndex = streetIndex.concat(list.map(u => ({ ...u, approx: true })))
         .sort((a, b) => b.icps - a.icps);
+      if (placeSearchInputEl.value.trim()) updateSuggestions();
     });
 
     regionData = (meta && meta.regions) || [];
