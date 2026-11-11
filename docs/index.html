@@ -295,6 +295,17 @@
   .view-switch.lines i { left: 16px; }
   .view-switch.lines i::after { width: 7px; height: 2px; border-radius: 1px; }
   .map-mode-btn:not(.active) .view-switch { background: var(--hover-hi); }
+  .view-switch.loading i { animation: switch-pulse .8s ease-in-out infinite alternate; }
+  @keyframes switch-pulse { to { opacity: .45; } }
+  /* Short-lived message, e.g. when the lines view can't load. */
+  #mapToast {
+    position: absolute; left: 50%; bottom: 46px; transform: translateX(-50%); z-index: 9;
+    max-width: min(420px, calc(100vw - 32px)); padding: 9px 14px; border-radius: 10px;
+    background: var(--solid); color: var(--text); border: 1px solid var(--border);
+    box-shadow: 0 8px 32px var(--shadow); font-size: 12px; line-height: 1.45;
+    opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  }
+  #mapToast.show { opacity: 1; }
   .point-chip {
     display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border);
     background: var(--hover); color: var(--text); font: inherit; font-size: 10.5px;
@@ -819,6 +830,7 @@
 <div id="app">
   <div id="map"></div>
 
+  <div id="mapToast" role="status" aria-live="polite"></div>
   <div id="topWrap">
     <div id="topRow">
       <div id="datasetSwitch">
@@ -1580,6 +1592,7 @@ let DATASET = "solar";
 let SOLAR_MODE = "points";
 // Within the streets mode: a dot per street, or each street's road drawn
 // as a glowing line (see loadStreetLines). Remembered per viewer.
+let streetViewLoading = false;   // the lines file is downloading
 let STREET_VIEW = (() => { try { return localStorage.getItem("streetView") === "lines" ? "lines" : "dots"; } catch (_) { return "dots"; } })();
 
 const fmt = n => n.toLocaleString();
@@ -2343,7 +2356,7 @@ function renderTopbarStats() {
   const MODE_LABELS = { points: "Streets", towns: "Towns", regions: "Districts" };
   html += ["points", "towns", "regions"].map(mode => {
     const sw = mode !== "points" ? "" :
-      `<span class="view-switch ${STREET_VIEW}" data-view-toggle role="switch" aria-checked="${STREET_VIEW === "lines"}" ` +
+      `<span class="view-switch ${STREET_VIEW}${streetViewLoading ? " loading" : ""}" data-view-toggle role="switch" aria-checked="${STREET_VIEW === "lines"}" ` +
       `title="${STREET_VIEW === "lines" ? "Showing streets as glowing lines. Switch to dots" : "Showing streets as dots. Switch to glowing lines"}"><i></i></span>`;
     return `<button type="button" class="map-mode-btn${mode === "points" ? " streets-btn" : ""}${SOLAR_MODE === mode ? " active" : ""}" ` +
       `data-mode="${mode}">${MODE_LABELS[mode]}${sw}</button>`;
@@ -2790,18 +2803,40 @@ function loadStreetLines() {
   return streetLinesLoad;
 }
 
+let toastTimer = null;
+function showToast(msg, ms = 4500) {
+  const el = document.getElementById("mapToast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), ms);
+}
+
 function setStreetView(view) {
   STREET_VIEW = view;
-  try { localStorage.setItem("streetView", view); } catch (_) {}
   const apply = () => { applySolarLayers(SOLAR_MODE); refreshInstallDots(); renderBoard(); };
-  if (view === "lines") {
-    loadStreetLines().then(ok => {
-      if (ok) { apply(); return; }
-      // No line file yet (or it failed): stay on dots rather than show nothing.
-      STREET_VIEW = "dots";
+  if (view !== "lines") {
+    try { localStorage.setItem("streetView", view); } catch (_) {}
+    apply();
+    return;
+  }
+  // The switch moves at once and pulses while the line file (a few MB)
+  // downloads, so a click never looks ignored.
+  streetViewLoading = true;
+  renderBoard();
+  loadStreetLines().then(ok => {
+    streetViewLoading = false;
+    if (ok && STREET_VIEW === "lines") {
+      try { localStorage.setItem("streetView", "lines"); } catch (_) {}
       apply();
-    });
-  } else apply();
+      return;
+    }
+    if (!ok) {
+      STREET_VIEW = "dots";
+      showToast("The lines view isn't available yet. The street shapes are still being built, so check back soon.");
+    }
+    apply();
+  });
 }
 
 const STREET_DOT_LAYERS = ["street-points", "install-dots", "spider-legs", "spider-nodes", "spider-labels"];
