@@ -1459,14 +1459,15 @@ function showPopup(f, at) {
       ? stat(`${p.kWper} kW`, "average system", true)
       : stat(kW(p.kW), "total capacity") + (p.kWper ? stat(`${p.kWper} kW`, "average system") : "");
 
-  // How the farm estimate judged this road (see estimate_farms).
+  // How the farm estimate judged this road (see estimate_farms) -- the
+  // verdict only. The reasoning behind it is built from raw OpenStreetMap
+  // tags ("a yes site") and reads badly; the (i) explains the method.
   const FARM_LABEL = {
-    likely: "Likely a farm", unlikely: "Probably not a farm",
-    uncertain: p.farmP != null ? `Might be a farm (about ${Math.round(p.farmP * 100)}% likely)` : "Might be a farm",
+    likely: "likely a farm", unlikely: "probably not a farm",
+    uncertain: p.farmP != null ? `${Math.round(p.farmP * 100)}% likely` : "uncertain",
   };
   const foot = p.farm && FARM_LABEL[p.farm]
-    ? `<div class="sc-foot">${infoTerm("farms", FARM_LABEL[p.farm], { scope: "New Zealand" })}` +
-      (p.farmWhy ? ` · ${esc(p.farmWhy)}` : "") + `</div>`
+    ? `<div class="sc-foot">Farm estimate: ${infoTerm("farms", FARM_LABEL[p.farm], { scope: "New Zealand" })}</div>`
     : `<div class="sc-pad"></div>`;
 
   card("", head +
