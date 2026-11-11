@@ -2067,7 +2067,7 @@ function loadSearchPlaces() {
       sub: OSM_PLACE_KIND[t] + (parent >= 0 && d.places[parent] ? ` · ${d.places[parent][0]}` : ""),
     }));
     osmStreets = d.streets.map(([street, pi, lng, lat]) => ({ street, area: label(pi), lng, lat, icps: 0, osm: true }));
-    if (placeSearchInputEl.value.trim()) updateSuggestions();
+    if (suggestionsOpen()) updateSuggestions();
   });
   return osmLoad;
 }
@@ -3531,6 +3531,12 @@ function updateSuggestions() {
   suggestions = suggestPlaces(placeSearchInputEl.value);
   suggestActive = -1;
   renderSuggestions();
+}
+
+// Data arriving late (the unplaced streets, every NZ street) refreshes the
+// list only while it's open -- not after someone has already picked.
+function suggestionsOpen() {
+  return !placeSuggestEl.classList.contains("hidden") && placeSearchInputEl.value.trim() !== "";
 }
 
 function closeSuggestions() {
@@ -5660,7 +5666,7 @@ function awardsFromUrl() {
       if (!Array.isArray(list) || !list.length) return;
       streetIndex = streetIndex.concat(list.map(u => ({ ...u, approx: true })))
         .sort((a, b) => b.icps - a.icps);
-      if (placeSearchInputEl.value.trim()) updateSuggestions();
+      if (suggestionsOpen()) updateSuggestions();
     });
 
     regionData = (meta && meta.regions) || [];
