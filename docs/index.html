@@ -275,6 +275,26 @@
   .theme-row { display: flex; align-items: center; gap: 6px; margin: 0 0 14px; font-size: 11px; color: var(--dim); }
   .theme-row span { margin-right: 4px; }
   .point-filters { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+  /* Dots/lines switch inside the Streets button: a small pill whose knob
+     sits on the current view's icon. */
+  .streets-btn { display: inline-flex; align-items: center; gap: 6px; }
+  .view-switch {
+    position: relative; display: inline-flex; align-items: center; justify-content: space-between;
+    width: 30px; height: 15px; border-radius: 999px; padding: 0 3px; box-sizing: border-box;
+    background: rgba(0,0,0,.22); cursor: pointer; flex: none;
+  }
+  .view-switch::before, .view-switch::after { content: ""; display: block; background: currentColor; opacity: .7; }
+  .view-switch::before { width: 4px; height: 4px; border-radius: 50%; margin-left: 2px; }     /* dots */
+  .view-switch::after { width: 8px; height: 2px; border-radius: 1px; margin-right: 1px; }    /* lines */
+  .view-switch i {
+    position: absolute; top: 1.5px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.35); transition: left .15s ease;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .view-switch i::after { content: ""; width: 4px; height: 4px; border-radius: 50%; background: #241a00; }
+  .view-switch.lines i { left: 16px; }
+  .view-switch.lines i::after { width: 7px; height: 2px; border-radius: 1px; }
+  .map-mode-btn:not(.active) .view-switch { background: var(--hover-hi); }
   .point-chip {
     display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--border);
     background: var(--hover); color: var(--text); font: inherit; font-size: 10.5px;
@@ -844,6 +864,7 @@
             <div id="vehicleDetailsList"></div>
           </div>
           <div class="data-sources">
+            <span id="chartAsAtNote"></span>
             Solar: EMI (Electricity Authority) · EVs: NZTA Motor Vehicle Register ·
             Streets &amp; rural businesses: OpenStreetMap contributors · Areas &amp; Census: Stats NZ ·
             Towns: LINZ · Land cover: Manaaki Whenua
@@ -1152,6 +1173,7 @@ function applyPointFilter() {
   // filter with "not already drawn as individual installs" -- both write
   // the same layer, so only one of them may own it.
   if (map.getLayer("street-points")) map.setFilter("street-points", f);
+  STREET_GLOW_LAYERS.forEach(id => { if (map.getLayer(id)) map.setFilter(id, f); });
   ["street-points", "spider-nodes"].forEach(id => {
     if (map.getLayer(id)) map.setPaintProperty(id, "circle-color", pointColor());
   });
@@ -1189,7 +1211,7 @@ const INSTALL_DOTS_MIN_ZOOM = 14;
 const INSTALL_DOTS_MAX = 1200;      // guard against a dense zoomed-out-ish view
 
 function installDotFeatures() {
-  if (SOLAR_MODE !== "points" || map.getZoom() < INSTALL_DOTS_MIN_ZOOM) return [];
+  if (SOLAR_MODE !== "points" || STREET_VIEW !== "dots" || map.getZoom() < INSTALL_DOTS_MIN_ZOOM) return [];
   let src;
   try {
     src = map.querySourceFeatures("streets", { sourceLayer: undefined });
@@ -1449,6 +1471,13 @@ function addLayers(data) {
   const SPIDERFY_MIN_ZOOM = 9;
 
   map.on("click", e => {
+    if (STREET_VIEW === "lines" && map.getLayer("street-glow-core")) {
+      const R = 6;
+      const hit = map.queryRenderedFeatures([[e.point.x - R, e.point.y - R], [e.point.x + R, e.point.y + R]],
+        { layers: ["street-glow-core", "street-glow-halo"] })[0];
+      const f = hit && streetsGeo && streetsGeo.features[hit.properties._i];
+      if (f) { showPopup(f); return; }
+    }
     const nodes = map.queryRenderedFeatures(e.point, { layers: ["spider-nodes"] });
     if (nodes.length) { showPopup(nodes[0]); return; }
 
@@ -1498,7 +1527,7 @@ function addLayers(data) {
   map.on("moveend", refreshAfterMove);
   map.on("zoomend", refreshInstallDots);
   map.once("idle", refreshInstallDots);
-  ["street-points", "spider-nodes", "install-dots"].forEach(l => {
+  ["street-points", "spider-nodes", "install-dots", "street-glow-core"].forEach(l => {
     map.on("mouseenter", l, () => map.getCanvas().style.cursor = "pointer");
     map.on("mouseleave", l, () => map.getCanvas().style.cursor = "");
   });
@@ -1549,6 +1578,9 @@ let DATASET = "solar";
 // choropleth of the 16 councils, mirroring the EV dashboard's district
 // view). Irrelevant while DATASET === "ev".
 let SOLAR_MODE = "points";
+// Within the streets mode: a dot per street, or each street's road drawn
+// as a glowing line (see loadStreetLines). Remembered per viewer.
+let STREET_VIEW = (() => { try { return localStorage.getItem("streetView") === "lines" ? "lines" : "dots"; } catch (_) { return "dots"; } })();
 
 const fmt = n => n.toLocaleString();
 // Extra decimal under 1 MW so a real-but-small figure (a handful of kW)
@@ -2308,10 +2340,14 @@ function renderTopbarStats() {
   }
   html += `<div class="topbar-actions">`;
   html += `<button type="button" id="chartToggleBtn" class="chart-toggle-btn">${chartOpen ? "Hide Chart" : "Show Chart"}</button>`;
-  const MODE_LABELS = { points: "Show Streets", towns: "Towns", regions: "Districts" };
-  html += ["points", "towns", "regions"].map(mode =>
-    `<button type="button" class="map-mode-btn${SOLAR_MODE === mode ? " active" : ""}" data-mode="${mode}">${MODE_LABELS[mode]}</button>`
-  ).join("");
+  const MODE_LABELS = { points: "Streets", towns: "Towns", regions: "Districts" };
+  html += ["points", "towns", "regions"].map(mode => {
+    const sw = mode !== "points" ? "" :
+      `<span class="view-switch ${STREET_VIEW}" data-view-toggle role="switch" aria-checked="${STREET_VIEW === "lines"}" ` +
+      `title="${STREET_VIEW === "lines" ? "Showing streets as glowing lines. Switch to dots" : "Showing streets as dots. Switch to glowing lines"}"><i></i></span>`;
+    return `<button type="button" class="map-mode-btn${mode === "points" ? " streets-btn" : ""}${SOLAR_MODE === mode ? " active" : ""}" ` +
+      `data-mode="${mode}">${MODE_LABELS[mode]}${sw}</button>`;
+  }).join("");
   if (SOLAR_MODE === "points" && streetsGeo) {
     html += `<button type="button" id="dotsVideoBtn" class="map-mode-btn dots-video-btn"${dotsVideoBusy ? " disabled" : ""} ` +
       `title="Download a video of the solar dots filling in this view (portrait MP4, for Reels, Stories or TikTok)">` +
@@ -2698,11 +2734,89 @@ function loadSolarRegionsLayer() {
 
 // Shows exactly the layers for one solar mode (or none, when the EV
 // dataset is active) -- mode === null hides all of them.
+/* Lines view: every street with solar drawn as a glowing yellow line,
+   from docs/street_lines.json (road shapes the data run already fetches
+   from OpenStreetMap to place the dots, packed small -- see _pack_glow in
+   process.py). Fetched the first time someone switches to it. Each line
+   carries its street's own properties, so the homes/business filters
+   and the popup work exactly as they do for the dots. */
+const STREET_LINES_URL = "street_lines.json";
+const GLOW_COLOR = "#ffd23f";
+let streetLinesLoad = null;
+function loadStreetLines() {
+  if (streetLinesLoad) return streetLinesLoad;
+  streetLinesLoad = fetch(STREET_LINES_URL).then(r => r.ok ? r.json() : null).catch(() => null).then(d => {
+    if (!d || !Array.isArray(d.lines) || !streetsGeo) { streetLinesLoad = null; return false; }
+    const k = 1 / (d.scale || 1e4), feats = [];
+    for (const [i, ...segs] of d.lines) {
+      const src = streetsGeo.features[i];
+      if (!src) continue;
+      const coords = segs.map(flat => {
+        const out = [];
+        let x = 0, y = 0;
+        for (let j = 0; j < flat.length; j += 2) {
+          x = j ? x + flat[j] : flat[j];
+          y = j ? y + flat[j + 1] : flat[j + 1];
+          out.push([x * k, y * k]);
+        }
+        return out;
+      });
+      feats.push({ type: "Feature", properties: { ...src.properties, _i: i },
+                   geometry: { type: "MultiLineString", coordinates: coords } });
+    }
+    map.addSource("street-glow", { type: "geojson", data: { type: "FeatureCollection", features: feats } });
+    const before = map.getLayer("search-highlight-casing") ? "search-highlight-casing" : undefined;
+    map.addLayer({
+      id: "street-glow-halo", type: "line", source: "street-glow",
+      layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+      paint: {
+        "line-color": GLOW_COLOR, "line-opacity": 0.45,
+        "line-width": ["interpolate", ["linear"], ["zoom"], 4, 3, 9, 6, 13, 10, 16, 18],
+        "line-blur": ["interpolate", ["linear"], ["zoom"], 4, 2, 9, 4, 13, 7, 16, 12],
+      }
+    }, before);
+    map.addLayer({
+      id: "street-glow-core", type: "line", source: "street-glow",
+      layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+      paint: {
+        "line-color": "#fff3b0",
+        "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.6, 9, 1.2, 13, 2, 16, 3.5],
+      }
+    }, before);
+    const f = pointFilter();
+    STREET_GLOW_LAYERS.forEach(id => map.setFilter(id, f));
+    return true;
+  });
+  return streetLinesLoad;
+}
+
+function setStreetView(view) {
+  STREET_VIEW = view;
+  try { localStorage.setItem("streetView", view); } catch (_) {}
+  const apply = () => { applySolarLayers(SOLAR_MODE); refreshInstallDots(); renderBoard(); };
+  if (view === "lines") {
+    loadStreetLines().then(ok => {
+      if (ok) { apply(); return; }
+      // No line file yet (or it failed): stay on dots rather than show nothing.
+      STREET_VIEW = "dots";
+      apply();
+    });
+  } else apply();
+}
+
+const STREET_DOT_LAYERS = ["street-points", "install-dots", "spider-legs", "spider-nodes", "spider-labels"];
+const STREET_GLOW_LAYERS = ["street-glow-halo", "street-glow-core"];
+
 function applySolarLayers(mode) {
   const v = m => m === mode ? "visible" : "none";
-  ["street-points", "street-labels", "install-dots", "spider-legs", "spider-nodes", "spider-labels"].forEach(id => {
-    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("points"));
+  const dots = mode === "points" && STREET_VIEW === "dots", lines = mode === "points" && STREET_VIEW === "lines";
+  STREET_DOT_LAYERS.forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", dots ? "visible" : "none");
   });
+  STREET_GLOW_LAYERS.forEach(id => {
+    if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", lines ? "visible" : "none");
+  });
+  if (map.getLayer("street-labels")) map.setLayoutProperty("street-labels", "visibility", v("points"));
   ["solar-town-boundaries-fill", "solar-town-boundaries-outline", "solar-town-labels"].forEach(id => {
     if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", v("towns"));
   });
@@ -3383,6 +3497,7 @@ async function highlightStreet(st) {
     } catch (_) { /* next mirror */ }
   }
   if (req !== highlightReq) return;          // another search since
+  if (!map.getSource("search-highlight")) return;   // searched before the map finished loading
   const lines = (ways || []).filter(w => w.geometry && w.geometry.length > 1)
     .map(w => w.geometry.map(p => [p.lon, p.lat]));
   if (lines.length) {
@@ -3546,7 +3661,7 @@ let lastTrend = null;
 function trendValues(s, dates) {
   const out = {
     installs: s.installs,
-    battPct: s.installs.map((v, i) => (v ? s.battery[i] / v * 100 : 0)),
+    battPct: s.installs.map((v, i) => (s.battery[i] == null ? null : v ? s.battery[i] / v * 100 : 0)),
   };
   if (Array.isArray(s.mw)) out.mw = s.mw;
   if (Array.isArray(s.resAvgNewKW)) out.resAvgNewKW = cleanResAvg(s.resAvgNewKW, dates);
@@ -3730,7 +3845,28 @@ function renderChartSelection(td, value) {
   const [level, ...rest] = value.split(":");
   const name = rest.join(":");
   const s = level === "national" ? td.national : trendSeries(td, level, name);
-  if (s) drawTrendChart(td.dates, s);
+  if (!s) return;
+  const ext = withLatestCount(td.dates, s, level, name);
+  drawTrendChart(ext.dates, ext.series);
+}
+
+// EMI's month-end series (the chart) lags its running count (the top
+// bar, from SolarInstallationsByRegion) by up to six weeks, so the two
+// never quite agreed: 94,884 at 30 Sep against 96,200 on 8 Nov. Ending
+// the installs and capacity lines on that latest count makes the chart
+// finish on exactly the top bar's number. Battery and system-size
+// figures only exist month-end, so those lines stop at the last month.
+function withLatestCount(dates, s, level, name) {
+  const snap = level === "national" ? metaNational
+    : level === "council" ? regionData.find(r => r.name === name) : null;
+  const last = dates[dates.length - 1];
+  const asAt = metaUpdated ? metaUpdated.toISOString().slice(0, 10) : null;
+  if (!snap || !snap.icps || !asAt || asAt <= last) return { dates, series: s };
+  const series = {};
+  for (const [k, v] of Object.entries(s)) if (Array.isArray(v)) series[k] = v.concat([null]);
+  series.installs[series.installs.length - 1] = snap.icps;
+  if (series.mw && snap.kW) series.mw[series.mw.length - 1] = Math.round(snap.kW) / 1000;
+  return { dates: dates.concat([asAt]), series };
 }
 
 // EV chart: a stacked area, one band per vehicle category (cumulative
@@ -4397,6 +4533,11 @@ topbarStatsEl.addEventListener("click", e => {
   if (chip) {
     pointCatOn[chip.dataset.cat] = !pointCatOn[chip.dataset.cat];
     applyPointFilter();
+    return;
+  }
+  if (e.target.closest("[data-view-toggle]")) {
+    setStreetView(STREET_VIEW === "lines" ? "dots" : "lines");
+    if (SOLAR_MODE !== "points") setSolarMode("points");
     return;
   }
   const modeBtn = e.target.closest(".map-mode-btn");
@@ -5458,11 +5599,32 @@ function awardsFromUrl() {
       : { icps: 0, kW: 0, pct: 0, resIcps: null, busIcps: null, farmEst: null, farmLow: null, farmHigh: null, solarFarms: null,
           battInstalls: null, battPct: null, battBase: null, changeSince: null };
     metaUpdated = meta && meta.updated ? new Date(meta.updated + "T00:00:00Z") : null;
+    if (metaUpdated) {
+      document.getElementById("chartAsAtNote").textContent =
+        `Solar chart: month-end figures, then EMI's latest count (${metaUpdated.getUTCDate()} ${MONTHS3[metaUpdated.getUTCMonth()]}), the same as the top bar. `;
+    }
+    // Battery figures are month-end only (EMI's trend report). The chart
+    // refreshes them daily, this file weekly, and EMI revises recent
+    // months, so take them from the chart's data once it's here -- then
+    // the top bar's battery count always matches the chart's.
+    loadTrends().then(td => {
+      const i = td.dates.length - 1;
+      const sync = (target, s) => {
+        if (!target || !s || !s.installs[i] || s.battery[i] == null) return;
+        target.battInstalls = s.battery[i];
+        target.battBase = s.installs[i];
+        target.battPct = Math.round(s.battery[i] / s.installs[i] * 1000) / 10;
+      };
+      sync(metaNational, td.national);
+      regionData.forEach(r => sync(r, td.councils && td.councils[r.name]));
+      renderBoard();
+    }).catch(() => {});
     const matchEl = document.getElementById("methMatchRate");
     if (matchEl && meta && meta.matchRate) matchEl.textContent = ` (${meta.matchRate}% of streets placed; the rest are mostly private lanes, rural roads and recent renames)`;
 
     renderBoard();
     map.on("moveend", renderBoard);
+    if (STREET_VIEW === "lines") setStreetView("lines");   // the viewer's last choice
 
     if (DATASET_PARAM === "ev") await setDataset("ev");
 

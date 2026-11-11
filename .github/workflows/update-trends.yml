@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  actions: write      # to start the full data run when a source has new data
 
 # Same group as the weekly run, so the two never push over each other.
 concurrency:
@@ -45,3 +46,30 @@ jobs:
           done
           echo "::error::Failed to push after 5 attempts"
           exit 1
+
+      # The full run is weekly, but NZTA and EMI publish on no fixed day --
+      # October's vehicle register landed 12 hours after a weekly run and
+      # would have sat unused for a week. So check each source's own
+      # last-updated date daily and start the full run as soon as either
+      # is newer than what's published. Same concurrency group, so it
+      # queues behind this job rather than overlapping it.
+      - name: Start the full refresh if NZTA or EMI has new data
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Results go to a file: the lookups print their own progress.
+          python - <<'PY'
+          import json, process as p
+          checks = [("NZTA vehicle register", p.resolve_mvr_service(), json.load(open("docs/ev.json")).get("updated")),
+                    ("EMI street data", p.fetch_data_date(p.STREET_CSV), json.load(open("docs/meta.json")).get("updated"))]
+          with open("stale.txt", "w") as fh:
+              for name, source, have in checks:
+                  newer = bool(source and have and source > have)
+                  print(f"{name}: source {source}, published {have}{' -- NEWER' if newer else ''}")
+                  if newer:
+                      fh.write(name + "\n")
+          PY
+          if [ -s stale.txt ]; then
+            echo "New data from: $(paste -sd, stale.txt) -- starting the full run"
+            gh workflow run update-data.yml --ref main
+          fi

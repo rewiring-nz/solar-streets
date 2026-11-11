@@ -195,6 +195,8 @@ ROAD_CACHE = "road_cache.json"      # {sa2: {street: [lng, lat]}} -- committed
 # streets with business solar -- the farm estimate looks along the whole
 # road, not just at its centre point. {sa2: {street: [[[lng, lat], ...], ...]}}
 ROAD_LINES_CACHE = "road_lines.json"
+GLOW_CACHE = "road_glow.json"         # {sa2: {street: packed line}} -- committed, see _pack_glow
+OUT_STREET_LINES = "docs/street_lines.json"   # the map's "lines" view
 SA2_CACHE = "sa2_areas.json"        # {sa2: [name, s, w, n, e]}   -- committed
 OUT_GEOJSON = "docs/streets.geojson"
 OUT_META = "docs/meta.json"
@@ -3032,6 +3034,31 @@ def _simplify_segments(segs):
     return out
 
 
+def _pack_glow(segs):
+    """A street's road shape for the map's "lines" view, as small as it
+    can usefully be: every street with solar in the country is drawn at
+    once, so it's simplified to ~40 m (plenty for a glow line) and
+    packed as integers in 1e-4 degree units (~10 m), each segment's
+    first point absolute and the rest as differences from the one
+    before -- a few characters per point instead of ~20."""
+    from shapely.geometry import LineString
+    out = []
+    for seg in segs:
+        if len(seg) < 2:
+            continue
+        coords = LineString(seg).simplify(0.0004).coords
+        pts = [(round(x * 1e4), round(y * 1e4)) for x, y in coords]
+        flat, px, py = [], 0, 0
+        for k, (x, y) in enumerate(pts):
+            if k and x == px and y == py:
+                continue
+            flat += [x, y] if k == 0 else [x - px, y - py]
+            px, py = x, y
+        if len(flat) >= 4:
+            out.append(flat)
+    return out
+
+
 def geocode(records, areas, council_bounds, line_keys=frozenset()):
     """One Overpass query per regional council (~16), not per SA2
     (~2,100). Batching by a much larger area cuts network round-trips by
@@ -3075,6 +3102,7 @@ def geocode(records, areas, council_bounds, line_keys=frozenset()):
     # worth of previously placed streets.
     cache = load(ROAD_CACHE, {})
     lines_cache = load(ROAD_LINES_CACHE, {})
+    glow_cache = load(GLOW_CACHE, {})
     n_councils = len(codes_by_council)
     for i, (council, codes) in enumerate(codes_by_council.items(), 1):
         bbox = council_bounds[council]["bbox"]
@@ -3097,7 +3125,7 @@ def geocode(records, areas, council_bounds, line_keys=frozenset()):
 
         for code in codes:
             _, s, w, n, e = areas[code]
-            local, local_lines = {}, {}
+            local, local_lines, local_glow = {}, {}, {}
 
             def inside(name):
                 return [[(lng, lat) for lng, lat in way if w <= lng <= e and s <= lat <= n]
@@ -3128,12 +3156,17 @@ def geocode(records, areas, council_bounds, line_keys=frozenset()):
                                     round(sum(p[1] for p in pts) / len(pts), 5)]
                     if (code, name) in line_keys:
                         local_lines[name] = _simplify_segments(segs)
+                    packed = _pack_glow(segs)
+                    if packed:
+                        local_glow[name] = packed
             cache[code] = local
             lines_cache[code] = local_lines
+            glow_cache[code] = local_glow
 
     save(ROAD_CACHE, cache)
     save(ROAD_LINES_CACHE, lines_cache)
-    return cache, lines_cache
+    save(GLOW_CACHE, glow_cache)
+    return cache, lines_cache, glow_cache
 
 
 # ----------------------------------------------------------------------
@@ -3141,12 +3174,12 @@ def geocode(records, areas, council_bounds, line_keys=frozenset()):
 # ----------------------------------------------------------------------
 
 def build(records, cache, areas, previous, is_rural=None):
-    """Returns (features, unplaced). unplaced is every EMI street that
+    """Returns (features, unplaced, keys). unplaced is every EMI street that
     couldn't be put on a road -- not drawn on the map (a dot at a guessed
     spot would claim a location nobody knows), but kept for the search
     box, which flies to the middle of its suburb instead, so a street
     EMI lists is always findable even when OSM spells it differently."""
-    features, unplaced = [], []
+    features, unplaced, keys = [], [], []   # keys: (code, norm) per feature, for street_lines.json
 
     def skip(code, rec):
         if code not in areas:
@@ -3208,13 +3241,14 @@ def build(records, cache, areas, previous, is_rural=None):
                 if rec["est"]:
                     props["kW"] = props["kWper"]
 
+        keys.append((code, norm))
         features.append({
             "type": "Feature",
             "geometry": {"type": "Point", "coordinates": [lng, lat]},
             "properties": props,
         })
 
-    return features, unplaced
+    return features, unplaced, keys
 
 
 def main():
@@ -3432,7 +3466,7 @@ def main():
         totals["battBase"] = national_battery["installs"]
 
     business_streets = {key for key, r in records.items() if r["bus"] > 0}
-    cache, lines = geocode(records, areas, council_bounds, business_streets)
+    cache, lines, glow = geocode(records, areas, council_bounds, business_streets)
 
     # Optional, like every other enrichment here -- if Stats NZ is
     # unreachable the streets still build, just without the rural flag,
@@ -3445,7 +3479,7 @@ def main():
 
     street_counts = {f"{c}|{n}": r["icps"] for (c, n), r in records.items()}
     previous, street_snapshot = rolling_baseline(PREV_STREET_COUNTS, solar_vintage, street_counts, data_date)
-    features, unplaced = build(records, cache, areas, previous, is_rural)
+    features, unplaced, feature_keys = build(records, cache, areas, previous, is_rural)
     missing = len(records) - len(features)
 
     # Real town footprints for assignment (see fetch_town_polygons).
@@ -3578,6 +3612,11 @@ def main():
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
     save(OUT_UNPLACED, unplaced)
+    # Road shapes for the "lines" view, by position in streets.geojson
+    # (written together, so always in step): [index, segment, segment...].
+    street_lines = [[i] + glow[code][norm] for i, (code, norm) in enumerate(feature_keys)
+                    if glow.get(code, {}).get(norm)]
+    save(OUT_STREET_LINES, {"scale": 1e4, "lines": street_lines})
     save(PREV_STREET_COUNTS, street_snapshot)
 
     matched = len(features)
