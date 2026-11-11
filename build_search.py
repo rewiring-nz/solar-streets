@@ -28,6 +28,10 @@ from datetime import date
 
 import requests
 
+# overpass-api.de refuses (406) requests without a descriptive User-Agent.
+session = requests.Session()
+session.headers["User-Agent"] = "nz-solar-map/1.0 (github actions; search index)"
+
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 OUT = "docs/search_places.json"
@@ -48,10 +52,12 @@ HIGHWAYS = ("motorway|trunk|primary|secondary|tertiary|unclassified|residential|
 
 def overpass_csv(query, timeout):
     last = None
-    for attempt in range(2):
+    for attempt in range(3):
+        if attempt:
+            time.sleep(60)                  # rate-limited (429): give it a minute
         for url in MIRRORS:
             try:
-                r = requests.post(url, data={"data": query}, timeout=timeout + 60)
+                r = session.post(url, data={"data": query}, timeout=timeout + 60)
                 r.raise_for_status()
                 rows = [line.split("\t") for line in r.text.splitlines()[1:] if line]
                 if rows:

@@ -35,6 +35,7 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
+          [ -f docs/search_places.json ] || { echo "::error::No search index was built -- see the step above"; exit 1; }
           git add docs/search_places.json
           if git diff --staged --quiet; then
             echo "No changes"
