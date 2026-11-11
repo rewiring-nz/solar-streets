@@ -1354,7 +1354,10 @@ function shortDate(iso) {
   return `${d.getUTCDate()} ${MONTHS3[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
-function showPopup(f) {
+// `at` places the card where the street was clicked; without it, at the
+// street's own point -- fine for a dot, but on a long road drawn as a
+// line that can be off screen.
+function showPopup(f, at) {
   const p = f.properties;
   // EMI suppresses the Res and Bus rows independently of the All row,
   // so a street can have an exact total with suppressed segments -- in
@@ -1368,7 +1371,7 @@ function showPopup(f) {
     ? `<br><span class="up">+${p.change} since ${since || "the previous release"}</span>` : "";
   if (p.grid == 1) {
     new maplibregl.Popup()
-      .setLngLat(f.geometry.coordinates)
+      .setLngLat(at || f.geometry.coordinates)
       .setHTML(
         `<strong>${esc(p.street)}</strong><br><small class="muted">${esc(p.area)}</small><br>` +
         `${infoTerm("solar-farm", "Grid-scale solar farm")}<br>` +
@@ -1394,7 +1397,7 @@ function showPopup(f) {
       ? `Average system: ${p.kWper} kW <small class="muted">(EMI's figure for this street)</small>`
       : `Capacity: ${p.kW >= 1000 ? `${fmtMW(p.kW)} MW` : `${p.kW} kW`}` + (p.kWper ? ` <small class="muted">(${p.kWper} kW each)</small>` : "");
   new maplibregl.Popup()
-    .setLngLat(f.geometry.coordinates)
+    .setLngLat(at || f.geometry.coordinates)
     .setHTML(
       `<strong>${esc(p.street)}</strong><br><small class="muted">${esc(p.area)}</small><br>` +
       `Solar connections: <strong>${streetCount(p.icps)}</strong>${change}<br>` +
@@ -1483,12 +1486,10 @@ function addLayers(data) {
   const SPIDERFY_MIN_ZOOM = 9;
 
   map.on("click", e => {
-    if (STREET_VIEW === "lines" && map.getLayer("street-glow-core")) {
-      const R = 6;
-      const hit = map.queryRenderedFeatures([[e.point.x - R, e.point.y - R], [e.point.x + R, e.point.y + R]],
-        { layers: ["street-glow-core", "street-glow-halo"] })[0];
+    if (STREET_VIEW === "lines" && map.getLayer("street-glow-hit")) {
+      const hit = map.queryRenderedFeatures(e.point, { layers: ["street-glow-hit"] })[0];
       const f = hit && streetsGeo && streetsGeo.features[hit.properties._i];
-      if (f) { showPopup(f); return; }
+      if (f) { showPopup(f, e.lngLat); return; }
     }
     const nodes = map.queryRenderedFeatures(e.point, { layers: ["spider-nodes"] });
     if (nodes.length) { showPopup(nodes[0]); return; }
@@ -1539,7 +1540,7 @@ function addLayers(data) {
   map.on("moveend", refreshAfterMove);
   map.on("zoomend", refreshInstallDots);
   map.once("idle", refreshInstallDots);
-  ["street-points", "spider-nodes", "install-dots", "street-glow-core"].forEach(l => {
+  ["street-points", "spider-nodes", "install-dots"].forEach(l => {
     map.on("mouseenter", l, () => map.getCanvas().style.cursor = "pointer");
     map.on("mouseleave", l, () => map.getCanvas().style.cursor = "");
   });
@@ -2803,14 +2804,18 @@ function loadStreetLines() {
       feats.push({ type: "Feature", properties: { ...src.properties, _i: i },
                    geometry: { type: "MultiLineString", coordinates: coords } });
     }
-    map.addSource("street-glow", { type: "geojson", data: { type: "FeatureCollection", features: feats } });
+    // promoteId: each street's index doubles as its feature id, for the
+    // hover state.
+    map.addSource("street-glow", { type: "geojson", promoteId: "_i",
+                                   data: { type: "FeatureCollection", features: feats } });
+    const hov = (on, off) => ["case", ["boolean", ["feature-state", "hover"], false], on, off];
     const before = map.getLayer("search-highlight-casing") ? "search-highlight-casing" : undefined;
     map.addLayer({
       id: "street-glow-halo", type: "line", source: "street-glow",
       layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
       paint: {
-        "line-color": GLOW_COLOR, "line-opacity": 0.45,
-        "line-width": ["interpolate", ["linear"], ["zoom"], 4, 3, 9, 6, 13, 10, 16, 18],
+        "line-color": GLOW_COLOR, "line-opacity": hov(0.85, 0.45),
+        "line-width": ["interpolate", ["linear"], ["zoom"], 4, hov(6, 3), 9, hov(10, 6), 13, hov(16, 10), 16, hov(26, 18)],
         "line-blur": ["interpolate", ["linear"], ["zoom"], 4, 2, 9, 4, 13, 7, 16, 12],
       }
     }, before);
@@ -2818,10 +2823,33 @@ function loadStreetLines() {
       id: "street-glow-core", type: "line", source: "street-glow",
       layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
       paint: {
-        "line-color": "#fff3b0",
-        "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.6, 9, 1.2, 13, 2, 16, 3.5],
+        "line-color": hov("#ffffff", "#fff3b0"),
+        "line-width": ["interpolate", ["linear"], ["zoom"], 4, hov(1.6, 0.6), 9, hov(2.6, 1.2), 13, hov(4, 2), 16, hov(6, 3.5)],
       }
     }, before);
+    // Invisible and wider than the drawn line, so a street is easy to
+    // point at and click without landing exactly on a 2px line.
+    map.addLayer({
+      id: "street-glow-hit", type: "line", source: "street-glow",
+      layout: { "line-cap": "round", "line-join": "round", visibility: "none" },
+      paint: { "line-color": "#000", "line-opacity": 0,
+               "line-width": ["interpolate", ["linear"], ["zoom"], 4, 8, 13, 16, 16, 22] }
+    }, before);
+    let hovered = null;
+    const setHover = id => {
+      if (hovered === id) return;
+      if (hovered != null) map.setFeatureState({ source: "street-glow", id: hovered }, { hover: false });
+      hovered = id;
+      if (id != null) map.setFeatureState({ source: "street-glow", id }, { hover: true });
+    };
+    map.on("mousemove", "street-glow-hit", e => {
+      map.getCanvas().style.cursor = "pointer";
+      setHover(e.features[0].id);
+    });
+    map.on("mouseleave", "street-glow-hit", () => {
+      map.getCanvas().style.cursor = "";
+      setHover(null);
+    });
     const f = pointFilter();
     STREET_GLOW_LAYERS.forEach(id => map.setFilter(id, f));
     return true;
@@ -2866,7 +2894,7 @@ function setStreetView(view) {
 }
 
 const STREET_DOT_LAYERS = ["street-points", "install-dots", "spider-legs", "spider-nodes", "spider-labels"];
-const STREET_GLOW_LAYERS = ["street-glow-halo", "street-glow-core"];
+const STREET_GLOW_LAYERS = ["street-glow-halo", "street-glow-core", "street-glow-hit"];
 
 function applySolarLayers(mode) {
   const v = m => m === mode ? "visible" : "none";
