@@ -198,6 +198,7 @@ ROAD_LINES_CACHE = "road_lines.json"
 SA2_CACHE = "sa2_areas.json"        # {sa2: [name, s, w, n, e]}   -- committed
 OUT_GEOJSON = "docs/streets.geojson"
 OUT_META = "docs/meta.json"
+OUT_UNPLACED = "docs/unplaced_streets.json"   # search-only, see build()
 OUT_TRENDS = "docs/trends.json"
 OUT_REGION_BOUNDARIES = "docs/region_boundaries.geojson"
 OUT_TOWN_BOUNDARIES = "docs/town_boundaries.geojson"
@@ -3140,12 +3141,24 @@ def geocode(records, areas, council_bounds, line_keys=frozenset()):
 # ----------------------------------------------------------------------
 
 def build(records, cache, areas, previous, is_rural=None):
-    features, missing = [], 0
+    """Returns (features, unplaced). unplaced is every EMI street that
+    couldn't be put on a road -- not drawn on the map (a dot at a guessed
+    spot would claim a location nobody knows), but kept for the search
+    box, which flies to the middle of its suburb instead, so a street
+    EMI lists is always findable even when OSM spells it differently."""
+    features, unplaced = [], []
+
+    def skip(code, rec):
+        if code not in areas:
+            return
+        _, s, w, n, e = areas[code]
+        unplaced.append({"street": rec["street"], "area": rec["area"], "icps": rec["icps"],
+                         "lng": round((w + e) / 2, 5), "lat": round((s + n) / 2, 5)})
 
     for (code, norm), rec in records.items():
         coord = cache.get(code, {}).get(norm)
         if not coord:
-            missing += 1
+            skip(code, rec)
             continue
         lng, lat = coord
         # The road must sit inside the area EMI assigned it to. This is
@@ -3153,7 +3166,7 @@ def build(records, cache, areas, previous, is_rural=None):
         if code in areas:
             _, s, w, n, e = areas[code]
             if not (w <= lng <= e and s <= lat <= n):
-                missing += 1
+                skip(code, rec)
                 continue
 
         known = rec["res"] + rec["bus"]
@@ -3201,7 +3214,7 @@ def build(records, cache, areas, previous, is_rural=None):
             "properties": props,
         })
 
-    return features, missing
+    return features, unplaced
 
 
 def main():
@@ -3432,7 +3445,8 @@ def main():
 
     street_counts = {f"{c}|{n}": r["icps"] for (c, n), r in records.items()}
     previous, street_snapshot = rolling_baseline(PREV_STREET_COUNTS, solar_vintage, street_counts, data_date)
-    features, missing = build(records, cache, areas, previous, is_rural)
+    features, unplaced = build(records, cache, areas, previous, is_rural)
+    missing = len(records) - len(features)
 
     # Real town footprints for assignment (see fetch_town_polygons).
     # Optional like the other enrichments: without them, assignment falls
@@ -3563,6 +3577,7 @@ def main():
     towns.sort(key=lambda t: (t.get("estPct") is not None, t.get("estPct", 0)), reverse=True)
 
     save(OUT_GEOJSON, {"type": "FeatureCollection", "features": features})
+    save(OUT_UNPLACED, unplaced)
     save(PREV_STREET_COUNTS, street_snapshot)
 
     matched = len(features)

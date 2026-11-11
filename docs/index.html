@@ -25,6 +25,7 @@
     color-scheme: light;
     --glass: rgba(255,255,255,.7);
     --glass-hi: rgba(255,255,255,.82);
+    --solid: #f6f7f9;      /* opaque panel, where a blur can't sit under it */
     --border: rgba(0,0,0,.1);
     --border-strong: rgba(0,0,0,.25);
     --text: #111827;
@@ -55,6 +56,7 @@
     color-scheme: dark;
     --glass: rgba(10,14,20,.74);
     --glass-hi: rgba(20,26,36,.82);
+    --solid: #161c26;
     --border: rgba(255,255,255,.09);
     --border-strong: rgba(255,255,255,.35);
     --text: #e9eef3;
@@ -126,7 +128,9 @@
   .dataset-btn[data-dataset="ev"].active { background: var(--cyan); color: #062229; }
   .dataset-btn:not(.active):hover { color: var(--text); }
 
-  #topRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  /* Raised over #topbar, its next sibling, so the search suggestions
+     drop down over the stats panel instead of under it. */
+  #topRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; position: relative; z-index: 2; }
   #placeSearch {
     display: flex; align-items: center; background: var(--glass);
     backdrop-filter: blur(16px) saturate(140%); -webkit-backdrop-filter: blur(16px) saturate(140%);
@@ -152,6 +156,27 @@
   #placeSearchInput::placeholder { color: var(--dim); }
   #placeSearch.no-match #placeSearchInput { color: var(--red); }
   @media (max-width: 767px) { #placeSearchInput { width: 110px; } }
+  #placeSearch { position: relative; }
+  #placeSuggest {
+    position: absolute; top: calc(100% + 6px); left: 0; z-index: 9;
+    width: max(100%, 260px); max-width: calc(100vw - 20px);
+    /* Solid, not glass: it sits inside #placeSearch's own backdrop blur,
+       and a blur can't nest in another, so glass here just shows the
+       stats panel through it. */
+    background: var(--solid);
+    border: 1px solid var(--border); border-radius: 10px; padding: 4px;
+    box-shadow: 0 8px 32px var(--shadow); list-style: none; margin: 0;
+  }
+  #placeSuggest li {
+    padding: 6px 9px; border-radius: 7px; cursor: pointer; font-size: 12px;
+    color: var(--text); line-height: 1.3;
+  }
+  #placeSuggest li.active, #placeSuggest li:hover { background: var(--hover-hi); }
+  #placeSuggest .sug-name { font-weight: 700; }
+  #placeSuggest .sug-sub { display: block; font-size: 10.5px; color: var(--dim); }
+  #placeSuggest .sug-hint { display: block; font-size: 10.5px; color: var(--dim); font-style: italic; }
+  #placeSuggest li.sug-empty { cursor: default; color: var(--dim); font-size: 11.5px; }
+  #placeSuggest li.sug-empty:hover { background: none; }
 
   /* Only shown once zoomed into anything smaller than the whole
      country (see updateBackToNzButton) -- top-centre on desktop, clear
@@ -784,7 +809,9 @@
         <button type="button" id="placeSearchIcon" aria-label="Search">&#128269;</button>
         <input type="text" id="placeSearchInput" placeholder="Search street or suburb…"
                title="Tip: for a street name that exists in more than one suburb, type e.g. &quot;Queen Street, Auckland&quot;"
-               autocomplete="off" />
+               autocomplete="off" role="combobox" aria-autocomplete="list"
+               aria-controls="placeSuggest" aria-expanded="false" />
+        <ul id="placeSuggest" role="listbox" class="hidden"></ul>
       </div>
     </div>
 
@@ -928,6 +955,7 @@
 
 const DATA_URL = "streets.geojson";
 const META_URL = "meta.json";
+const UNPLACED_URL = "unplaced_streets.json";   // EMI streets with no OSM road match -- search only
 const TRENDS_URL = "trends.json";
 const EV_URL = "ev.json";
 const EV_BOUNDARIES_URL = "ev_boundaries.geojson";
@@ -1859,7 +1887,187 @@ function pickClosestStreet(candidates) {
 }
 
 function streetMatch(street) {
-  return { name: `${street.street}, ${street.area}`, lng: street.lng, lat: street.lat, zoom: 15 };
+  // An unplaced street (see UNPLACED_URL) is only known to be somewhere
+  // in its suburb, so show the suburb rather than zooming in on a guess.
+  return { name: `${street.street}, ${street.area}`, lng: street.lng, lat: street.lat,
+           zoom: street.approx ? 14 : 15 };
+}
+
+/* ---------- Search suggestions ----------
+   As-you-type list of the 5 best matches across regions, towns and
+   streets, forgiving of typos ("clevland" finds Cleveland) and of the
+   usual address shorthand ("queen st", "kent tce"). Ranked by how well
+   the text matches first -- exact, starts-with, a word starts-with,
+   contains, then near-misses by edit distance -- and only then by kind
+   (region before town before street, as in findPlace) and by
+   nearness to the current view or by size. */
+
+const NORM_RE = /[\u0300-\u036f]/g;
+const normText = s => (s || "").normalize("NFD").replace(NORM_RE, "").toLowerCase()
+  .replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+// Only expanded after the first word, so "St Heliers" and "Mt Eden"
+// keep working as typed (see queryVariants for those).
+const STREET_ABBREV = {
+  rd: "road", st: "street", ave: "avenue", av: "avenue", cres: "crescent", cr: "crescent",
+  tce: "terrace", ter: "terrace", pl: "place", dr: "drive", hwy: "highway", ln: "lane",
+  cl: "close", ct: "court", gr: "grove", pde: "parade", esp: "esplanade", sq: "square",
+  hts: "heights", blvd: "boulevard", cct: "circuit",
+};
+const STREET_TYPES = new Set(Object.values(STREET_ABBREV).concat(["way", "rise", "mews", "view", "loop", "quay"]));
+// The data spells these both ways ("Mt Albert Road", "Mount Eden
+// Road"), so a leading one is tried both ways too.
+const LEADING_ALT = { mt: "mount", mount: "mt", st: "saint", saint: "st" };
+const PLACE_ALIAS = { chch: "christchurch", akl: "auckland", wgtn: "wellington", welly: "wellington",
+                      palmy: "palmerston north", qt: "queenstown", nelly: "nelson" };
+
+function queryVariants(q) {
+  if (PLACE_ALIAS[q]) return [PLACE_ALIAS[q], q];
+  const words = q.split(" ").map((w, i) => (i > 0 && STREET_ABBREV[w]) || w);
+  const out = [words.join(" ")];
+  if (words.length > 1 && LEADING_ALT[words[0]]) out.push([LEADING_ALT[words[0]], ...words.slice(1)].join(" "));
+  return out;
+}
+
+// How well `name` matches `q` as typed (both normalised): exact,
+// starts-with, a later word starts-with, contains. Lower is better.
+function strictScore(name, q) {
+  if (name === q) return 0;
+  if (name.startsWith(q)) return 1;
+  if (name.includes(" " + q)) return 2;
+  if (name.includes(q)) return 3;
+  return Infinity;
+}
+
+// Typos allowed for a query this long: none for very short text (too
+// many accidental hits), then one, then two.
+const typoBudget = len => len < 4 ? 0 : len < 8 ? 1 : 2;
+
+// Smallest optimal-string-alignment distance (Levenshtein plus swapped
+// neighbours, the commonest typing slip) between q and any start of
+// `name` -- so a half-typed misspelling still finds its street
+// ("clevla" -> "cleveland road"). One pass gives every prefix at once
+// (the last row), and it bails as soon as a row is all past `max`.
+// Rows are reused across calls: this runs over ~26,000 names a keystroke.
+let osaRows = [new Int32Array(64), new Int32Array(64), new Int32Array(64)];
+function prefixDistance(q, name, max) {
+  const m = q.length, n = Math.min(name.length, m + max);
+  if (n + 1 > osaRows[0].length) osaRows = [0, 1, 2].map(() => new Int32Array(n + 1));
+  let [pp, p, c] = osaRows;
+  for (let j = 0; j <= n; j++) p[j] = j;
+  for (let i = 1; i <= m; i++) {
+    c[0] = i;
+    let rowMin = i;
+    const qi = q.charCodeAt(i - 1);
+    for (let j = 1; j <= n; j++) {
+      const nj = name.charCodeAt(j - 1);
+      let v = p[j - 1] + (qi === nj ? 0 : 1);
+      if (p[j] + 1 < v) v = p[j] + 1;
+      if (c[j - 1] + 1 < v) v = c[j - 1] + 1;
+      if (i > 1 && j > 1 && qi === name.charCodeAt(j - 2) && q.charCodeAt(i - 2) === nj && pp[j - 2] + 1 < v) v = pp[j - 2] + 1;
+      c[j] = v;
+      if (v < rowMin) rowMin = v;
+    }
+    if (rowMin > max) return max + 1;
+    [pp, p, c] = [p, c, pp];
+  }
+  // A prefix much shorter than q is just q with letters dropped, not a
+  // near-spelling of it, so only count prefixes within `max` of q's length.
+  let best = max + 1;
+  for (let j = Math.max(0, m - max); j <= n; j++) {
+    if (p[j] < best) best = p[j];
+  }
+  return best;
+}
+
+// Built once per set of loaded lists (see the key): entries grouped by
+// normalised name, so each distinct name -- 26,000-odd, against 38,000
+// streets -- is compared once per keystroke rather than once per street.
+let searchCache = null;
+function searchIndex() {
+  const regions = DATASET === "ev" ? evRegions : regionData;
+  const places = DATASET === "ev" ? evTlas : townData;
+  const streets = DATASET === "ev" ? [] : streetIndex;
+  // Keyed on the lists themselves, not just the dataset, so typing
+  // before the data has loaded can't leave an empty index behind.
+  const key = [DATASET, regions, places, streets];
+  if (searchCache && searchCache.key.every((k, i) => k === key[i])) return searchCache;
+  const groups = new Map();
+  const add = e => {
+    let g = groups.get(e.n);
+    if (!g) groups.set(e.n, g = []);
+    g.push(e);
+  };
+  regions.forEach(r => add({ kind: 0, label: r.name, sub: "Region", n: normText(r.name), size: r.icps || r.ev || 0, match: r }));
+  places.forEach(t => add({ kind: 1, label: t.name, sub: DATASET === "ev" ? "District" : (t.council ? `Town · ${t.council}` : "Town"),
+                            n: normText(t.name), size: t.icps || t.ev || 0, match: t }));
+  streets.forEach(f => add({ kind: 2, label: f.street, sub: f.area, n: normText(f.street), na: normText(f.area),
+                             size: f.icps, street: f, approx: !!f.approx }));
+  searchCache = { key, names: [...groups.keys()], groups };
+  return searchCache;
+}
+
+function suggestPlaces(term, limit = 5) {
+  const raw = (term || "").trim();
+  if (!raw) return [];
+  const commaAt = raw.indexOf(",");
+  const q0 = normText(commaAt === -1 ? raw : raw.slice(0, commaAt));
+  const qArea = commaAt === -1 ? "" : normText(raw.slice(commaAt + 1));
+  if (!q0) return [];
+  const variants = queryVariants(q0);
+  // "Cleveland Road" when only a Cleveland Street exists: the name
+  // without its street type, ranked just after real matches.
+  const words = variants[0].split(" ");
+  const base = words.length > 1 && STREET_TYPES.has(words[words.length - 1]) ? words.slice(0, -1).join(" ") : null;
+
+  const { names, groups } = searchIndex();
+  const scored = new Map();      // name -> score
+  for (const n of names) {
+    let sc = Infinity;
+    for (const v of variants) sc = Math.min(sc, strictScore(n, v));
+    if (sc === Infinity && base && strictScore(n, base) <= 2) sc = 3.5;
+    if (sc !== Infinity) scored.set(n, sc);
+  }
+  // Spelling correction only when matching as typed came up short --
+  // it's the slow part, and a hit spelt right beats a near-miss anyway.
+  const inArea = e => !qArea || (e.kind === 2 && e.na.includes(qArea));
+  const count = () => { let k = 0; for (const n of scored.keys()) k += groups.get(n).filter(inArea).length; return k; };
+  const max = typoBudget(variants[0].length);
+  if (max && count() < limit) {
+    for (const n of names) {
+      if (scored.has(n)) continue;
+      let d = max + 1;
+      for (const v of variants) d = Math.min(d, prefixDistance(v, n, max));
+      if (d <= max) scored.set(n, 4 + d);
+    }
+  }
+
+  const center = map.getCenter && map.getZoom() >= 6 ? map.getCenter() : null;
+  const coslat = center ? Math.cos(center.lat * Math.PI / 180) : 1;
+  const dist = e => {
+    if (!center || !e.street) return 0;
+    const dx = (e.street.lng - center.lng) * coslat, dy = e.street.lat - center.lat;
+    return dx * dx + dy * dy;
+  };
+  const hits = [];
+  for (const [n, score] of scored) {
+    for (const e of groups.get(n)) if (inArea(e)) hits.push({ e, score, d: dist(e) });
+  }
+  hits.sort((a, b) => a.score - b.score || a.e.kind - b.e.kind ||
+    (center ? a.d - b.d : 0) || b.e.size - a.e.size);
+
+  const out = [], seen = new Set();
+  for (const h of hits) {
+    const key = h.e.kind + "|" + h.e.n + "|" + (h.e.sub || "");
+    if (seen.has(key)) continue;     // the same street named twice in one suburb
+    seen.add(key);
+    out.push({ ...h.e, typo: h.score >= 3.5 });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function suggestionMatch(sug) {
+  return sug.street ? streetMatch(sug.street) : sug.match;
 }
 
 function findPlace(term) {
@@ -1905,7 +2113,10 @@ function findPlace(term) {
     const candidates = streets.filter(f => test(f.street));
     if (candidates.length) return streetMatch(pickClosestStreet(candidates));
   }
-  return null;
+  // Nothing matched as typed -- take the best spelling correction, so a
+  // ?region= link with a typo still lands somewhere sensible.
+  const [best] = suggestPlaces(raw, 1);
+  return best ? suggestionMatch(best) : null;
 }
 
 // `animate` is off for the ?region= embed param (the map should already
@@ -1961,6 +2172,11 @@ function applyViewPadding() {
 function focusOnPlace(term, animate) {
   const match = findPlace(term);
   if (!match) { console.warn(`?region=${term} -- no matching region or town found`); return false; }
+  focusOnMatch(match, animate);
+  return true;
+}
+
+function focusOnMatch(match, animate) {
   applyViewPadding();
   if (match.bbox) {
     const [s, w, n, e] = match.bbox;
@@ -2993,14 +3209,103 @@ datasetSwitchEl.addEventListener("click", e => {
 // flies the map there (see findPlace/focusOnPlace); a brief red flash on
 // the input is the only feedback needed for "nothing matched", since the
 // user can see straight away that the map didn't move.
+// As-you-type suggestions (suggestPlaces): arrow keys or the mouse pick
+// one, Enter takes the highlighted one (the top one if none is). When
+// nothing matches, say why -- EMI only lists streets with at least one
+// install, so a real street with no solar yet is genuinely not there.
+const placeSuggestEl = document.getElementById("placeSuggest");
+let suggestions = [], suggestActive = -1;
+
+function renderSuggestions() {
+  const term = placeSearchInputEl.value.trim();
+  const open = term.length > 0;
+  placeSuggestEl.classList.toggle("hidden", !open);
+  placeSearchInputEl.setAttribute("aria-expanded", open ? "true" : "false");
+  if (!open) return;
+  if (!suggestions.length) {
+    placeSuggestEl.innerHTML = `<li class="sug-empty">No match. ` +
+      (DATASET === "ev" ? "Try a region or district." :
+        "Only streets with at least one solar install are listed, so a street with none yet won't appear.") + `</li>`;
+    fitSuggestions();
+    return;
+  }
+  // Every suggestion a spelling correction means the text as typed
+  // matched nothing -- say so, rather than implying these are hits.
+  const head = suggestions.every(s => s.typo)
+    ? `<li class="sug-empty">No exact match${DATASET === "ev" ? "" : " (streets with no solar yet aren't listed)"}. Closest:</li>`
+    : "";
+  placeSuggestEl.innerHTML = head + suggestions.map((s, i) => {
+    const hint = s.approx ? `<span class="sug-hint">Not pinned to the road, so this shows the suburb</span>` : "";
+    return `<li role="option" data-i="${i}"${i === suggestActive ? ` class="active" aria-selected="true"` : ""}>` +
+      `<span class="sug-name">${esc(s.label)}</span><span class="sug-sub">${esc(s.sub)}</span>${hint}</li>`;
+  }).join("");
+  fitSuggestions();
+}
+
+// Keeps the list on screen: on a phone the search box sits far enough
+// right that a list hanging off its left edge would run off the side.
+function fitSuggestions() {
+  placeSuggestEl.style.left = "0px";
+  const r = placeSuggestEl.getBoundingClientRect();
+  const over = r.right - (window.innerWidth - 10);
+  if (over > 0) placeSuggestEl.style.left = `${-Math.min(over, r.left - 10)}px`;
+}
+
+function updateSuggestions() {
+  suggestTimer = null;
+  suggestions = suggestPlaces(placeSearchInputEl.value);
+  suggestActive = -1;
+  renderSuggestions();
+}
+
+function closeSuggestions() {
+  placeSuggestEl.classList.add("hidden");
+  placeSearchInputEl.setAttribute("aria-expanded", "false");
+}
+
+function pickSuggestion(i) {
+  const s = suggestions[i];
+  if (!s) return false;
+  placeSearchInputEl.value = s.kind === 2 ? `${s.label}, ${s.sub}` : s.label;
+  closeSuggestions();
+  focusOnMatch(suggestionMatch(s), true);
+  return true;
+}
+
 placeSearchInputEl.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    if (!suggestions.length) return;
+    e.preventDefault();
+    const n = suggestions.length;
+    suggestActive = e.key === "ArrowDown" ? (suggestActive + 1) % n : (suggestActive - 1 + n) % n;
+    renderSuggestions();
+    return;
+  }
+  if (e.key === "Escape") { closeSuggestions(); return; }
   if (e.key !== "Enter") return;
   const term = placeSearchInputEl.value.trim();
   if (!term) return;
-  const found = focusOnPlace(term, true);
+  if (suggestTimer) { clearTimeout(suggestTimer); suggestTimer = null; updateSuggestions(); }
+  const found = pickSuggestion(suggestActive >= 0 ? suggestActive : 0) || focusOnPlace(term, true);
   placeSearchEl.classList.toggle("no-match", !found);
 });
-placeSearchInputEl.addEventListener("input", () => placeSearchEl.classList.remove("no-match"));
+// A short pause after typing before searching, so a fast typist isn't
+// waiting on a search per letter.
+let suggestTimer = null;
+placeSearchInputEl.addEventListener("input", () => {
+  placeSearchEl.classList.remove("no-match");
+  clearTimeout(suggestTimer);
+  suggestTimer = setTimeout(updateSuggestions, 90);
+});
+placeSearchInputEl.addEventListener("focus", () => { if (placeSearchInputEl.value.trim()) updateSuggestions(); });
+// mousedown, not click: click fires after the input's blur, which would
+// already have closed the list.
+placeSuggestEl.addEventListener("mousedown", e => {
+  const li = e.target.closest("li[data-i]");
+  if (!li) return;
+  e.preventDefault();
+  pickSuggestion(+li.dataset.i);
+});
 
 // Collapses to an icon-only button when there's nothing typed and it
 // isn't focused, so it doesn't compete with the dataset tabs for space
@@ -3014,9 +3319,11 @@ placeSearchIconEl.addEventListener("click", () => {
     placeSearchInputEl.value = "";
     placeSearchEl.classList.add("collapsed");
     placeSearchEl.classList.remove("no-match");
+    closeSuggestions();
   }
 });
 placeSearchInputEl.addEventListener("blur", () => {
+  closeSuggestions();
   if (!placeSearchInputEl.value) placeSearchEl.classList.add("collapsed");
 });
 
@@ -4976,6 +5283,15 @@ function awardsFromUrl() {
         icps: f.properties.icps || 0,
       }))
       .sort((a, b) => b.icps - a.icps);
+    // Streets EMI lists that couldn't be put on a road (see build() in
+    // process.py). Never drawn, but searchable, landing on their suburb --
+    // a street with solar should always be findable. Optional: the map
+    // works the same without it.
+    fetch(UNPLACED_URL).then(r => r.ok ? r.json() : []).catch(() => []).then(list => {
+      if (!Array.isArray(list) || !list.length) return;
+      streetIndex = streetIndex.concat(list.map(u => ({ ...u, approx: true })))
+        .sort((a, b) => b.icps - a.icps);
+    });
 
     regionData = (meta && meta.regions) || [];
     townData = (meta && meta.towns) || [];
