@@ -1464,7 +1464,7 @@ function showPopup(f, at) {
   // tags ("a yes site") and reads badly; the (i) explains the method.
   const FARM_LABEL = {
     likely: "likely a farm", unlikely: "probably not a farm",
-    uncertain: p.farmP != null ? `${Math.round(p.farmP * 100)}% likely` : "uncertain",
+    uncertain: "possibly a farm",   // no %: the method isn't that precise
   };
   const foot = p.farm && FARM_LABEL[p.farm]
     ? `<div class="sc-foot">Farm estimate: ${infoTerm("farms", FARM_LABEL[p.farm], { scope: "New Zealand" })}</div>`
